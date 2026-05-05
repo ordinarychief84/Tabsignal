@@ -55,7 +55,7 @@ export function SetupForm() {
       <Field label="Venue name" name="venueName" required maxLength={120} placeholder="Cocktail bar in Montrose" />
       <Field label="Street address" name="address" placeholder="optional" />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="ZIP code" name="zipCode" required pattern="\\d{5}(-\\d{4})?" placeholder="77006" />
+        <Field label="ZIP code" name="zipCode" required pattern="[0-9]{5}(-[0-9]{4})?" inputMode="numeric" placeholder="77006" />
         <NumberField label="Tables" name="tableCount" min={1} max={120} defaultValue={10} />
       </div>
       <SelectField
