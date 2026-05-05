@@ -1,0 +1,181 @@
+// TabCall — Prisma schema (v2.0 PRD §9)
+// 7 entities only. Menu/loyalty/happy-hour deferred to Phase 2 (YAGNI).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Plan {
+  STARTER
+  FLAT
+  FOUNDING
+}
+
+enum PosType {
+  NONE
+  TOAST
+  SQUARE
+  CLOVER
+}
+
+enum StaffRole {
+  STAFF
+}
+
+enum RequestType {
+  DRINK
+  BILL
+  HELP
+  REFILL
+}
+
+enum RequestStatus {
+  PENDING
+  ACKNOWLEDGED
+  RESOLVED
+  ESCALATED
+}
+
+model Organization {
+  id                   String   @id @default(cuid())
+  name                 String
+  plan                 Plan     @default(FOUNDING)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  createdAt            DateTime @default(now())
+  venues               Venue[]
+}
+
+model Venue {
+  id              String        @id @default(cuid())
+  orgId           String
+  slug            String        @unique
+  name            String
+  address         String?
+  zipCode         String?
+  timezone        String        @default("America/Chicago")
+  posType         PosType       @default(NONE)
+  posWebhookUrl   String?
+  googlePlaceId   String?
+  stripeAccountId String?
+  brandColor      String?
+  logoUrl         String?
+  createdAt       DateTime      @default(now())
+  org             Organization  @relation(fields: [orgId], references: [id])
+  tables          Table[]
+  staff           StaffMember[]
+  sessions        GuestSession[]
+  requests        Request[]
+  feedback        FeedbackReport[]
+
+  @@index([orgId])
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  venueId   String
+  label     String
+  qrToken   String   @unique
+  zone      String?
+  createdAt DateTime @default(now())
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  sessions  GuestSession[]
+  requests  Request[]
+
+  @@unique([venueId, label])
+  @@index([venueId])
+}
+
+model StaffMember {
+  id        String      @id @default(cuid())
+  venueId   String
+  name      String
+  email     String      @unique
+  role      StaffRole   @default(STAFF)
+  fcmToken  String?
+  createdAt DateTime    @default(now())
+  venue     Venue       @relation(fields: [venueId], references: [id])
+  ackedRequests Request[] @relation("AcknowledgedBy")
+
+  @@index([venueId])
+}
+
+model GuestSession {
+  id                    String    @id @default(cuid())
+  venueId               String
+  tableId               String
+  sessionToken          String    @unique
+  lineItems             Json      @default("[]")
+  tipPercent            Float?
+  paidAt                DateTime?
+  stripePaymentIntentId String?
+  expiresAt             DateTime
+  createdAt             DateTime  @default(now())
+  venue                 Venue     @relation(fields: [venueId], references: [id])
+  table                 Table     @relation(fields: [tableId], references: [id])
+  requests              Request[]
+  feedback              FeedbackReport[]
+
+  @@index([venueId, tableId])
+  @@index([expiresAt])
+}
+
+model Request {
+  id              String        @id @default(cuid())
+  venueId         String
+  tableId         String
+  sessionId       String
+  type            RequestType
+  status          RequestStatus @default(PENDING)
+  note            String?
+  acknowledgedById String?
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
+  escalatedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  venue           Venue         @relation(fields: [venueId], references: [id])
+  table           Table         @relation(fields: [tableId], references: [id])
+  session         GuestSession  @relation(fields: [sessionId], references: [id])
+  acknowledgedBy  StaffMember?  @relation("AcknowledgedBy", fields: [acknowledgedById], references: [id])
+
+  @@index([venueId, status])
+  @@index([sessionId])
+}
+
+// Stripe webhook idempotency: Stripe may deliver the same event multiple
+// times. We insert by event ID; the unique constraint dedupes retries.
+// `processedAt` lets us detect events that crashed mid-processing.
+model WebhookEvent {
+  id          String    @id          // Stripe event ID, e.g. evt_1Abc...
+  type        String
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  error       String?
+
+  @@index([type, receivedAt])
+}
+
+model FeedbackReport {
+  id              String        @id @default(cuid())
+  venueId         String
+  sessionId       String
+  rating          Int
+  note            String?
+  // AI classification (PRD v2.0 F4 — bad-review intercept)
+  aiCategory      String?       // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
+  aiSuggestion    String?
+  aiServerName    String?
+  seenByMgr       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  venue           Venue         @relation(fields: [venueId], references: [id])
+  session         GuestSession  @relation(fields: [sessionId], references: [id])
+
+  @@index([venueId, createdAt])
+}
