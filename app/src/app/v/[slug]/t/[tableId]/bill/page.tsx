@@ -11,10 +11,11 @@ export default async function BillPage({ params }: { params: { slug: string; tab
   const venue = await db.venue.findUnique({ where: { slug: params.slug } });
   if (!venue) notFound();
 
+  const tableSeg = safeDecode(params.tableId);
   const session = await db.guestSession.findFirst({
     where: {
       venueId: venue.id,
-      OR: [{ tableId: params.tableId }, { table: { label: params.tableId } }],
+      OR: [{ tableId: tableSeg }, { table: { label: tableSeg } }],
       paidAt: null,
       expiresAt: { gt: new Date() },
     },
@@ -47,4 +48,8 @@ export default async function BillPage({ params }: { params: { slug: string; tab
       />
     </main>
   );
+}
+
+function safeDecode(s: string): string {
+  try { return decodeURIComponent(s); } catch { return s; }
 }

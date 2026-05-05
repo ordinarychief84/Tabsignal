@@ -11,9 +11,12 @@ type PageProps = {
 };
 
 export default async function GuestPage({ params, searchParams }: PageProps) {
+  // Next.js leaves the dynamic segment URL-encoded (e.g. "Table%201"). The
+  // qrToken segment is a hex string so it's safe to decode unconditionally.
+  const tableSeg = safeDecode(params.tableId);
   let resolved;
   try {
-    resolved = await resolveGuestSession(params.slug, params.tableId, searchParams.s ?? null);
+    resolved = await resolveGuestSession(params.slug, tableSeg, searchParams.s ?? null);
   } catch (err: unknown) {
     const code = err instanceof Error ? err.message : "UNKNOWN";
     if (code === "VENUE_NOT_FOUND" || code === "TABLE_NOT_FOUND") notFound();
@@ -34,6 +37,10 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
       </footer>
     </main>
   );
+}
+
+function safeDecode(s: string): string {
+  try { return decodeURIComponent(s); } catch { return s; }
 }
 
 function InvalidScan({ reason }: { reason: string }) {

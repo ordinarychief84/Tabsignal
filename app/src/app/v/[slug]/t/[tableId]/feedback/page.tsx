@@ -8,9 +8,10 @@ export default async function FeedbackPage({ params }: { params: { slug: string;
   const venue = await db.venue.findUnique({ where: { slug: params.slug } });
   if (!venue) notFound();
 
+  const tableSeg = safeDecode(params.tableId);
   // Find the most recent paid (or active) session at this table.
   const session = await db.guestSession.findFirst({
-    where: { venueId: venue.id, OR: [{ tableId: params.tableId }, { table: { label: params.tableId } }] },
+    where: { venueId: venue.id, OR: [{ tableId: tableSeg }, { table: { label: tableSeg } }] },
     orderBy: { createdAt: "desc" },
     include: { feedback: true },
   });
@@ -33,4 +34,8 @@ export default async function FeedbackPage({ params }: { params: { slug: string;
       <FeedbackScreen sessionId={session.id} />
     </main>
   );
+}
+
+function safeDecode(s: string): string {
+  try { return decodeURIComponent(s); } catch { return s; }
 }
