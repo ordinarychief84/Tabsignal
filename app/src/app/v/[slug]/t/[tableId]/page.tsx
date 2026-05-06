@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { db } from "@/lib/db";
 import { resolveGuestSession } from "@/lib/session";
+import { parseLineItems } from "@/lib/bill";
 import { GuestRequestPanel } from "./request-panel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const STALE_AFTER_MIN = 20;
 
 type PageProps = {
   params: { slug: string; tableId: string };
@@ -21,6 +25,29 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
     if (code === "VENUE_NOT_FOUND" || code === "TABLE_NOT_FOUND") notFound();
     return <InvalidScan reason={code} />;
   }
+
+  // Detect a "stale tab" — the resolved session has line items AND no
+  // recent request. Likely a previous party who didn't pay before leaving.
+  // Show a "Continue / Start fresh" prompt to the new guest.
+  const session = await db.guestSession.findUnique({
+    where: { id: resolved.sessionId },
+    select: {
+      lineItems: true,
+      requests: {
+        select: { createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+  const items = session ? parseLineItems(session.lineItems) : [];
+  const lastRequestAt = session?.requests[0]?.createdAt ?? null;
+  const minutesSinceLast = lastRequestAt
+    ? (Date.now() - lastRequestAt.getTime()) / 60_000
+    : null;
+  const isStale =
+    items.length > 0 &&
+    (lastRequestAt === null || (minutesSinceLast ?? 0) > STALE_AFTER_MIN);
 
   return (
     <main className="flex min-h-screen flex-col bg-oat text-slate">
@@ -41,6 +68,10 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
         sessionToken={resolved.sessionToken}
         slug={params.slug}
         tableLabel={resolved.tableLabel}
+        prevTab={isStale ? {
+          itemCount: items.length,
+          lastRequestMinAgo: minutesSinceLast === null ? null : Math.round(minutesSinceLast),
+        } : null}
       />
 
       <footer className="mt-auto border-t border-slate/5 px-6 py-5">

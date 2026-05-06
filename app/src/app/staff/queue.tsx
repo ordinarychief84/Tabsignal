@@ -26,6 +26,8 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
 // (new_request / request_acknowledged / request_resolved) carry the load.
 const POLL_INTERVAL_MS = 30_000;
 
+type StaffMate = { id: string; name: string };
+
 export function StaffQueue({
   venueId,
   staffId,
@@ -41,6 +43,8 @@ export function StaffQueue({
   const [filter, setFilter] = useState<"yours" | "all">(
     assignedTableIds.length > 0 ? "yours" : "all"
   );
+  const [staffMates, setStaffMates] = useState<StaffMate[]>([]);
+  const [handoffToast, setHandoffToast] = useState<string | null>(null);
   const aborter = useRef<AbortController | null>(null);
   const assignedSet = new Set(assignedTableIds);
 
@@ -97,10 +101,19 @@ export function StaffQueue({
 
     function onDisconnect() { setReconnecting(true); }
     function onConnect() { setReconnecting(false); refresh(); }
+    function onHandedOffToYou(payload: { request?: { tableLabel: string; type: string; fromStaffId: string | null } } | null) {
+      const r = payload?.request;
+      if (!r) return;
+      setHandoffToast(`${r.tableLabel} · ${r.type.toLowerCase()} — handed off to you`);
+      // Auto-clear after 4s.
+      setTimeout(() => setHandoffToast(null), 4000);
+      refresh();
+    }
 
     socket.on("new_request", onNew);
     socket.on("request_acknowledged", onAck);
     socket.on("request_resolved", onResolved);
+    socket.on("request_handed_off_to_you", onHandedOffToYou);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
 
@@ -110,11 +123,22 @@ export function StaffQueue({
       socket.off("new_request", onNew);
       socket.off("request_acknowledged", onAck);
       socket.off("request_resolved", onResolved);
+      socket.off("request_handed_off_to_you", onHandedOffToYou);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       aborter.current?.abort();
     };
   }, [venueId, staffId, refresh]);
+
+  // Lazy-load the staff list once for the handoff popover.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/staff")
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(d => { if (!cancelled) setStaffMates((d.items ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))); })
+      .catch(() => { /* swallow */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const visibleItems =
     filter === "yours"
@@ -158,6 +182,34 @@ export function StaffQueue({
     try {
       await fetch(`/api/requests/${id}/resolve`, { method: "PATCH" });
       setItems(prev => prev.filter(it => it.id !== id));
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handoff(id: string, toStaffId: string) {
+    setPendingId(id);
+    try {
+      const res = await fetch(`/api/requests/${id}/handoff`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toStaffId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // The realtime ack event will reconcile the UI; do an optimistic
+      // local swap so the local user sees the new owner immediately.
+      const dest = staffMates.find(s => s.id === toStaffId);
+      if (dest) {
+        setItems(prev =>
+          prev.map(it =>
+            it.id === id
+              ? { ...it, acknowledgedBy: { id: dest.id, name: dest.name } }
+              : it
+          )
+        );
+      }
+    } catch {
+      /* refresh will reconcile */
     } finally {
       setPendingId(null);
     }
@@ -215,12 +267,21 @@ export function StaffQueue({
               item={it}
               isYours={!!it.tableId && assignedSet.has(it.tableId)}
               busy={pendingId === it.id}
+              currentStaffId={staffId}
+              staffMates={staffMates}
               onAck={() => ack(it.id)}
               onResolve={() => resolve(it.id)}
+              onHandoff={(toStaffId) => handoff(it.id, toStaffId)}
             />
           ))}
         </ul>
       )}
+
+      {handoffToast ? (
+        <div className="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-chartreuse px-4 py-2 text-sm font-medium text-slate shadow-lg">
+          {handoffToast}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -229,19 +290,28 @@ function RequestCard({
   item,
   isYours,
   busy,
+  currentStaffId,
+  staffMates,
   onAck,
   onResolve,
+  onHandoff,
 }: {
   item: Item;
   isYours: boolean;
   busy: boolean;
+  currentStaffId?: string;
+  staffMates: StaffMate[];
   onAck: () => void;
   onResolve: () => void;
+  onHandoff: (toStaffId: string) => void;
 }) {
   const acked = item.status === "ACKNOWLEDGED";
+  const ackedByMe = acked && !!currentStaffId && item.acknowledgedBy?.id === currentStaffId;
   const seconds = useAge(item.createdAt);
   const delayed = seconds > 180;
   const warning = !delayed && seconds > 60;
+  const [showHandoff, setShowHandoff] = useState(false);
+  const others = staffMates.filter(s => s.id !== currentStaffId);
 
   return (
     <li
@@ -292,6 +362,15 @@ function RequestCard({
             Got it
           </button>
         )}
+        {ackedByMe && others.length > 0 ? (
+          <button
+            disabled={busy}
+            onClick={() => setShowHandoff(s => !s)}
+            className="rounded-lg border border-white/10 px-3 py-3 text-sm font-medium text-oat/70 hover:text-oat disabled:opacity-60"
+          >
+            Hand off
+          </button>
+        ) : null}
         <button
           disabled={busy}
           onClick={onResolve}
@@ -300,6 +379,28 @@ function RequestCard({
           Done
         </button>
       </div>
+
+      {showHandoff && ackedByMe ? (
+        <div className="mt-3 rounded-xl border border-white/5 bg-slate p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-oat/50">
+            Hand off to
+          </p>
+          <ul className="mt-2 grid grid-cols-2 gap-2">
+            {others.map(s => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => { onHandoff(s.id); setShowHandoff(false); }}
+                  className="w-full rounded-lg border border-white/10 px-3 py-2 text-sm text-oat hover:bg-slate-light disabled:opacity-60"
+                >
+                  {s.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </li>
   );
 }

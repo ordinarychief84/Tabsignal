@@ -14,21 +14,27 @@ const REQUEST_TYPES = [
 type RequestType = (typeof REQUEST_TYPES)[number]["id"];
 type Status = "idle" | "submitting" | "sent" | "ack" | "error" | "rate_limited";
 
+type PrevTab = { itemCount: number; lastRequestMinAgo: number | null };
+
 export function GuestRequestPanel({
   sessionId,
   sessionToken,
   slug,
   tableLabel,
+  prevTab = null,
 }: {
   sessionId: string;
   sessionToken: string;
   slug: string;
   tableLabel: string;
+  prevTab?: PrevTab | null;
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [activeType, setActiveType] = useState<RequestType | null>(null);
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [prev, setPrev] = useState<PrevTab | null>(prevTab);
+  const [closingTab, setClosingTab] = useState(false);
 
   useEffect(() => {
     // Configure socket auth as the guest before any join — passes the
@@ -108,6 +114,24 @@ export function GuestRequestPanel({
     setErrorMsg(null);
   }
 
+  async function startFresh() {
+    if (closingTab) return;
+    setClosingTab(true);
+    try {
+      const res = await fetch(`/api/session/${sessionId}/close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionToken }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Reload — the server will spin up a new GuestSession on next render.
+      window.location.reload();
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Couldn't reset the tab.");
+      setClosingTab(false);
+    }
+  }
+
   if (status === "sent" || status === "ack") {
     const acknowledged = status === "ack";
     return (
@@ -150,7 +174,40 @@ export function GuestRequestPanel({
   }
 
   return (
-    <section className="px-6">
+    <section className="space-y-4 px-6">
+      {prev ? (
+        <div className="rounded-2xl border border-sea/40 bg-sea/20 px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
+            This tab has items from earlier
+          </p>
+          <p className="mt-1 text-sm text-slate/75">
+            {prev.itemCount} item{prev.itemCount === 1 ? "" : "s"}
+            {prev.lastRequestMinAgo !== null
+              ? ` · last activity ${prev.lastRequestMinAgo}m ago`
+              : ""}
+            . Pick up where you left off, or start a fresh tab — the old
+            items stay with the previous guest.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPrev(null)}
+              className="rounded-lg border border-slate/15 bg-white px-3 py-1.5 text-sm font-medium text-slate hover:border-slate/30"
+            >
+              Continue this tab
+            </button>
+            <button
+              type="button"
+              onClick={startFresh}
+              disabled={closingTab}
+              className="rounded-lg bg-chartreuse px-3 py-1.5 text-sm font-medium text-slate disabled:opacity-60"
+            >
+              {closingTab ? "Resetting…" : "Start a fresh tab"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-3">
         {REQUEST_TYPES.map((rt) => {
           const isActive = activeType === rt.id && status === "submitting";
