@@ -69,6 +69,10 @@ model Venue {
   stripeChargesEnabled  Boolean @default(false)
   stripePayoutsEnabled  Boolean @default(false)
   stripeDetailsSubmitted Boolean @default(false)
+  // Compliance: when true, the first DRINK request on a fresh guest session
+  // sets `idCheckRequired` on the request so staff see a coral "ID check"
+  // badge before tapping Got it.
+  requireIdOnFirstDrink Boolean @default(false)
   brandColor      String?
   logoUrl         String?
   createdAt       DateTime      @default(now())
@@ -156,6 +160,9 @@ model Request {
   type            RequestType
   status          RequestStatus @default(PENDING)
   note            String?
+  // For DRINK requests on a fresh session at compliance-flagged venues:
+  // staff must acknowledge having checked ID before tapping Got it.
+  idCheckRequired Boolean       @default(false)
   acknowledgedById String?
   acknowledgedAt  DateTime?
   resolvedAt      DateTime?
@@ -180,6 +187,22 @@ model LinkTokenUse {
   usedAt    DateTime @default(now())
 
   @@index([usedAt])
+}
+
+// Single-use enforcement + audit log for "Comp this round" actions
+// triggered from the AI bad-rating email. The email contains a signed
+// JWT with a jti; applying the comp inserts the jti here so the link
+// can't be replayed (e.g. forwarded to another manager).
+model CompAction {
+  jti          String   @id
+  sessionId    String
+  venueId      String
+  amountCents  Int
+  reason       String?
+  appliedAt    DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([venueId, appliedAt])
 }
 
 // Stripe webhook idempotency: Stripe may deliver the same event multiple

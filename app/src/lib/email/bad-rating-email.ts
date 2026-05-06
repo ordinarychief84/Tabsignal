@@ -8,6 +8,8 @@ export type BadRatingArgs = {
   classification: Classification;
   occurredAt: Date;
   staffQueueUrl: string;
+  /** Pre-built "Comp $X" CTA. Omit if the tab is already paid or unknown. */
+  compCta?: { url: string; amountCents: number };
 };
 
 export function badRatingSubject(args: BadRatingArgs): string {
@@ -17,33 +19,38 @@ export function badRatingSubject(args: BadRatingArgs): string {
 export function badRatingHtml(args: BadRatingArgs): string {
   const time = args.occurredAt.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", weekday: "short" });
   const noteLine = args.note?.trim()
-    ? `<p style="margin:16px 0;padding:12px 16px;background:#FFF7ED;border-left:3px solid #F59E0B;font-style:italic;color:#7C2D12;">"${escapeHtml(args.note.trim())}"</p>`
-    : `<p style="margin:16px 0;color:#64748B;">No note provided.</p>`;
+    ? `<p style="margin:16px 0;padding:12px 16px;background:#EBE9E4;border-left:3px solid #EFC8C8;font-style:italic;color:#2B2539;">"${escapeHtml(args.note.trim())}"</p>`
+    : `<p style="margin:16px 0;color:#7B6767;">No note provided.</p>`;
 
   const serverLine = args.classification.serverName
-    ? `<p style="margin:0;color:#475569;"><strong>Staff named:</strong> ${escapeHtml(args.classification.serverName)}</p>`
+    ? `<p style="margin:0;color:#7B6767;"><strong>Staff named:</strong> ${escapeHtml(args.classification.serverName)}</p>`
+    : "";
+
+  const compCta = args.compCta
+    ? `<a href="${escapeHtml(args.compCta.url)}" style="display:inline-block;background:#EEEFC8;color:#2B2539;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;margin-right:8px;">Comp $${(args.compCta.amountCents / 100).toFixed(0)} to ${escapeHtml(args.tableLabel)}</a>`
     : "";
 
   return `<!doctype html>
 <html>
-  <body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#0F172A;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;padding:24px 0;">
+  <body style="margin:0;padding:0;background:#EBE9E4;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#2B2539;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#EBE9E4;padding:24px 0;">
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E2E8F0;">
           <tr><td style="padding:24px 28px;border-bottom:1px solid #E2E8F0;">
-            <p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#64748B;">${escapeHtml(args.venueName)} · ${escapeHtml(time)}</p>
-            <h1 style="margin:6px 0 0;font-size:20px;color:#0F172A;">${escapeHtml(args.tableLabel)} · ${args.rating}★</h1>
+            <p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7B6767;">${escapeHtml(args.venueName)} · ${escapeHtml(time)}</p>
+            <h1 style="margin:6px 0 0;font-size:20px;font-weight:500;color:#2B2539;">${escapeHtml(args.tableLabel)} · ${args.rating}★</h1>
           </td></tr>
           <tr><td style="padding:20px 28px;">
             ${noteLine}
-            <p style="margin:0;color:#475569;"><strong>Likely cause:</strong> ${labelFor(args.classification.category)} <span style="color:#94A3B8;font-size:12px;">· ${args.classification.confidence} confidence</span></p>
+            <p style="margin:0;color:#7B6767;"><strong>Likely cause:</strong> ${labelFor(args.classification.category)} <span style="color:#94A3B8;font-size:12px;">· ${args.classification.confidence} confidence</span></p>
             ${serverLine}
-            <p style="margin:14px 0 0;color:#0F172A;"><strong>Suggested action:</strong> ${escapeHtml(args.classification.suggestion)}</p>
+            <p style="margin:14px 0 0;color:#2B2539;"><strong>Suggested action:</strong> ${escapeHtml(args.classification.suggestion)}</p>
           </td></tr>
-          <tr><td style="padding:18px 28px 24px;border-top:1px solid #E2E8F0;background:#F8FAFC;">
-            <a href="${escapeHtml(args.staffQueueUrl)}" style="display:inline-block;background:#0F172A;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">Open live queue</a>
-            <p style="margin:14px 0 0;font-size:11px;color:#94A3B8;line-height:1.5;">
-              AI-generated suggestion — verify before acting. Classification can be wrong; the guest's words matter more than the category.
+          <tr><td style="padding:18px 28px 24px;border-top:1px solid #E2E8F0;background:#EBE9E4;">
+            ${compCta}
+            <a href="${escapeHtml(args.staffQueueUrl)}" style="display:inline-block;background:#2B2539;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;">Open live queue</a>
+            <p style="margin:14px 0 0;font-size:11px;color:#7B6767;line-height:1.5;">
+              ${args.compCta ? "Comp link is single-use and expires in 24h. " : ""}AI-generated suggestion — verify before acting. The guest&rsquo;s words matter more than the category.
             </p>
           </td></tr>
         </table>
@@ -64,6 +71,11 @@ export function badRatingText(args: BadRatingArgs): string {
   if (args.classification.serverName) lines.push(`Staff named: ${args.classification.serverName}`);
   lines.push(`Suggested action: ${args.classification.suggestion}`);
   lines.push("");
+  if (args.compCta) {
+    lines.push(`Comp $${(args.compCta.amountCents / 100).toFixed(0)} to ${args.tableLabel}: ${args.compCta.url}`);
+    lines.push("(single-use, expires in 24h)");
+    lines.push("");
+  }
   lines.push(`Live queue: ${args.staffQueueUrl}`);
   lines.push("");
   lines.push("AI-generated. Verify before acting.");

@@ -29,6 +29,7 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
       type: r.type,
       note: r.note,
       status: r.status,
+      idCheckRequired: r.idCheckRequired,
       createdAt: r.createdAt.toISOString(),
       acknowledgedAt: r.acknowledgedAt?.toISOString() ?? null,
       acknowledgedBy: r.acknowledgedBy ? { id: r.acknowledgedBy.id, name: r.acknowledgedBy.name } : null,

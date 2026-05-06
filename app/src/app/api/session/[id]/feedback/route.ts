@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { classifyFeedback } from "@/lib/ai/classify-feedback";
 import { badRatingHtml, badRatingSubject, badRatingText } from "@/lib/email/bad-rating-email";
 import { sendEmail } from "@/lib/email/send";
+import { signCompToken } from "@/lib/auth/comp-token";
+
+const COMP_DEFAULT_CENTS = 2000; // $20
 
 const Body = z.object({
   rating: z.number().int().min(1).max(5),
@@ -79,37 +82,44 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   });
   const to = recipients.map(r => r.email).filter(Boolean);
 
+  // If the tab is still open (not paid), include a "Comp $20 to Table N"
+  // CTA in the email so the manager can apply the credit in one tap.
+  let compCta: { url: string; amountCents: number } | undefined;
+  if (!session.paidAt && session.expiresAt.getTime() > Date.now()) {
+    try {
+      const token = await signCompToken({
+        sessionId: session.id,
+        venueId: session.venueId,
+        amountCents: COMP_DEFAULT_CENTS,
+        tableLabel: session.table.label,
+      });
+      compCta = {
+        url: `${APP_URL}/comp/${encodeURIComponent(token)}`,
+        amountCents: COMP_DEFAULT_CENTS,
+      };
+    } catch {
+      // Sign failure shouldn't break the email path.
+    }
+  }
+
+  const baseArgs = {
+    venueName: session.venue.name,
+    tableLabel: session.table.label,
+    rating: parsed.rating,
+    note: parsed.note ?? null,
+    classification,
+    occurredAt: new Date(),
+    staffQueueUrl: `${APP_URL}/staff`,
+    compCta,
+  };
+
   if (to.length > 0) {
     try {
       await sendEmail({
         to,
-        subject: badRatingSubject({
-          venueName: session.venue.name,
-          tableLabel: session.table.label,
-          rating: parsed.rating,
-          note: parsed.note ?? null,
-          classification,
-          occurredAt: new Date(),
-          staffQueueUrl: `${APP_URL}/staff`,
-        }),
-        html: badRatingHtml({
-          venueName: session.venue.name,
-          tableLabel: session.table.label,
-          rating: parsed.rating,
-          note: parsed.note ?? null,
-          classification,
-          occurredAt: new Date(),
-          staffQueueUrl: `${APP_URL}/staff`,
-        }),
-        text: badRatingText({
-          venueName: session.venue.name,
-          tableLabel: session.table.label,
-          rating: parsed.rating,
-          note: parsed.note ?? null,
-          classification,
-          occurredAt: new Date(),
-          staffQueueUrl: `${APP_URL}/staff`,
-        }),
+        subject: badRatingSubject(baseArgs),
+        html: badRatingHtml(baseArgs),
+        text: badRatingText(baseArgs),
       });
     } catch {
       // log/observability hook would go here; never fail the guest's feedback POST on email failure

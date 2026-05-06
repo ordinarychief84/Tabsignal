@@ -12,6 +12,7 @@ const Body = z.object({
   googlePlaceId: z.string().max(120).nullable().optional(),
   brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   logoUrl: z.string().url().max(2048).nullable().optional(),
+  requireIdOnFirstDrink: z.boolean().optional(),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
@@ -39,10 +40,11 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   // Distinguish "field absent in body" (don't change) from "explicit null"
   // (clear it). `parsed.x !== undefined` is precise; the previous `"x" in
   // parsed` form was brittle if Zod ever emitted undefined-valued keys.
-  const data: Record<string, string | null> = {};
+  const data: Record<string, string | boolean | null> = {};
   if (parsed.googlePlaceId !== undefined) data.googlePlaceId = parsed.googlePlaceId;
   if (parsed.brandColor !== undefined) data.brandColor = parsed.brandColor;
   if (parsed.logoUrl !== undefined) data.logoUrl = parsed.logoUrl;
+  if (parsed.requireIdOnFirstDrink !== undefined) data.requireIdOnFirstDrink = parsed.requireIdOnFirstDrink;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "NOTHING_TO_UPDATE" }, { status: 400 });
@@ -56,6 +58,7 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
       googlePlaceId: true,
       brandColor: true,
       logoUrl: true,
+      requireIdOnFirstDrink: true,
     },
   });
 

@@ -10,6 +10,7 @@ type Item = {
   type: "DRINK" | "BILL" | "HELP" | "REFILL";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
+  idCheckRequired?: boolean;
   createdAt: string;
   acknowledgedAt: string | null;
   acknowledgedBy: { id: string; name: string } | null;
@@ -322,11 +323,16 @@ function RequestCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="text-xl font-medium text-oat">{item.tableLabel}</p>
             {isYours ? (
               <span className="rounded-full bg-chartreuse/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-chartreuse">
                 yours
+              </span>
+            ) : null}
+            {item.idCheckRequired && !acked ? (
+              <span className="rounded-full bg-coral/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-coral">
+                ⚠ check ID
               </span>
             ) : null}
           </div>

@@ -1,10 +1,13 @@
 import { z } from "zod";
 import { taxRateForZip } from "./tax";
 
+// unitCents is a signed integer to support comps / discounts as negative
+// line items. Endpoints that accept staff-entered items should impose
+// `nonnegative()` themselves (see /api/session/:id/items).
 export const LineItem = z.object({
   name: z.string(),
   quantity: z.number().int().positive(),
-  unitCents: z.number().int().nonnegative(),
+  unitCents: z.number().int(),
 });
 export type LineItem = z.infer<typeof LineItem>;
 
@@ -37,5 +40,7 @@ export function totalsFor(items: LineItem[], zipCode: string, tipPercent: number
 }
 
 export function dollars(cents: number): string {
+  // Render negatives as "−$X.XX" using a true minus sign rather than "$-X".
+  if (cents < 0) return `−$${(Math.abs(cents) / 100).toFixed(2)}`;
   return `$${(cents / 100).toFixed(2)}`;
 }

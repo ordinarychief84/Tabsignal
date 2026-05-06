@@ -30,13 +30,28 @@ export async function POST(req: Request) {
     );
   }
 
-  const session = await db.guestSession.findUnique({ where: { id: parsed.sessionId } });
+  const session = await db.guestSession.findUnique({
+    where: { id: parsed.sessionId },
+    include: { venue: { select: { requireIdOnFirstDrink: true } } },
+  });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
   }
   if (session.paidAt) {
     return NextResponse.json({ error: "SESSION_CLOSED" }, { status: 410 });
+  }
+
+  // Compliance: if the venue requires ID on first drink AND this is a
+  // DRINK request AND no prior DRINK exists in this session, flag it.
+  // Staff queue card surfaces a coral "ID check" badge before Got it.
+  let idCheckRequired = false;
+  if (parsed.type === "DRINK" && session.venue.requireIdOnFirstDrink) {
+    const priorDrink = await db.request.findFirst({
+      where: { sessionId: session.id, type: "DRINK" },
+      select: { id: true },
+    });
+    if (!priorDrink) idCheckRequired = true;
   }
 
   const request = await db.request.create({
@@ -46,6 +61,7 @@ export async function POST(req: Request) {
       sessionId: session.id,
       type: parsed.type,
       note: parsed.note ?? null,
+      idCheckRequired,
     },
     include: {
       table: {
@@ -72,6 +88,7 @@ export async function POST(req: Request) {
       tableLabel: request.table.label,
       sessionId: request.sessionId,
       createdAt: request.createdAt.toISOString(),
+      idCheckRequired: request.idCheckRequired,
       assignedStaffIds,
     },
     assignedStaffIds

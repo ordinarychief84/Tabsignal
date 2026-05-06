@@ -7,8 +7,19 @@ import { getStaffSession } from "@/lib/auth/session";
 // Staff-only: only authenticated staff at the same venue as the session
 // can mutate line items. This closes a bill-inflation vector where any
 // session ID could be used to add fake items to another guest's tab.
+//
+// Staff-added items must be nonnegative — comps/discounts have their own
+// dedicated path (the AI bad-rating email's "Comp this round" button).
 const Body = z.object({
-  items: z.array(LineItemSchema.extend({ name: z.string().min(1).max(120) })).min(1).max(50),
+  items: z
+    .array(
+      LineItemSchema.extend({
+        name: z.string().min(1).max(120),
+        unitCents: z.number().int().nonnegative(),
+      })
+    )
+    .min(1)
+    .max(50),
   mode: z.enum(["append", "replace"]).default("append"),
 });
 

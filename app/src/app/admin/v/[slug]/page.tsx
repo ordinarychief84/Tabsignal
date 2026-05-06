@@ -14,7 +14,10 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
   // Day window in venue's local timezone — fall back to UTC if Intl can't parse.
   const start = startOfTodayUTC(venue.timezone);
 
-  const [served, pending, ackedToday, staffCount, recentResolved, todayRequestsByTable] = await Promise.all([
+  // Week window for the leaderboard (rolling 7d, not strictly Mon-Sun)
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [served, pending, ackedToday, staffCount, recentResolved, todayRequestsByTable, leaderboardRaw] = await Promise.all([
     db.request.count({
       where: { venueId: venue.id, status: "RESOLVED", createdAt: { gte: start } },
     }),
@@ -58,10 +61,25 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       },
       take: 1000,
     }),
+    // Leaderboard: every staff at the venue + their acks in the last 7d.
+    // Joined in Prisma so we get the names without an extra query.
+    db.staffMember.findMany({
+      where: { venueId: venue.id },
+      select: {
+        id: true,
+        name: true,
+        ackedRequests: {
+          where: { createdAt: { gte: weekStart }, acknowledgedAt: { not: null } },
+          select: { createdAt: true, acknowledgedAt: true },
+          take: 1000,
+        },
+      },
+    }),
   ]);
 
   const avgAckSec = ackMedianSeconds(ackedToday);
   const tableActivity = aggregateByTable(todayRequestsByTable);
+  const leaderboard = computeLeaderboard(leaderboardRaw);
 
   return (
     <>
@@ -141,6 +159,37 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
 
       <section className="mt-12">
         <header className="mb-3 flex items-end justify-between">
+          <h2 className="text-lg font-medium">Servers, this week</h2>
+          <p className="text-[11px] tracking-wide text-slate/40">Rolling 7 days · fastest first</p>
+        </header>
+        {leaderboard.length === 0 ? (
+          <div className="rounded-2xl border border-slate/10 bg-white px-5 py-6 text-sm text-slate/55">
+            No staff acks in the past 7 days yet.
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate/5 rounded-2xl border border-slate/10 bg-white">
+            {leaderboard.map((s, i) => (
+              <li key={s.staffId} className="grid grid-cols-[auto,1fr,auto,auto] items-center gap-4 px-5 py-3 text-sm">
+                <span
+                  className={[
+                    "inline-flex h-7 w-7 items-center justify-center rounded-full font-mono text-[11px] tabular-nums",
+                    i === 0 ? "bg-chartreuse text-slate" : "bg-slate/5 text-slate/60",
+                  ].join(" ")}
+                  aria-label={`Rank ${i + 1}`}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 truncate font-medium text-slate">{s.name}</span>
+                <Cell label="Acks" value={String(s.ackCount)} />
+                <Cell label="Median ack" value={s.medianAckSec === null ? "—" : formatSec(s.medianAckSec)} bad={s.medianAckSec !== null && s.medianAckSec > 60} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-12">
+        <header className="mb-3 flex items-end justify-between">
           <h2 className="text-lg font-medium">Recently resolved</h2>
           <p className="text-[11px] tracking-wide text-slate/40">Last {recentResolved.length}</p>
         </header>
@@ -185,6 +234,48 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
       {hint ? <p className="mt-1 text-[11px] text-slate/50">{hint}</p> : null}
     </div>
   );
+}
+
+type LeaderEntry = {
+  staffId: string;
+  name: string;
+  ackCount: number;
+  medianAckSec: number | null;
+};
+
+function computeLeaderboard(
+  rows: { id: string; name: string; ackedRequests: { createdAt: Date; acknowledgedAt: Date | null }[] }[]
+): LeaderEntry[] {
+  const out: LeaderEntry[] = [];
+  for (const s of rows) {
+    if (s.ackedRequests.length === 0) continue;
+    const secs: number[] = [];
+    for (const r of s.ackedRequests) {
+      if (!r.acknowledgedAt) continue;
+      secs.push((r.acknowledgedAt.getTime() - r.createdAt.getTime()) / 1000);
+    }
+    let medianAckSec: number | null = null;
+    if (secs.length > 0) {
+      const sorted = secs.sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      medianAckSec = Math.round(
+        sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+      );
+    }
+    out.push({
+      staffId: s.id,
+      name: s.name,
+      ackCount: s.ackedRequests.length,
+      medianAckSec,
+    });
+  }
+  // Fastest first; ties broken by ack count desc.
+  return out.sort((a, b) => {
+    const aMed = a.medianAckSec ?? Number.POSITIVE_INFINITY;
+    const bMed = b.medianAckSec ?? Number.POSITIVE_INFINITY;
+    if (aMed !== bMed) return aMed - bMed;
+    return b.ackCount - a.ackCount;
+  });
 }
 
 function ackMedianSeconds(rows: { createdAt: Date; acknowledgedAt: Date | null }[]): number | null {

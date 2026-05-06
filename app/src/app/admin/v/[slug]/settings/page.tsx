@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { EditableField } from "./editable-field";
+import { ToggleField } from "./toggle-field";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — settings" };
@@ -108,6 +109,16 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             placeholder="https://example.com/logo.png"
             initial={venue.logoUrl ?? ""}
             help="Public URL to a square logo. Optional — wordmark fallback otherwise."
+          />
+        </Card>
+
+        <Card title="Compliance">
+          <ToggleField
+            slug={params.slug}
+            field="requireIdOnFirstDrink"
+            label="Check ID on first drink"
+            help="When on, the first DRINK request from any new tab is flagged in the staff queue with a coral 'check ID' badge. Bartenders must verify before tapping Got it. Required for TABC compliance in Texas; useful anywhere serving alcohol."
+            initial={venue.requireIdOnFirstDrink}
           />
         </Card>
 
