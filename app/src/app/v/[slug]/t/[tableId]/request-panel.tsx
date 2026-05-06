@@ -122,7 +122,7 @@ export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
               className={[
                 "min-h-[88px] rounded-2xl border border-slate-200 bg-white px-4 py-5 text-left text-base font-medium text-slate-900 shadow-sm transition",
                 "active:scale-[0.98] disabled:opacity-60",
-                isActive ? "ring-2 ring-brand-accent" : "hover:bg-slate-50",
+                isActive ? "ring-2 ring-sea" : "hover:bg-slate-50",
               ].join(" ")}
             >
               {rt.label}

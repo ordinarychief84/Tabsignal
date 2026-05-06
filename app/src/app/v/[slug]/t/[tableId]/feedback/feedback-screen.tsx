@@ -57,7 +57,7 @@ export function FeedbackScreen({ sessionId }: { sessionId: string }) {
           href={reviewUrl}
           target="_blank"
           rel="noreferrer"
-          className="mt-6 inline-block rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white"
+          className="mt-6 inline-block rounded-lg bg-chartreuse px-5 py-3 text-sm font-medium text-slate"
         >
           Leave a Google review
         </a>
@@ -87,13 +87,13 @@ export function FeedbackScreen({ sessionId }: { sessionId: string }) {
           maxLength={400}
           rows={4}
           placeholder="Optional — but more helpful than stars alone"
-          className="mt-3 block w-full rounded-lg border border-slate-300 px-3 py-3 text-base outline-none focus:border-brand-accent"
+          className="mt-3 block w-full rounded-lg border border-slate-300 px-3 py-3 text-base outline-none focus:border-sea"
         />
         <p className="mt-1 text-right text-xs text-slate-400">{note.length}/400</p>
         {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         <button
           onClick={() => submit(rating!, note.trim() || null)}
-          className="mt-4 w-full rounded-xl bg-brand py-4 text-base font-semibold text-white"
+          className="mt-4 w-full rounded-xl bg-chartreuse py-4 text-base font-medium text-slate"
         >
           Send to manager
         </button>

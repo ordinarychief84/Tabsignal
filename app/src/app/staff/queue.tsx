@@ -163,7 +163,7 @@ export function StaffQueue({ venueId }: { venueId: string; staffId?: string }) {
               <button
                 disabled={pendingId === it.id}
                 onClick={() => ack(it.id)}
-                className="flex-1 rounded-lg bg-brand py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-lg bg-chartreuse py-3 text-sm font-medium text-slate disabled:opacity-60"
               >
                 Got it
               </button>

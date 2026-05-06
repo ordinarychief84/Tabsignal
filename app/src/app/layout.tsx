@@ -1,9 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "TabCall",
-  description: "Signal staff. Close your tab. Done.",
+  title: "TabCall — fix slow table service",
+  description:
+    "TabCall sits on top of any POS. Guests scan, staff get alerted, service moves.",
 };
 
 export const viewport: Viewport = {
@@ -11,13 +19,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#0F172A",
+  themeColor: "#2B2539",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-white text-brand">{children}</body>
+    <html lang="en" className={inter.variable}>
+      <body className="bg-oat font-sans text-slate antialiased">{children}</body>
     </html>
   );
 }

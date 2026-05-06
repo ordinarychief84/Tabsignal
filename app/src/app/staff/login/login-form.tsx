@@ -66,7 +66,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={status === "submitting" || !email}
-        className="w-full rounded-xl bg-brand py-3 text-base font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-xl bg-chartreuse py-3 text-base font-medium text-slate disabled:opacity-60"
       >
         {status === "submitting" ? "Sending…" : "Send sign-in link"}
       </button>

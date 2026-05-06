@@ -86,7 +86,7 @@ export function SetupForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-xl bg-brand py-4 text-base font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-xl bg-chartreuse py-4 text-base font-medium text-slate disabled:opacity-60"
       >
         {submitting ? "Creating venue…" : "Create venue"}
       </button>
@@ -101,7 +101,7 @@ function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: str
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <input
         {...rest}
-        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-3 text-base outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
+        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-3 text-base outline-none focus:border-sea focus:ring-1 focus:ring-sea"
       />
     </label>
   );
@@ -123,7 +123,7 @@ function SelectField(props: {
       <select
         name={props.name}
         defaultValue={props.defaultValue}
-        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent"
+        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base outline-none focus:border-sea focus:ring-1 focus:ring-sea"
       >
         {props.options.map(o => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -151,7 +151,7 @@ function SetupSuccess({ data }: { data: CreatedVenue }) {
             <li key={t.id} className="flex items-center justify-between px-4 py-2 text-sm">
               <span>{t.label}</span>
               <a
-                className="font-mono text-xs text-brand-accent underline-offset-2 hover:underline"
+                className="font-mono text-xs text-umber underline-offset-2 hover:underline"
                 href={`/v/${data.slug}/t/${encodeURIComponent(t.label)}?s=${encodeURIComponent(t.qrToken)}`}
                 target="_blank"
                 rel="noreferrer"

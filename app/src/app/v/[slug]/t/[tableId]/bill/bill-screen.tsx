@@ -143,7 +143,7 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
               onClick={() => pickPreset(p)}
               className={[
                 "rounded-lg border px-3 py-3 text-sm font-medium",
-                tipPercent === p && customTip === "" ? "border-brand bg-brand text-white" : "border-slate-300 bg-white text-slate-700",
+                tipPercent === p && customTip === "" ? "border-slate bg-slate text-oat" : "border-slate-300 bg-white text-slate-700",
               ].join(" ")}
             >
               {p}%
@@ -170,7 +170,7 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
         type="button"
         onClick={continueToPay}
         disabled={creating || totals.totalCents <= 0}
-        className="w-full rounded-xl bg-brand py-4 text-base font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-xl bg-chartreuse py-4 text-base font-medium text-slate disabled:opacity-60"
       >
         {creating ? "Preparing payment…" : `Continue · ${dollars(totals.totalCents)}`}
       </button>
@@ -224,7 +224,7 @@ function PayForm({
       <button
         type="submit"
         disabled={!ready || submitting}
-        className="w-full rounded-xl bg-brand py-4 text-base font-semibold text-white disabled:opacity-60"
+        className="w-full rounded-xl bg-chartreuse py-4 text-base font-medium text-slate disabled:opacity-60"
       >
         {submitting ? "Charging…" : `Pay ${dollars(totalCents)}`}
       </button>
