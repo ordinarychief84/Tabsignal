@@ -50,38 +50,48 @@ export function SetupForm() {
   if (result) return <SetupSuccess data={result} />;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <Field label="Your name" name="ownerName" required maxLength={120} />
-      <Field label="Venue name" name="venueName" required maxLength={120} placeholder="Cocktail bar in Montrose" />
-      <Field label="Street address" name="address" placeholder="optional" />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="ZIP code" name="zipCode" required pattern="[0-9]{5}(-[0-9]{4})?" inputMode="numeric" placeholder="77006" />
-        <NumberField label="Tables" name="tableCount" min={1} max={120} defaultValue={10} />
-      </div>
-      <SelectField
-        label="POS system"
-        name="posType"
-        options={[
-          { value: "NONE", label: "None / other" },
-          { value: "TOAST", label: "Toast" },
-          { value: "SQUARE", label: "Square" },
-          { value: "CLOVER", label: "Clover" },
-        ]}
-      />
-      <Field label="Google Place ID" name="googlePlaceId" placeholder="optional — for review routing" />
-      <SelectField
-        label="Timezone"
-        name="timezone"
-        defaultValue="America/Chicago"
-        options={[
-          { value: "America/Chicago", label: "Central (Houston)" },
-          { value: "America/New_York", label: "Eastern" },
-          { value: "America/Denver", label: "Mountain" },
-          { value: "America/Los_Angeles", label: "Pacific" },
-        ]}
-      />
+    <form onSubmit={onSubmit} className="space-y-8">
+      <FormSection title="About you" hint="We'll address email and reports to this name.">
+        <Field label="Your name" name="ownerName" required maxLength={120} placeholder="Emeka" />
+      </FormSection>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      <FormSection title="The venue" hint="Public details guests may see on their QR landing page.">
+        <Field label="Venue name" name="venueName" required maxLength={120} placeholder="Otto's Lounge" />
+        <Field label="Street address" name="address" placeholder="Optional" />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="ZIP code" name="zipCode" required pattern="[0-9]{5}(-[0-9]{4})?" inputMode="numeric" placeholder="77006" />
+          <NumberField label="Tables" name="tableCount" min={1} max={120} defaultValue={10} />
+        </div>
+        <SelectField
+          label="Timezone"
+          name="timezone"
+          defaultValue="America/Chicago"
+          options={[
+            { value: "America/Chicago", label: "Central (Houston)" },
+            { value: "America/New_York", label: "Eastern" },
+            { value: "America/Denver", label: "Mountain" },
+            { value: "America/Los_Angeles", label: "Pacific" },
+          ]}
+        />
+      </FormSection>
+
+      <FormSection title="Optional" hint="Skip for now — you can wire these later from Settings.">
+        <SelectField
+          label="POS system"
+          name="posType"
+          options={[
+            { value: "NONE", label: "None / other" },
+            { value: "TOAST", label: "Toast" },
+            { value: "SQUARE", label: "Square" },
+            { value: "CLOVER", label: "Clover" },
+          ]}
+        />
+        <Field label="Google Place ID" name="googlePlaceId" placeholder="For routing 5★ to your Google review page" />
+      </FormSection>
+
+      {error ? (
+        <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{error}</p>
+      ) : null}
 
       <button
         type="submit"
@@ -94,14 +104,34 @@ export function SetupForm() {
   );
 }
 
+function FormSection({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate/10 bg-white px-6 py-6">
+      <header className="mb-4">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{title}</p>
+        {hint ? <p className="mt-1 text-sm text-slate/55">{hint}</p> : null}
+      </header>
+      <div className="space-y-4">{children}</div>
+    </section>
+  );
+}
+
 function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   const { label, ...rest } = props;
   return (
     <label className="block">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{label}</span>
       <input
         {...rest}
-        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-3 text-base outline-none focus:border-sea focus:ring-1 focus:ring-sea"
+        className="mt-2 block w-full rounded-xl border border-slate/15 bg-white px-4 py-3 text-base text-slate placeholder-slate/35 outline-none focus:border-sea focus:ring-1 focus:ring-sea"
       />
     </label>
   );
@@ -119,11 +149,11 @@ function SelectField(props: {
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-slate-700">{props.label}</span>
+      <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{props.label}</span>
       <select
         name={props.name}
         defaultValue={props.defaultValue}
-        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base outline-none focus:border-sea focus:ring-1 focus:ring-sea"
+        className="mt-2 block w-full rounded-xl border border-slate/15 bg-white px-4 py-3 text-base text-slate outline-none focus:border-sea focus:ring-1 focus:ring-sea"
       >
         {props.options.map(o => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -134,43 +164,75 @@ function SelectField(props: {
 }
 
 function SetupSuccess({ data }: { data: CreatedVenue }) {
+  const previewLink = (label: string, qrToken: string) =>
+    `/v/${data.slug}/t/${encodeURIComponent(label)}?s=${encodeURIComponent(qrToken)}`;
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl bg-emerald-50 p-6 text-center">
-        <p className="text-3xl">✓</p>
-        <h2 className="mt-2 text-lg font-semibold text-slate-900">Venue created</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Slug: <code className="font-mono text-xs">{data.slug}</code>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-chartreuse/40 bg-chartreuse/20 p-7 text-center">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Live</p>
+        <h2 className="mt-2 text-2xl font-medium text-slate">Your venue is set up.</h2>
+        <p className="mt-2 text-sm text-slate/70">
+          Slug: <code className="font-mono text-xs">{data.slug}</code> ·{" "}
+          {data.tables.length} table{data.tables.length === 1 ? "" : "s"} created.
         </p>
       </div>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">Your tables</h3>
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
+      <div className="grid gap-4 md:grid-cols-2">
+        <a
+          href={`/admin/v/${data.slug}/qr-tents`}
+          className="rounded-2xl bg-slate p-6 text-oat transition-colors hover:bg-slate-light"
+        >
+          <p className="text-[11px] uppercase tracking-[0.18em] text-oat/40">Step 1</p>
+          <p className="mt-2 text-lg font-medium">Print QR tents</p>
+          <p className="mt-2 text-sm text-oat/60">
+            One per table. Letter paper. Place tonight.
+          </p>
+          <p className="mt-5 text-sm font-medium text-chartreuse">Open printer →</p>
+        </a>
+
+        <a
+          href={`/admin/v/${data.slug}/staff`}
+          className="rounded-2xl border border-slate/10 bg-white p-6 hover:border-slate/25"
+        >
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Step 2</p>
+          <p className="mt-2 text-lg font-medium text-slate">Invite a staff member</p>
+          <p className="mt-2 text-sm text-slate/60">
+            They sign in by magic link. No passwords, ever.
+          </p>
+          <p className="mt-5 text-sm font-medium text-slate">Add staff →</p>
+        </a>
+      </div>
+
+      <div className="rounded-2xl border border-slate/10 bg-white">
+        <div className="flex items-center justify-between border-b border-slate/10 px-5 py-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Your tables</p>
+          <p className="text-[11px] text-slate/40">SMS a preview link to test on a phone</p>
+        </div>
+        <ul className="divide-y divide-slate/5">
           {data.tables.map(t => (
-            <li key={t.id} className="flex items-center justify-between px-4 py-2 text-sm">
+            <li key={t.id} className="flex items-center justify-between px-5 py-2.5 text-sm">
               <span>{t.label}</span>
               <a
-                className="font-mono text-xs text-umber underline-offset-2 hover:underline"
-                href={`/v/${data.slug}/t/${encodeURIComponent(t.label)}?s=${encodeURIComponent(t.qrToken)}`}
+                className="font-mono text-[11px] text-umber underline-offset-4 hover:underline"
+                href={previewLink(t.label, t.qrToken)}
                 target="_blank"
                 rel="noreferrer"
               >
-                preview
+                preview ↗
               </a>
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-slate-500">
-          Share the preview links by SMS to test on real phones, or print all QR tents at once:
-        </p>
-        <a
-          href={`/admin/v/${data.slug}/qr-tents`}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Open printable QR tents →
-        </a>
       </div>
+
+      <p className="text-center">
+        <a
+          href={`/admin/v/${data.slug}`}
+          className="inline-block rounded-xl bg-chartreuse px-6 py-3 text-sm font-medium text-slate"
+        >
+          Go to manager dashboard →
+        </a>
+      </p>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { resolveGuestSession } from "@/lib/session";
 import { GuestRequestPanel } from "./request-panel";
@@ -11,8 +12,6 @@ type PageProps = {
 };
 
 export default async function GuestPage({ params, searchParams }: PageProps) {
-  // Next.js leaves the dynamic segment URL-encoded (e.g. "Table%201"). The
-  // qrToken segment is a hex string so it's safe to decode unconditionally.
   const tableSeg = safeDecode(params.tableId);
   let resolved;
   try {
@@ -24,16 +23,29 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-slate-50">
+    <main className="flex min-h-screen flex-col bg-oat text-slate">
       <header className="px-6 pt-10 pb-6">
-        <p className="text-xs uppercase tracking-wider text-slate-500">{resolved.venueName}</p>
-        <h1 className="text-2xl font-semibold text-slate-900">{resolved.tableLabel}</h1>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
+          {resolved.venueName}
+        </p>
+        <h1 className="mt-2 text-3xl font-medium tracking-tight">
+          {resolved.tableLabel}
+        </h1>
+        <p className="mt-2 text-sm text-slate/60">
+          Tap once. Your server will see it instantly.
+        </p>
       </header>
 
-      <GuestRequestPanel sessionId={resolved.sessionId} />
+      <GuestRequestPanel
+        sessionId={resolved.sessionId}
+        slug={params.slug}
+        tableLabel={resolved.tableLabel}
+      />
 
-      <footer className="mt-auto px-6 py-4 text-center text-xs text-slate-400">
-        Powered by TabCall
+      <footer className="mt-auto border-t border-slate/5 px-6 py-5">
+        <p className="text-center text-[11px] tracking-wide text-slate/40">
+          Powered by TabCall
+        </p>
       </footer>
     </main>
   );
@@ -45,13 +57,21 @@ function safeDecode(s: string): string {
 
 function InvalidScan({ reason }: { reason: string }) {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="max-w-sm text-center">
-        <h1 className="text-xl font-semibold text-slate-900">QR code expired</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Please ask your server for a fresh QR code, or speak with them directly.
-        </p>
-        <p className="mt-4 text-[11px] text-slate-400">Code: {reason}</p>
+    <main className="flex min-h-screen flex-col bg-oat text-slate">
+      <div className="flex flex-1 items-center justify-center px-6">
+        <div className="max-w-sm text-center">
+          <p className="text-3xl">·</p>
+          <h1 className="mt-3 text-2xl font-medium">QR code expired</h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate/60">
+            Ask your server for a fresh code, or speak with them directly.
+          </p>
+          <p className="mt-6 font-mono text-[10px] tracking-wider text-slate/30">
+            {reason}
+          </p>
+          <Link href="/" className="mt-6 inline-block text-sm text-umber underline-offset-4 hover:underline">
+            ← back to TabCall
+          </Link>
+        </div>
       </div>
     </main>
   );

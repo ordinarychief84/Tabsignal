@@ -24,7 +24,6 @@ export function LoginForm() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
-      // In dev, the API may return the link directly when Resend is unconfigured.
       if (body?.devLink) setDevLink(body.devLink);
       setStatus("sent");
     } catch (e) {
@@ -35,14 +34,15 @@ export function LoginForm() {
 
   if (status === "sent") {
     return (
-      <div className="rounded-2xl bg-emerald-50 p-5 text-center">
-        <p className="text-base font-semibold text-emerald-900">Check your email</p>
-        <p className="mt-1 text-sm text-emerald-800">
-          If <strong>{email}</strong> is registered, a sign-in link is on its way.
+      <div className="rounded-2xl border border-chartreuse/30 bg-chartreuse/10 p-5">
+        <p className="text-base font-medium text-oat">Check your email</p>
+        <p className="mt-1 text-sm text-oat/70">
+          If <span className="font-mono text-xs">{email}</span> is registered,
+          a sign-in link is on its way. The link expires in 15 minutes.
         </p>
         {devLink ? (
-          <p className="mt-4 break-all text-xs text-emerald-700">
-            <strong>Dev mode:</strong>{" "}
+          <p className="mt-4 break-all text-[11px] text-oat/50">
+            <span className="uppercase tracking-wider">Dev:</span>{" "}
             <a className="underline" href={devLink}>{devLink}</a>
           </p>
         ) : null}
@@ -52,17 +52,23 @@ export function LoginForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <input
-        type="email"
-        required
-        autoComplete="email"
-        inputMode="email"
-        placeholder="you@example.com"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base"
-      />
-      {errorMsg ? <p className="text-sm text-red-600">{errorMsg}</p> : null}
+      <div>
+        <label htmlFor="email" className="text-[11px] uppercase tracking-[0.18em] text-oat/50">
+          Work email
+        </label>
+        <input
+          id="email"
+          type="email"
+          required
+          autoComplete="email"
+          inputMode="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          className="mt-2 w-full rounded-xl border border-white/10 bg-slate-light px-4 py-3 text-base text-oat placeholder-oat/30 outline-none focus:border-sea focus:ring-1 focus:ring-sea"
+        />
+      </div>
+      {errorMsg ? <p className="text-sm text-coral">{errorMsg}</p> : null}
       <button
         type="submit"
         disabled={status === "submitting" || !email}

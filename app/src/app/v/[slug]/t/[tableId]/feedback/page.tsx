@@ -9,7 +9,6 @@ export default async function FeedbackPage({ params }: { params: { slug: string;
   if (!venue) notFound();
 
   const tableSeg = safeDecode(params.tableId);
-  // Find the most recent paid (or active) session at this table.
   const session = await db.guestSession.findFirst({
     where: { venueId: venue.id, OR: [{ tableId: tableSeg }, { table: { label: tableSeg } }] },
     orderBy: { createdAt: "desc" },
@@ -19,19 +18,29 @@ export default async function FeedbackPage({ params }: { params: { slug: string;
 
   if (session.feedback.length > 0) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-10">
-        <p className="text-center text-sm text-slate-500">You&rsquo;ve already left feedback for this visit.</p>
+      <main className="flex min-h-screen flex-col bg-oat text-slate">
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="max-w-sm text-center">
+            <p className="text-3xl">·</p>
+            <h1 className="mt-3 text-2xl font-medium">Feedback received.</h1>
+            <p className="mt-3 text-sm text-slate/60">
+              Thank you. You&rsquo;ve already left feedback for this visit.
+            </p>
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-10">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-wider text-slate-500">{venue.name}</p>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">Feedback</h1>
-      </header>
-      <FeedbackScreen sessionId={session.id} />
+    <main className="min-h-screen bg-oat text-slate">
+      <div className="mx-auto flex max-w-md flex-col px-6 py-10">
+        <header className="mb-8">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">How was tonight?</h1>
+        </header>
+        <FeedbackScreen sessionId={session.id} />
+      </div>
     </main>
   );
 }

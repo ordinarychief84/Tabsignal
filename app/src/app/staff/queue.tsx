@@ -25,9 +25,10 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
 // (new_request / request_acknowledged / request_resolved) carry the load.
 const POLL_INTERVAL_MS = 30_000;
 
-export function StaffQueue({ venueId }: { venueId: string; staffId?: string }) {
+export function StaffQueue({ venueId }: { venueId: string }) {
   const [items, setItems] = useState<Item[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const aborter = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
@@ -81,14 +82,14 @@ export function StaffQueue({ venueId }: { venueId: string; staffId?: string }) {
       setItems(prev => prev.filter(i => i.id !== request.id));
     }
 
-    function onReconnect() {
-      refresh();
-    }
+    function onDisconnect() { setReconnecting(true); }
+    function onConnect() { setReconnecting(false); refresh(); }
 
     socket.on("new_request", onNew);
     socket.on("request_acknowledged", onAck);
     socket.on("request_resolved", onResolved);
-    socket.io.on("reconnect", onReconnect);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
 
     return () => {
       clearInterval(poll);
@@ -96,7 +97,8 @@ export function StaffQueue({ venueId }: { venueId: string; staffId?: string }) {
       socket.off("new_request", onNew);
       socket.off("request_acknowledged", onAck);
       socket.off("request_resolved", onResolved);
-      socket.io.off("reconnect", onReconnect);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
       aborter.current?.abort();
     };
   }, [venueId, refresh]);
@@ -108,7 +110,6 @@ export function StaffQueue({ venueId }: { venueId: string; staffId?: string }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
       });
-      // Optimistic update; the server's broadcast will reconcile other tabs.
       setItems(prev =>
         prev.map(it =>
           it.id === id
@@ -131,74 +132,119 @@ export function StaffQueue({ venueId }: { venueId: string; staffId?: string }) {
     }
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="rounded-2xl bg-slate-100 p-8 text-center text-sm text-slate-500">
-        No active requests. Floor is quiet.
-      </div>
-    );
-  }
-
   return (
-    <ul className="space-y-3">
-      {items.map(it => (
-        <li
-          key={it.id}
-          className={[
-            "rounded-2xl border bg-white p-4 shadow-sm",
-            urgencyClass(it),
-          ].join(" ")}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-base font-semibold text-slate-900">{it.tableLabel}</p>
-              <p className="text-sm text-slate-700">{REQUEST_LABEL[it.type]}</p>
-              {it.note ? <p className="mt-1 text-xs italic text-slate-500">&ldquo;{it.note}&rdquo;</p> : null}
-            </div>
-            <Age createdAt={it.createdAt} />
-          </div>
+    <>
+      {reconnecting ? (
+        <div className="mb-3 rounded-lg bg-coral/10 px-3 py-2 text-center text-xs text-coral">
+          Reconnecting…
+        </div>
+      ) : null}
 
-          <div className="mt-4 flex gap-2">
-            {it.status === "PENDING" ? (
-              <button
-                disabled={pendingId === it.id}
-                onClick={() => ack(it.id)}
-                className="flex-1 rounded-lg bg-chartreuse py-3 text-sm font-medium text-slate disabled:opacity-60"
-              >
-                Got it
-              </button>
-            ) : (
-              <span className="flex-1 rounded-lg bg-emerald-50 py-3 text-center text-sm font-medium text-emerald-700">
-                {it.acknowledgedBy?.name ? `${it.acknowledgedBy.name} on it` : "Acknowledged"}
-              </span>
-            )}
-            <button
-              disabled={pendingId === it.id}
-              onClick={() => resolve(it.id)}
-              className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 disabled:opacity-60"
-            >
-              Done
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-white/5 bg-slate-light/40 px-6 py-10 text-center">
+          <p className="text-sm text-oat/60">Floor is quiet.</p>
+          <p className="mt-1 text-[11px] tracking-wide text-oat/30">
+            New requests appear here within 1 second.
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {items.map(it => (
+            <RequestCard
+              key={it.id}
+              item={it}
+              busy={pendingId === it.id}
+              onAck={() => ack(it.id)}
+              onResolve={() => resolve(it.id)}
+            />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
-function Age({ createdAt }: { createdAt: string }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const h = setInterval(() => setNow(Date.now()), 5_000); return () => clearInterval(h); }, []);
-  const seconds = Math.max(0, Math.floor((now - new Date(createdAt).getTime()) / 1000));
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return <span className="font-mono text-xs text-slate-500">{m}:{String(s).padStart(2, "0")}</span>;
+function RequestCard({
+  item,
+  busy,
+  onAck,
+  onResolve,
+}: {
+  item: Item;
+  busy: boolean;
+  onAck: () => void;
+  onResolve: () => void;
+}) {
+  const acked = item.status === "ACKNOWLEDGED";
+  const seconds = useAge(item.createdAt);
+  const delayed = seconds > 180;
+  const warning = !delayed && seconds > 60;
+
+  return (
+    <li
+      className={[
+        "rounded-2xl border bg-slate-light p-4 transition-colors",
+        delayed ? "border-coral ring-1 ring-coral/30" : warning ? "border-sea/40" : "border-white/5",
+      ].join(" ")}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xl font-medium text-oat">{item.tableLabel}</p>
+          <p className="text-sm text-oat/60">{REQUEST_LABEL[item.type]}</p>
+          {item.note ? (
+            <p className="mt-2 text-sm italic leading-snug text-oat/50">
+              &ldquo;{item.note}&rdquo;
+            </p>
+          ) : null}
+        </div>
+        <span
+          className={[
+            "shrink-0 font-mono text-base tabular-nums",
+            delayed ? "text-coral" : warning ? "text-oat" : "text-oat/60",
+          ].join(" ")}
+        >
+          {formatAge(seconds)}
+        </span>
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        {acked ? (
+          <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-chartreuse/10 py-3 text-sm font-medium text-chartreuse">
+            <span className="h-1.5 w-1.5 rounded-full bg-chartreuse" />
+            {item.acknowledgedBy?.name ? `${item.acknowledgedBy.name} on it` : "Acknowledged"}
+          </span>
+        ) : (
+          <button
+            disabled={busy}
+            onClick={onAck}
+            className="flex-1 rounded-lg bg-chartreuse py-3 text-sm font-medium text-slate disabled:opacity-60"
+          >
+            Got it
+          </button>
+        )}
+        <button
+          disabled={busy}
+          onClick={onResolve}
+          className="rounded-lg border border-white/10 px-4 py-3 text-sm font-medium text-oat/70 hover:text-oat disabled:opacity-60"
+        >
+          Done
+        </button>
+      </div>
+    </li>
+  );
 }
 
-function urgencyClass(it: Item): string {
-  if (it.status === "ACKNOWLEDGED") return "border-emerald-300";
-  const ageMs = Date.now() - new Date(it.createdAt).getTime();
-  if (ageMs > 3 * 60_000) return "border-red-400 ring-1 ring-red-200 animate-pulse";
-  if (ageMs > 60_000) return "border-amber-300";
-  return "border-slate-200";
+function useAge(iso: string): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const h = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(h);
+  }, []);
+  return Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
+}
+
+function formatAge(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }

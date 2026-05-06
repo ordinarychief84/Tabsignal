@@ -1,33 +1,39 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getSocket, joinRoom } from "@/lib/socket";
 
 const REQUEST_TYPES = [
   { id: "DRINK",  label: "Order a drink" },
-  { id: "BILL",   label: "Get the bill" },
-  { id: "HELP",   label: "Need help" },
-  { id: "REFILL", label: "Refill" },
+  { id: "BILL",   label: "Get the bill"  },
+  { id: "HELP",   label: "Need help"     },
+  { id: "REFILL", label: "Refill"        },
 ] as const;
 
 type RequestType = (typeof REQUEST_TYPES)[number]["id"];
 type Status = "idle" | "submitting" | "sent" | "ack" | "error" | "rate_limited";
 
-export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
+export function GuestRequestPanel({
+  sessionId,
+  slug,
+  tableLabel,
+}: {
+  sessionId: string;
+  slug: string;
+  tableLabel: string;
+}) {
   const [status, setStatus] = useState<Status>("idle");
   const [activeType, setActiveType] = useState<RequestType | null>(null);
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Stay subscribed to this session so any request acknowledgement fires the toast,
-  // even if the guest reloaded after submitting.
   useEffect(() => {
     const leave = joinRoom({ guestSessionId: sessionId });
     const socket = getSocket();
     function onAck(payload: { request?: { id: string } } | null) {
       const id = payload?.request?.id;
       if (!id) return;
-      // If we know the request id we just sent, only flip when it matches.
       if (lastRequestId && id !== lastRequestId) return;
       setStatus("ack");
     }
@@ -43,14 +49,12 @@ export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
     setStatus("submitting");
     setActiveType(type);
     setErrorMsg(null);
-
     try {
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, type }),
       });
-
       if (res.status === 429) {
         setStatus("rate_limited");
         setErrorMsg("Just a moment — wait 30 seconds before sending another.");
@@ -60,10 +64,15 @@ export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error ?? `HTTP ${res.status}`);
       }
-
       const body = await res.json();
       setLastRequestId(body?.id ?? null);
       setStatus("sent");
+      // Special case: BILL request → take guest to bill screen.
+      if (type === "BILL") {
+        setTimeout(() => {
+          window.location.href = `/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill`;
+        }, 600);
+      }
     } catch (e) {
       setStatus("error");
       setErrorMsg(e instanceof Error ? e.message : "Something went wrong.");
@@ -83,26 +92,36 @@ export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
       <section className="px-6">
         <div
           className={[
-            "rounded-2xl p-6 text-center shadow-sm transition-colors",
-            acknowledged ? "bg-emerald-50" : "bg-white",
+            "rounded-2xl border p-8 text-center transition-colors",
+            acknowledged ? "border-chartreuse/40 bg-chartreuse/20" : "border-slate/10 bg-white",
           ].join(" ")}
         >
-          <p className="text-3xl">{acknowledged ? "👋" : "✓"}</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">
-            {acknowledged ? "Staff is on the way" : "Request sent"}
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-umber">
+            {acknowledged ? "Acknowledged" : "Request sent"}
+          </p>
+          <h2 className="mt-3 text-2xl font-medium text-slate">
+            {acknowledged ? "Staff is on the way" : "Sent. We&rsquo;re alerting your server."}
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-slate/60">
             {acknowledged
               ? "Someone just acknowledged your request."
-              : "Your server has been notified."}
+              : "You'll see a confirmation here when it's seen."}
           </p>
-          <button
-            type="button"
-            onClick={reset}
-            className="mt-6 text-sm font-medium text-slate-500 underline-offset-2 hover:underline"
-          >
-            Send another request
-          </button>
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={reset}
+              className="text-sm font-medium text-umber underline-offset-4 hover:underline"
+            >
+              Send another request
+            </button>
+            <Link
+              href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill`}
+              className="text-sm text-slate/60 hover:text-slate"
+            >
+              View running tab →
+            </Link>
+          </div>
         </div>
       </section>
     );
@@ -120,9 +139,9 @@ export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
               disabled={status === "submitting"}
               onClick={() => submit(rt.id)}
               className={[
-                "min-h-[88px] rounded-2xl border border-slate-200 bg-white px-4 py-5 text-left text-base font-medium text-slate-900 shadow-sm transition",
+                "min-h-[96px] rounded-2xl border bg-white px-4 py-5 text-left text-base font-medium text-slate transition-all",
                 "active:scale-[0.98] disabled:opacity-60",
-                isActive ? "ring-2 ring-sea" : "hover:bg-slate-50",
+                isActive ? "border-chartreuse ring-2 ring-chartreuse/40" : "border-slate/10 hover:border-slate/20",
               ].join(" ")}
             >
               {rt.label}
@@ -132,8 +151,24 @@ export function GuestRequestPanel({ sessionId }: { sessionId: string }) {
       </div>
 
       {errorMsg ? (
-        <p className="mt-4 text-center text-sm text-red-600">{errorMsg}</p>
+        <p
+          className={[
+            "mt-4 rounded-lg px-3 py-2 text-center text-sm",
+            status === "rate_limited" ? "bg-coral/20 text-coral" : "bg-coral/10 text-coral",
+          ].join(" ")}
+        >
+          {errorMsg}
+        </p>
       ) : null}
+
+      <div className="mt-8 text-center">
+        <Link
+          href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill`}
+          className="text-sm text-slate/60 underline-offset-4 hover:text-slate hover:underline"
+        >
+          View running tab →
+        </Link>
+      </div>
     </section>
   );
 }

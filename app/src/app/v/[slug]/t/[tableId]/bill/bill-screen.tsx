@@ -113,42 +113,62 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
 
   return (
     <div className="space-y-6">
-      <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
-        {data.items.length === 0 ? (
-          <li className="px-4 py-3 text-sm text-slate-500">No items on this tab yet.</li>
-        ) : (
-          data.items.map((it, i) => (
-            <li key={i} className="flex items-center justify-between px-4 py-3 text-sm">
-              <span>{it.quantity > 1 ? `${it.quantity}× ` : ""}{it.name}</span>
-              <span className="font-mono">{dollars(it.quantity * it.unitCents)}</span>
+      <div className="rounded-2xl border border-slate/10 bg-white">
+        <div className="border-b border-slate/10 px-5 py-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Items</p>
+        </div>
+        <ul className="divide-y divide-slate/5">
+          {data.items.length === 0 ? (
+            <li className="px-5 py-5 text-sm text-slate/50">
+              No items on this tab yet. Your server will add them.
             </li>
-          ))
-        )}
-      </ul>
+          ) : (
+            data.items.map((it, i) => (
+              <li key={i} className="flex items-center justify-between px-5 py-3 text-sm">
+                <span>
+                  {it.quantity > 1 ? <span className="text-slate/50">{it.quantity}× </span> : null}
+                  {it.name}
+                </span>
+                <span className="font-mono tabular-nums">{dollars(it.quantity * it.unitCents)}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
 
-      <div className="rounded-xl bg-slate-50 p-4 text-sm">
+      <div className="rounded-2xl border border-slate/10 bg-white px-5 py-4">
         <Row label="Subtotal" value={dollars(totals.subtotalCents)} />
         <Row label="Tax" value={dollars(totals.taxCents)} />
-        <Row label={`Tip (${tipPercent}%)`} value={dollars(totals.tipCents)} />
-        <Row label="Total" value={dollars(totals.totalCents)} bold />
+        <Row label={`Tip · ${tipPercent}%`} value={dollars(totals.tipCents)} />
+        <div className="mt-2 border-t border-slate/10 pt-2">
+          <Row label="Total" value={dollars(totals.totalCents)} bold />
+        </div>
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-slate-700">Tip</p>
-        <div className="grid grid-cols-4 gap-2">
-          {TIP_PRESETS.map(p => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => pickPreset(p)}
-              className={[
-                "rounded-lg border px-3 py-3 text-sm font-medium",
-                tipPercent === p && customTip === "" ? "border-slate bg-slate text-oat" : "border-slate-300 bg-white text-slate-700",
-              ].join(" ")}
-            >
-              {p}%
-            </button>
-          ))}
+        <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Tip</p>
+        <p className="mt-1 text-[11px] text-slate/50">100% goes to staff.</p>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {TIP_PRESETS.map(p => {
+            const active = tipPercent === p && customTip === "";
+            const dollarsForP = Math.round(totals.subtotalCents * (p / 100));
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => pickPreset(p)}
+                className={[
+                  "flex flex-col items-center justify-center rounded-xl border px-2 py-3 text-sm transition-colors",
+                  active ? "border-slate bg-slate text-oat" : "border-slate/15 bg-white text-slate hover:border-slate/30",
+                ].join(" ")}
+              >
+                <span className="font-medium">{p}%</span>
+                <span className={["mt-0.5 font-mono text-[10px] tabular-nums", active ? "text-oat/60" : "text-slate/40"].join(" ")}>
+                  {dollars(dollarsForP)}
+                </span>
+              </button>
+            );
+          })}
           <input
             type="number"
             min={0}
@@ -159,12 +179,14 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
             value={customTip}
             onChange={e => setCustomTip(e.target.value)}
             onBlur={applyCustom}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-center text-sm"
+            className="rounded-xl border border-slate/15 bg-white px-3 py-3 text-center text-sm text-slate placeholder-slate/30 focus:border-sea focus:outline-none focus:ring-1 focus:ring-sea"
           />
         </div>
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{error}</p>
+      ) : null}
 
       <button
         type="button"
@@ -174,6 +196,10 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
       >
         {creating ? "Preparing payment…" : `Continue · ${dollars(totals.totalCents)}`}
       </button>
+
+      <p className="text-center text-[11px] text-slate/40">
+        Encrypted by Stripe. Apple Pay and Google Pay supported.
+      </p>
     </div>
   );
 }
@@ -219,8 +245,12 @@ function PayForm({
 
   return (
     <form onSubmit={handlePay} className="space-y-5">
-      <PaymentElement options={{ layout: "tabs" }} />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      <div className="rounded-2xl border border-slate/10 bg-white p-5">
+        <PaymentElement options={{ layout: "tabs" }} />
+      </div>
+      {error ? (
+        <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{error}</p>
+      ) : null}
       <button
         type="submit"
         disabled={!ready || submitting}
@@ -232,9 +262,9 @@ function PayForm({
         type="button"
         onClick={onBack}
         disabled={submitting}
-        className="w-full rounded-xl border border-slate-300 bg-white py-3 text-sm font-medium text-slate-700 disabled:opacity-60"
+        className="w-full rounded-xl border border-slate/15 bg-white py-3 text-sm font-medium text-slate/70 hover:border-slate/30 disabled:opacity-60"
       >
-        Back · change tip
+        ← back · change tip
       </button>
     </form>
   );

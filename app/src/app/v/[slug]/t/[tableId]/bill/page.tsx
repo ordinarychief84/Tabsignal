@@ -28,24 +28,27 @@ export default async function BillPage({ params }: { params: { slug: string; tab
   const totals = totalsFor(items, venue.zipCode ?? "", DEFAULT_TIP_PERCENT);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col bg-slate-50 px-6 py-8">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-wider text-slate-500">{venue.name}</p>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">{session.table.label} · Bill</h1>
-      </header>
+    <main className="min-h-screen bg-oat text-slate">
+      <div className="mx-auto flex max-w-md flex-col px-6 py-8">
+        <header className="mb-7">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">{session.table.label}</h1>
+          <p className="mt-1 text-sm text-slate/60">Your bill</p>
+        </header>
 
-      <BillScreen
-        slug={venue.slug}
-        zipCode={venue.zipCode ?? ""}
-        data={{
-          sessionId: session.id,
-          venueName: venue.name,
-          tableLabel: session.table.label,
-          items,
-          defaultTipPercent: DEFAULT_TIP_PERCENT,
-          totals,
-        }}
-      />
+        <BillScreen
+          slug={venue.slug}
+          zipCode={venue.zipCode ?? ""}
+          data={{
+            sessionId: session.id,
+            venueName: venue.name,
+            tableLabel: session.table.label,
+            items,
+            defaultTipPercent: DEFAULT_TIP_PERCENT,
+            totals,
+          }}
+        />
+      </div>
     </main>
   );
 }
