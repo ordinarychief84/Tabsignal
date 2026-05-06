@@ -5,6 +5,7 @@ import { getSocket, joinRoom } from "@/lib/socket";
 
 type Item = {
   id: string;
+  tableId?: string;
   tableLabel: string;
   type: "DRINK" | "BILL" | "HELP" | "REFILL";
   note: string | null;
@@ -25,11 +26,23 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
 // (new_request / request_acknowledged / request_resolved) carry the load.
 const POLL_INTERVAL_MS = 30_000;
 
-export function StaffQueue({ venueId }: { venueId: string }) {
+export function StaffQueue({
+  venueId,
+  staffId,
+  assignedTableIds = [],
+}: {
+  venueId: string;
+  staffId?: string;
+  assignedTableIds?: string[];
+}) {
   const [items, setItems] = useState<Item[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [filter, setFilter] = useState<"yours" | "all">(
+    assignedTableIds.length > 0 ? "yours" : "all"
+  );
   const aborter = useRef<AbortController | null>(null);
+  const assignedSet = new Set(assignedTableIds);
 
   const refresh = useCallback(async () => {
     aborter.current?.abort();
@@ -50,7 +63,7 @@ export function StaffQueue({ venueId }: { venueId: string }) {
   useEffect(() => {
     refresh();
     const poll = setInterval(refresh, POLL_INTERVAL_MS);
-    const leave = joinRoom({ venueId });
+    const leave = joinRoom({ venueId, staffId });
     const socket = getSocket();
 
     function onNew({ request }: { request: Item }) {
@@ -101,7 +114,13 @@ export function StaffQueue({ venueId }: { venueId: string }) {
       socket.off("disconnect", onDisconnect);
       aborter.current?.abort();
     };
-  }, [venueId, refresh]);
+  }, [venueId, staffId, refresh]);
+
+  const visibleItems =
+    filter === "yours"
+      ? items.filter(i => !i.tableId || assignedSet.has(i.tableId))
+      : items;
+  const yourCount = items.filter(i => i.tableId && assignedSet.has(i.tableId)).length;
 
   async function ack(id: string) {
     setPendingId(id);
@@ -132,6 +151,8 @@ export function StaffQueue({ venueId }: { venueId: string }) {
     }
   }
 
+  const showFilter = assignedTableIds.length > 0;
+
   return (
     <>
       {reconnecting ? (
@@ -140,19 +161,47 @@ export function StaffQueue({ venueId }: { venueId: string }) {
         </div>
       ) : null}
 
-      {items.length === 0 ? (
+      {showFilter ? (
+        <div className="mb-3 inline-flex rounded-xl border border-white/10 p-1 text-[11px]">
+          <button
+            type="button"
+            onClick={() => setFilter("yours")}
+            className={[
+              "rounded-lg px-3 py-1.5 font-medium transition-colors",
+              filter === "yours" ? "bg-chartreuse text-slate" : "text-oat/60 hover:text-oat",
+            ].join(" ")}
+          >
+            Your tables · {yourCount}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={[
+              "rounded-lg px-3 py-1.5 font-medium transition-colors",
+              filter === "all" ? "bg-chartreuse text-slate" : "text-oat/60 hover:text-oat",
+            ].join(" ")}
+          >
+            All · {items.length}
+          </button>
+        </div>
+      ) : null}
+
+      {visibleItems.length === 0 ? (
         <div className="rounded-2xl border border-white/5 bg-slate-light/40 px-6 py-10 text-center">
-          <p className="text-sm text-oat/60">Floor is quiet.</p>
+          <p className="text-sm text-oat/60">
+            {showFilter && filter === "yours" ? "Nothing on your tables right now." : "Floor is quiet."}
+          </p>
           <p className="mt-1 text-[11px] tracking-wide text-oat/30">
             New requests appear here within 1 second.
           </p>
         </div>
       ) : (
         <ul className="space-y-3">
-          {items.map(it => (
+          {visibleItems.map(it => (
             <RequestCard
               key={it.id}
               item={it}
+              isYours={!!it.tableId && assignedSet.has(it.tableId)}
               busy={pendingId === it.id}
               onAck={() => ack(it.id)}
               onResolve={() => resolve(it.id)}
@@ -166,11 +215,13 @@ export function StaffQueue({ venueId }: { venueId: string }) {
 
 function RequestCard({
   item,
+  isYours,
   busy,
   onAck,
   onResolve,
 }: {
   item: Item;
+  isYours: boolean;
   busy: boolean;
   onAck: () => void;
   onResolve: () => void;
@@ -184,12 +235,19 @@ function RequestCard({
     <li
       className={[
         "rounded-2xl border bg-slate-light p-4 transition-colors",
-        delayed ? "border-coral ring-1 ring-coral/30" : warning ? "border-sea/40" : "border-white/5",
+        delayed ? "border-coral ring-1 ring-coral/30" : warning ? "border-sea/40" : isYours ? "border-chartreuse/40" : "border-white/5",
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xl font-medium text-oat">{item.tableLabel}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xl font-medium text-oat">{item.tableLabel}</p>
+            {isYours ? (
+              <span className="rounded-full bg-chartreuse/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-chartreuse">
+                yours
+              </span>
+            ) : null}
+          </div>
           <p className="text-sm text-oat/60">{REQUEST_LABEL[item.type]}</p>
           {item.note ? (
             <p className="mt-2 text-sm italic leading-snug text-oat/50">

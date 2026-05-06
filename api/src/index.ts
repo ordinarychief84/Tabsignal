@@ -47,10 +47,12 @@ const io = new IOServer(app.server, {
 
 const VENUE_ROOM = (id: string) => `venue:${id}`;
 const GUEST_ROOM = (id: string) => `guest:${id}`;
+const STAFF_ROOM = (id: string) => `staff:${id}`;
 
 const JoinPayload = z.object({
   venueId: z.string().min(1).optional(),
   guestSessionId: z.string().min(1).optional(),
+  staffId: z.string().min(1).optional(),
 });
 
 io.on("connection", socket => {
@@ -62,22 +64,24 @@ io.on("connection", socket => {
       ack?.({ ok: false, error: "INVALID_PAYLOAD" });
       return;
     }
-    const { venueId, guestSessionId } = parsed.data;
-    if (!venueId && !guestSessionId) {
-      ack?.({ ok: false, error: "NEED_VENUE_OR_SESSION" });
+    const { venueId, guestSessionId, staffId } = parsed.data;
+    if (!venueId && !guestSessionId && !staffId) {
+      ack?.({ ok: false, error: "NEED_VENUE_OR_SESSION_OR_STAFF" });
       return;
     }
     if (venueId) socket.join(VENUE_ROOM(venueId));
     if (guestSessionId) socket.join(GUEST_ROOM(guestSessionId));
+    if (staffId) socket.join(STAFF_ROOM(staffId));
     ack?.({ ok: true });
   });
 
   socket.on("leave", (raw, ack?: (res: { ok: boolean }) => void) => {
     const parsed = JoinPayload.safeParse(raw);
     if (parsed.success) {
-      const { venueId, guestSessionId } = parsed.data;
+      const { venueId, guestSessionId, staffId } = parsed.data;
       if (venueId) socket.leave(VENUE_ROOM(venueId));
       if (guestSessionId) socket.leave(GUEST_ROOM(guestSessionId));
+      if (staffId) socket.leave(STAFF_ROOM(staffId));
     }
     ack?.({ ok: true });
   });
@@ -95,9 +99,9 @@ app.get("/healthz", async () => ({
 }));
 
 const EmitBody = z.object({
-  // Either room: "venue:abc" / "guest:xyz", or roomKind + id.
+  // Either room: "venue:abc" / "guest:xyz" / "staff:def", or roomKind + id.
   room: z.string().min(1).optional(),
-  roomKind: z.enum(["venue", "guest"]).optional(),
+  roomKind: z.enum(["venue", "guest", "staff"]).optional(),
   roomId: z.string().min(1).optional(),
   event: z.string().min(1),
   payload: z.unknown().optional(),
@@ -120,6 +124,8 @@ app.post("/internal/emit", async (req, reply) => {
       ? VENUE_ROOM(roomId)
       : roomKind === "guest" && roomId
       ? GUEST_ROOM(roomId)
+      : roomKind === "staff" && roomId
+      ? STAFF_ROOM(roomId)
       : null);
   if (!target) {
     return reply.code(400).send({ error: "NO_TARGET_ROOM" });

@@ -16,11 +16,21 @@ export default async function StaffAdminPage({ params }: { params: { slug: strin
   });
   if (!venue || venue.id !== session.venueId) return null;
 
-  const staff = await db.staffMember.findMany({
-    where: { venueId: venue.id },
-    orderBy: { createdAt: "asc" },
-    include: { ackedRequests: { select: { id: true } } },
-  });
+  const [staff, tables] = await Promise.all([
+    db.staffMember.findMany({
+      where: { venueId: venue.id },
+      orderBy: { createdAt: "asc" },
+      include: {
+        ackedRequests: { select: { id: true } },
+        assignments: { select: { tableId: true } },
+      },
+    }),
+    db.table.findMany({
+      where: { venueId: venue.id },
+      orderBy: { label: "asc" },
+      select: { id: true, label: true, zone: true },
+    }),
+  ]);
 
   return (
     <>
@@ -28,12 +38,14 @@ export default async function StaffAdminPage({ params }: { params: { slug: strin
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Team</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Staff</h1>
         <p className="mt-2 text-sm text-slate/60">
-          Add a server, bartender, or manager. They sign in by emailing themselves a link.
+          Add a server, bartender, or manager. Assign which tables they cover —
+          requests on those tables ping their phone first.
         </p>
       </header>
 
       <StaffPanel
         currentEmail={session.email}
+        tables={tables}
         initial={staff.map(s => ({
           id: s.id,
           name: s.name,
@@ -41,6 +53,7 @@ export default async function StaffAdminPage({ params }: { params: { slug: strin
           role: s.role,
           ackedCount: s.ackedRequests.length,
           createdAt: s.createdAt.toISOString(),
+          tableIds: s.assignments.map(a => a.tableId),
         }))}
       />
     </>

@@ -6,12 +6,18 @@
  * failures log a warning but never block the API response. The user-facing
  * action (DB write, payment confirmation) is the source of truth; the
  * realtime push is just a nudge.
+ *
+ * Rooms:
+ *   venue:{venueId}     — all staff PWAs at the venue
+ *   guest:{sessionId}   — the active guest browser
+ *   staff:{staffId}     — a single staff member's PWA (private room for
+ *                         per-staff routing, e.g. "Maya's tables only")
  */
 
 const URL_BASE = process.env.FASTIFY_INTERNAL_URL ?? "http://localhost:4000";
 const SECRET = process.env.INTERNAL_API_SECRET ?? "";
 
-export type RoomKind = "venue" | "guest";
+export type RoomKind = "venue" | "guest" | "staff";
 
 export type EmitArgs = {
   kind: RoomKind;
@@ -53,8 +59,15 @@ export async function emit({ kind, id, event, payload }: EmitArgs): Promise<void
 
 /** Convenience helpers — keep event names in one place. */
 export const events = {
-  newRequest: (venueId: string, request: unknown) =>
-    emit({ kind: "venue", id: venueId, event: "new_request", payload: { request } }),
+  newRequest: (venueId: string, request: unknown, assignedStaffIds: string[] = []) =>
+    Promise.all([
+      emit({ kind: "venue", id: venueId, event: "new_request", payload: { request } }),
+      // Per-staff "ping" room — staff PWA can choose to highlight if it's
+      // covering the table where the request landed.
+      ...assignedStaffIds.map(sid =>
+        emit({ kind: "staff", id: sid, event: "new_request_for_you", payload: { request } })
+      ),
+    ]).then(() => undefined),
 
   requestAcknowledged: (venueId: string, sessionId: string, request: unknown) =>
     Promise.all([

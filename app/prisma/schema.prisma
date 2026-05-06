@@ -87,6 +87,7 @@ model Table {
   venue     Venue    @relation(fields: [venueId], references: [id])
   sessions  GuestSession[]
   requests  Request[]
+  assignments TableAssignment[]
 
   @@unique([venueId, label])
   @@index([venueId])
@@ -102,8 +103,24 @@ model StaffMember {
   createdAt DateTime    @default(now())
   venue     Venue       @relation(fields: [venueId], references: [id])
   ackedRequests Request[] @relation("AcknowledgedBy")
+  assignments TableAssignment[]
 
   @@index([venueId])
+}
+
+// Many-to-many: staff cover tables. A staff member can cover multiple
+// tables; a table can be covered by multiple staff (e.g. bartender +
+// floater both cover the bar). When a request lands on an assigned table,
+// the realtime emit also fires to staff:{id} rooms for those staff.
+model TableAssignment {
+  tableId       String
+  staffMemberId String
+  createdAt     DateTime    @default(now())
+  table         Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  staff         StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+
+  @@id([tableId, staffMemberId])
+  @@index([staffMemberId])
 }
 
 model GuestSession {

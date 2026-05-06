@@ -12,9 +12,14 @@ export default async function StaffPage() {
 
   const staff = await db.staffMember.findUnique({
     where: { id: session.staffId },
-    include: { venue: { select: { id: true, name: true } } },
+    include: {
+      venue: { select: { id: true, name: true } },
+      assignments: { include: { table: { select: { id: true, label: true } } } },
+    },
   });
   if (!staff) redirect("/staff/login?err=invalid");
+  const assignedTableIds = staff.assignments.map(a => a.table.id);
+  const assignedTableLabels = staff.assignments.map(a => a.table.label);
 
   return (
     <main className="min-h-screen bg-slate text-oat">
@@ -40,9 +45,16 @@ export default async function StaffPage() {
       </header>
 
       <section className="mx-auto max-w-md px-4 py-5">
-        <StaffQueue venueId={staff.venue.id} />
+        <StaffQueue
+          venueId={staff.venue.id}
+          staffId={staff.id}
+          assignedTableIds={assignedTableIds}
+        />
         <p className="mt-8 text-center text-[10px] tracking-[0.16em] text-oat/30">
           {staff.name}
+          {assignedTableLabels.length > 0
+            ? ` · covers ${assignedTableLabels.join(", ")}`
+            : ""}
         </p>
       </section>
     </main>

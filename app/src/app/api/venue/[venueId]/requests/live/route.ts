@@ -17,6 +17,7 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
   return NextResponse.json({
     items: requests.map(r => ({
       id: r.id,
+      tableId: r.tableId,
       tableLabel: r.table.label,
       type: r.type,
       note: r.note,

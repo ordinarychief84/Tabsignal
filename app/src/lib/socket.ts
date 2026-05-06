@@ -30,7 +30,7 @@ export function getSocket(): Socket {
   return singleton;
 }
 
-export type JoinArgs = { venueId?: string; guestSessionId?: string };
+export type JoinArgs = { venueId?: string; guestSessionId?: string; staffId?: string };
 
 /**
  * Joins the appropriate room and returns a teardown function.

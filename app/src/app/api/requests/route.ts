@@ -47,20 +47,35 @@ export async function POST(req: Request) {
       type: parsed.type,
       note: parsed.note ?? null,
     },
-    include: { table: { select: { label: true } } },
+    include: {
+      table: {
+        select: {
+          label: true,
+          assignments: { select: { staffMemberId: true } },
+        },
+      },
+    },
   });
 
-  // Realtime push to staff PWAs in this venue. Fire-and-forget.
-  void events.newRequest(session.venueId, {
-    id: request.id,
-    type: request.type,
-    note: request.note,
-    status: request.status,
-    tableId: request.tableId,
-    tableLabel: request.table.label,
-    sessionId: request.sessionId,
-    createdAt: request.createdAt.toISOString(),
-  });
+  const assignedStaffIds = request.table.assignments.map(a => a.staffMemberId);
+
+  // Realtime push: venue room (everyone) + per-staff rooms for whoever covers
+  // this table. Fire-and-forget — DB write is the source of truth.
+  void events.newRequest(
+    session.venueId,
+    {
+      id: request.id,
+      type: request.type,
+      note: request.note,
+      status: request.status,
+      tableId: request.tableId,
+      tableLabel: request.table.label,
+      sessionId: request.sessionId,
+      createdAt: request.createdAt.toISOString(),
+      assignedStaffIds,
+    },
+    assignedStaffIds
+  );
 
   // TODO (F2): fire FCM push to staff fcmTokens for this venue
   // TODO (F6): enqueue BullMQ jobs for 90s + 3min escalation

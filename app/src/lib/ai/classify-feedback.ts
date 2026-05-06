@@ -78,11 +78,12 @@ export async function classifyFeedback(input: { rating: number; note: string | n
   const block = resp.content[0];
   const text = block && block.type === "text" ? block.text : "";
 
-  let parsed: Classification;
-  try {
-    parsed = JSON.parse(text) as Classification;
-  } catch {
+  const parsed = extractJson(text);
+  if (!parsed) {
     // Defensive fallback: never throw on a misformatted classifier response.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[classify-feedback] could not parse model output:", text.slice(0, 400));
+    }
     return {
       category: "other",
       confidence: "low",
@@ -90,5 +91,29 @@ export async function classifyFeedback(input: { rating: number; note: string | n
       serverName: null,
     };
   }
-  return parsed;
+  return parsed as Classification;
+}
+
+/**
+ * Tolerate markdown fences and incidental prose around the JSON object.
+ * The model is instructed to return strict JSON, but Haiku occasionally
+ * prefixes ```json or adds a trailing newline + comment.
+ */
+function extractJson(text: string): unknown | null {
+  if (!text) return null;
+  const trimmed = text.trim();
+  // direct parse
+  try { return JSON.parse(trimmed); } catch { /* fall through */ }
+  // fenced ```json ... ```
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced) {
+    try { return JSON.parse(fenced[1]); } catch { /* fall through */ }
+  }
+  // first balanced { ... } chunk
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(trimmed.slice(start, end + 1)); } catch { /* fall through */ }
+  }
+  return null;
 }
