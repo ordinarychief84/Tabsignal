@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
+import { EditableField } from "./editable-field";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — settings" };
@@ -24,8 +25,8 @@ export default async function SettingsPage({ params }: { params: { slug: string 
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Configuration</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Settings</h1>
         <p className="mt-2 text-sm text-slate/60">
-          Wire up Stripe, branding, and integrations. Bare-bones for now;
-          per-row inline editing ships in the next pass.
+          Self-serve what you can. Structural changes (POS bridge, Stripe Connect attachment)
+          stay concierge — email TabCall.
         </p>
       </header>
 
@@ -91,24 +92,43 @@ export default async function SettingsPage({ params }: { params: { slug: string 
         </Card>
 
         <Card title="Branding">
-          <Row label="Brand color" value={venue.brandColor ?? "—"} mono />
-          <Row label="Logo" value={venue.logoUrl ?? "—"} />
-          <p className="mt-3 text-[12px] text-slate/55">
-            Brand color appears on QR tents and the guest landing header.
-          </p>
+          <EditableField
+            slug={params.slug}
+            field="brandColor"
+            label="Brand color (hex)"
+            placeholder="#1D9E75"
+            initial={venue.brandColor ?? ""}
+            help="Six-digit hex like #1D9E75. Appears on QR tents and the guest landing header."
+            pattern="^#[0-9a-fA-F]{6}$"
+          />
+          <EditableField
+            slug={params.slug}
+            field="logoUrl"
+            label="Logo URL"
+            placeholder="https://example.com/logo.png"
+            initial={venue.logoUrl ?? ""}
+            help="Public URL to a square logo. Optional — wordmark fallback otherwise."
+          />
         </Card>
 
         <Card title="Reviews routing">
-          <Row label="Google Place ID" value={venue.googlePlaceId ?? "—"} mono />
+          <EditableField
+            slug={params.slug}
+            field="googlePlaceId"
+            label="Google Place ID"
+            placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4"
+            initial={venue.googlePlaceId ?? ""}
+            help="From maps.google.com → search your venue → ⓘ → copy Place ID. Without this, 5★ feedback can't link guests to your Google review page."
+          />
           {reviewsConfigured ? (
-            <p className="mt-2 text-[12px] text-slate/55">
-              4–5 star feedback offers a one-tap link to your Google review page.
+            <p className="mt-3 inline-flex items-center gap-2 rounded-lg bg-chartreuse/15 px-3 py-2 text-[12px] text-umber">
+              <span className="h-1.5 w-1.5 rounded-full bg-chartreuse" />
+              4–5★ ratings show a one-tap Google review link.
             </p>
           ) : (
-            <p className="mt-2 rounded-lg bg-coral/15 px-3 py-2 text-[12px] text-slate/70">
-              No Place ID set. 4–5 star ratings show a generic &ldquo;thanks&rdquo; instead of
-              a Google link — you&rsquo;re leaving public reviews on the table. Email TabCall
-              to add yours.
+            <p className="mt-3 inline-flex items-center gap-2 rounded-lg bg-coral/15 px-3 py-2 text-[12px] text-slate/70">
+              <span className="h-1.5 w-1.5 rounded-full bg-coral" />
+              No Place ID set. 4–5★ ratings show a generic thanks — you&rsquo;re leaving public reviews on the table.
             </p>
           )}
         </Card>
