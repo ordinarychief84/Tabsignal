@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { configureSocketAuth, getSocket, joinRoom } from "@/lib/socket";
+import { configureSocketAuth, getSocket, joinRoom, resetSocket } from "@/lib/socket";
 
 const REQUEST_TYPES = [
   { id: "DRINK",  label: "Order a drink" },
@@ -58,6 +58,11 @@ export function GuestRequestPanel({
     return () => {
       socket.off("request_acknowledged", onAck);
       leave();
+      // Tear down the connection — its claims are scoped to this guest
+      // session. If the user navigates to a different table/session in
+      // the same tab, the next page configures its own fetcher and the
+      // socket reconnects with fresh claims.
+      resetSocket();
     };
   }, [sessionId, sessionToken, lastRequestId]);
 

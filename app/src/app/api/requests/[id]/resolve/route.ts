@@ -13,10 +13,35 @@ export async function PATCH(_req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  const updated = await db.request.update({
-    where: { id: existing.id },
+  // Idempotent resolve: if already RESOLVED, return the original timestamp
+  // and skip the realtime emit. Otherwise compare-and-swap on non-resolved
+  // status so a second tap can't overwrite resolvedAt.
+  if (existing.status === "RESOLVED") {
+    return NextResponse.json({
+      id: existing.id,
+      status: existing.status,
+      resolvedAt: existing.resolvedAt?.toISOString() ?? null,
+      alreadyResolved: true,
+    });
+  }
+
+  const cas = await db.request.updateMany({
+    where: { id: existing.id, status: { not: "RESOLVED" } },
     data: { status: "RESOLVED", resolvedAt: new Date() },
   });
+
+  if (cas.count === 0) {
+    const cur = await db.request.findUnique({ where: { id: existing.id } });
+    return NextResponse.json({
+      id: cur?.id,
+      status: cur?.status,
+      resolvedAt: cur?.resolvedAt?.toISOString() ?? null,
+      alreadyResolved: true,
+    });
+  }
+
+  const updated = await db.request.findUnique({ where: { id: existing.id } });
+  if (!updated) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   void events.requestResolved(updated.venueId, {
     id: updated.id,

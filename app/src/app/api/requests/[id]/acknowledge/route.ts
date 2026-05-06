@@ -17,10 +17,11 @@ export async function PATCH(_req: Request, ctx: { params: { id: string } }) {
   }
 
   // First-acker wins. Compare-and-swap via updateMany — only updates if
-  // no one else has claimed it yet. If the count is 0, we lost the race
-  // and report the actual acker back so optimistic UIs can reconcile.
+  // no one else has claimed it AND the request is still PENDING. The
+  // status filter prevents regressing a request that another staff
+  // resolved-without-ack between our read and our write.
   const cas = await db.request.updateMany({
-    where: { id: existing.id, acknowledgedById: null },
+    where: { id: existing.id, acknowledgedById: null, status: "PENDING" },
     data: {
       status: "ACKNOWLEDGED",
       acknowledgedAt: new Date(),

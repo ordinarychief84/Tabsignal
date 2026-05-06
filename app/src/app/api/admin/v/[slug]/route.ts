@@ -36,10 +36,13 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
     );
   }
 
+  // Distinguish "field absent in body" (don't change) from "explicit null"
+  // (clear it). `parsed.x !== undefined` is precise; the previous `"x" in
+  // parsed` form was brittle if Zod ever emitted undefined-valued keys.
   const data: Record<string, string | null> = {};
-  if ("googlePlaceId" in parsed) data.googlePlaceId = parsed.googlePlaceId ?? null;
-  if ("brandColor" in parsed) data.brandColor = parsed.brandColor ?? null;
-  if ("logoUrl" in parsed) data.logoUrl = parsed.logoUrl ?? null;
+  if (parsed.googlePlaceId !== undefined) data.googlePlaceId = parsed.googlePlaceId;
+  if (parsed.brandColor !== undefined) data.brandColor = parsed.brandColor;
+  if (parsed.logoUrl !== undefined) data.logoUrl = parsed.logoUrl;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "NOTHING_TO_UPDATE" }, { status: 400 });

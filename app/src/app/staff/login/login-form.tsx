@@ -4,7 +4,7 @@ import { useState } from "react";
 
 type Status = "idle" | "submitting" | "sent" | "error";
 
-export function LoginForm() {
+export function LoginForm({ nextUrl }: { nextUrl?: string }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function LoginForm() {
       const res = await fetch("/api/auth/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, ...(nextUrl ? { next: nextUrl } : {}) }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);

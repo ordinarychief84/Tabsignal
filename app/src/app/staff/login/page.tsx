@@ -7,15 +7,20 @@ const MESSAGES: Record<string, string> = {
   missing: "That link is missing its token. Request a new one below.",
   expired: "That sign-in link has expired. Request a new one.",
   invalid: "That sign-in link is invalid. Request a new one.",
+  already_used: "That sign-in link was already used. Request a fresh one — they're single-use for security.",
 };
 
 export default function StaffLogin({
   searchParams,
 }: {
-  searchParams: { err?: string; sent?: string };
+  searchParams: { err?: string; sent?: string; next?: string };
 }) {
   const err = searchParams?.err;
   const errMsg = err && MESSAGES[err] ? MESSAGES[err] : null;
+  // Only forward same-origin path-style values to the form.
+  const nextUrl = searchParams?.next && searchParams.next.startsWith("/") && !searchParams.next.startsWith("//")
+    ? searchParams.next
+    : undefined;
 
   return (
     <main className="flex min-h-screen flex-col bg-slate text-oat">
@@ -43,7 +48,7 @@ export default function StaffLogin({
             </p>
           ) : null}
           <div className="mt-6">
-            <LoginForm />
+            <LoginForm nextUrl={nextUrl} />
           </div>
           <p className="mt-6 text-[11px] tracking-wide text-oat/30">
             If your manager hasn&rsquo;t added you yet, ask them.

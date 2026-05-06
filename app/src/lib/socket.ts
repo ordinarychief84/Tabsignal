@@ -23,9 +23,31 @@ async function defaultFetcher(): Promise<string | null> {
 /**
  * Override the default fetcher (e.g. to pass a guest session token).
  * Call this once on guest pages before any getSocket()/joinRoom() use.
+ *
+ * If a singleton already exists with a different scope (e.g. you navigated
+ * from one guest session to another in the same tab), it is torn down so
+ * the next getSocket() reconnects with a fresh fetcher and matching claims.
  */
 export function configureSocketAuth(fetcher: SocketTokenFetcher) {
+  if (tokenFetcher !== fetcher) resetSocket();
   tokenFetcher = fetcher;
+}
+
+/**
+ * Disconnect and clear the singleton. The next call to getSocket() will
+ * reconnect with the currently-configured fetcher. Use on page unmount
+ * when the page's scope changes (e.g. guest A → guest B in the same tab).
+ */
+export function resetSocket() {
+  if (singleton) {
+    try {
+      singleton.removeAllListeners();
+      singleton.disconnect();
+    } catch {
+      /* swallow */
+    }
+    singleton = null;
+  }
 }
 
 /**

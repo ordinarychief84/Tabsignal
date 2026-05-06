@@ -125,14 +125,26 @@ export function StaffQueue({
   async function ack(id: string) {
     setPendingId(id);
     try {
-      await fetch(`/api/requests/${id}/acknowledge`, {
+      const res = await fetch(`/api/requests/${id}/acknowledge`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
       });
+      // Server returns the actual ack state — including `alreadyAcked: true`
+      // with `acknowledgedBy.name` if another staff beat us to it. Use
+      // server truth instead of optimistic-only so the loser shows the
+      // real acker, not a stale-self attribution.
+      const body = await res.json().catch(() => ({}));
       setItems(prev =>
         prev.map(it =>
           it.id === id
-            ? { ...it, status: "ACKNOWLEDGED", acknowledgedAt: new Date().toISOString() }
+            ? {
+                ...it,
+                status: (body.status as Item["status"]) ?? "ACKNOWLEDGED",
+                acknowledgedAt: body.acknowledgedAt ?? new Date().toISOString(),
+                acknowledgedBy: body.acknowledgedBy
+                  ? { id: it.acknowledgedBy?.id ?? "", name: body.acknowledgedBy.name }
+                  : it.acknowledgedBy,
+              }
             : it
         )
       );

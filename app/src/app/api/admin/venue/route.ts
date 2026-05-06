@@ -22,10 +22,13 @@ const Body = z.object({
 // link to the manager. This closes the public DB-fill DOS vector.
 export async function POST(req: Request) {
   const session = await getStaffSession();
+  if (!session) {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
   if (!isOperator(session)) {
     return NextResponse.json(
       { error: "OPERATOR_ONLY", detail: "New venues are onboarded by TabCall — email hello@tabcall.app." },
-      { status: 401 }
+      { status: 403 }
     );
   }
 
@@ -33,8 +36,10 @@ export async function POST(req: Request) {
   try {
     parsed = Body.parse(await req.json());
   } catch (e) {
-    const msg = e instanceof z.ZodError ? e.errors.map(x => x.message).join("; ") : "INVALID_BODY";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    const detail = e instanceof z.ZodError
+      ? e.errors.map(x => `${x.path.join(".") || "body"}: ${x.message}`).join("; ")
+      : (e instanceof Error ? e.message : "");
+    return NextResponse.json({ error: "INVALID_BODY", detail }, { status: 400 });
   }
 
   // Slug must be globally unique. If collision, append a 4-char suffix.
