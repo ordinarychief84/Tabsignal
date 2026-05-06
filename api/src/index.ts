@@ -9,14 +9,16 @@
  *   GET  /healthz                  — liveness
  *   POST /internal/emit            — Next.js → here. Validates shared secret,
  *                                    then re-emits to a Socket.io room.
- *   ws   /                          — Socket.io. Clients join venue:{id} or
- *                                    guest:{sessionId} rooms.
+ *   ws   /                          — Socket.io. Clients present a signed
+ *                                    socket-auth JWT (minted by Next.js)
+ *                                    that scopes which rooms they can join.
  */
 
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
-import { Server as IOServer } from "socket.io";
+import { Server as IOServer, type Socket } from "socket.io";
+import { jwtVerify } from "jose";
 import { z } from "zod";
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -25,11 +27,17 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3000")
   .map(s => s.trim())
   .filter(Boolean);
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? "";
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET ?? "";
 const LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
 
 if (!INTERNAL_API_SECRET) {
   console.warn(
     "[tabsignal-api] INTERNAL_API_SECRET is empty — /internal/emit will reject all requests. Set it in .env."
+  );
+}
+if (!NEXTAUTH_SECRET) {
+  console.warn(
+    "[tabsignal-api] NEXTAUTH_SECRET is empty — Socket.io connections will be rejected. Set it in .env."
   );
 }
 
@@ -49,14 +57,48 @@ const VENUE_ROOM = (id: string) => `venue:${id}`;
 const GUEST_ROOM = (id: string) => `guest:${id}`;
 const STAFF_ROOM = (id: string) => `staff:${id}`;
 
+/**
+ * The socket-auth token is signed by Next.js with NEXTAUTH_SECRET and lists
+ * exactly which rooms this browser tab is allowed to join. Short TTL (10
+ * minutes); the client transparently re-fetches if rejected.
+ */
+type SocketAuthClaims = {
+  kind: "socket";
+  venueId?: string;        // staff PWA: their venue
+  staffId?: string;        // staff PWA: their personal room
+  guestSessionId?: string; // guest browser: only their session room
+};
+
+async function verifySocketAuth(token: unknown): Promise<SocketAuthClaims | null> {
+  if (typeof token !== "string" || !NEXTAUTH_SECRET) return null;
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(NEXTAUTH_SECRET));
+    if (payload.kind !== "socket") return null;
+    return payload as unknown as SocketAuthClaims;
+  } catch {
+    return null;
+  }
+}
+
+io.use(async (socket, next) => {
+  const token = (socket.handshake.auth?.token as unknown) ?? socket.handshake.query?.token;
+  const claims = await verifySocketAuth(token);
+  if (!claims) {
+    return next(new Error("UNAUTHORIZED"));
+  }
+  (socket.data as { claims: SocketAuthClaims }).claims = claims;
+  next();
+});
+
 const JoinPayload = z.object({
   venueId: z.string().min(1).optional(),
   guestSessionId: z.string().min(1).optional(),
   staffId: z.string().min(1).optional(),
 });
 
-io.on("connection", socket => {
-  app.log.info({ socketId: socket.id }, "socket connected");
+io.on("connection", (socket: Socket) => {
+  const claims = (socket.data as { claims: SocketAuthClaims }).claims;
+  app.log.info({ socketId: socket.id, claims }, "socket connected");
 
   socket.on("join", (raw, ack?: (res: { ok: boolean; error?: string }) => void) => {
     const parsed = JoinPayload.safeParse(raw);
@@ -67,6 +109,19 @@ io.on("connection", socket => {
     const { venueId, guestSessionId, staffId } = parsed.data;
     if (!venueId && !guestSessionId && !staffId) {
       ack?.({ ok: false, error: "NEED_VENUE_OR_SESSION_OR_STAFF" });
+      return;
+    }
+    // Authorization: the requested rooms MUST match the rooms the token grants.
+    if (venueId && claims.venueId !== venueId) {
+      ack?.({ ok: false, error: "FORBIDDEN_VENUE" });
+      return;
+    }
+    if (staffId && claims.staffId !== staffId) {
+      ack?.({ ok: false, error: "FORBIDDEN_STAFF" });
+      return;
+    }
+    if (guestSessionId && claims.guestSessionId !== guestSessionId) {
+      ack?.({ ok: false, error: "FORBIDDEN_GUEST" });
       return;
     }
     if (venueId) socket.join(VENUE_ROOM(venueId));

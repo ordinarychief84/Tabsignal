@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getStaffSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
+  const session = await getStaffSession();
+  if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  if (session.venueId !== ctx.params.venueId) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
   const requests = await db.request.findMany({
     where: { venueId: ctx.params.venueId, status: { in: ["PENDING", "ACKNOWLEDGED"] } },
     orderBy: [{ status: "asc" }, { createdAt: "asc" }],

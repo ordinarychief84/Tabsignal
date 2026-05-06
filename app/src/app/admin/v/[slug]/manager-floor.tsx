@@ -104,7 +104,7 @@ export function ManagerFloor({ venueId }: { venueId: string }) {
   return (
     <>
       {reconnecting ? (
-        <div className="mb-3 rounded-lg bg-coral/15 px-3 py-2 text-center text-xs text-coral">
+        <div className="mb-3 rounded-lg bg-sea/30 px-3 py-2 text-center text-xs text-slate/70">
           Reconnecting…
         </div>
       ) : null}
@@ -151,7 +151,7 @@ function FloorCard({ item }: { item: Item }) {
       ) : null}
       <p className="mt-4 text-[11px] tracking-wide">
         {acked ? (
-          <span className="text-chartreuse-700 inline-flex items-center gap-2 text-umber">
+          <span className="inline-flex items-center gap-2 text-umber">
             <span className="h-1.5 w-1.5 rounded-full bg-chartreuse" />
             {item.acknowledgedBy?.name ? `${item.acknowledgedBy.name} on it` : "Acknowledged"}
           </span>

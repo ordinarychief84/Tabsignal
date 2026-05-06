@@ -53,17 +53,22 @@ model Organization {
 }
 
 model Venue {
-  id              String        @id @default(cuid())
-  orgId           String
-  slug            String        @unique
-  name            String
-  address         String?
-  zipCode         String?
-  timezone        String        @default("America/Chicago")
-  posType         PosType       @default(NONE)
-  posWebhookUrl   String?
-  googlePlaceId   String?
-  stripeAccountId String?
+  id                String      @id @default(cuid())
+  orgId             String
+  slug              String      @unique
+  name              String
+  address           String?
+  zipCode           String?
+  timezone          String      @default("America/Chicago")
+  posType           PosType     @default(NONE)
+  posWebhookUrl     String?
+  googlePlaceId     String?
+  stripeAccountId   String?
+  // Stripe Connect onboarding state — populated by account.updated webhook.
+  // chargesEnabled gates the bill flow; payoutsEnabled affects settlement.
+  stripeChargesEnabled  Boolean @default(false)
+  stripePayoutsEnabled  Boolean @default(false)
+  stripeDetailsSubmitted Boolean @default(false)
   brandColor      String?
   logoUrl         String?
   createdAt       DateTime      @default(now())
@@ -163,6 +168,18 @@ model Request {
 
   @@index([venueId, status])
   @@index([sessionId])
+}
+
+// Single-use enforcement for magic-link tokens. The link JWT carries a
+// `jti` claim; the callback inserts the jti here on first redemption.
+// On subsequent attempts the unique constraint blocks a fresh session.
+// Rows older than 24h can be GC'd by a cron — token TTL is 15 minutes.
+model LinkTokenUse {
+  jti       String   @id
+  staffId   String
+  usedAt    DateTime @default(now())
+
+  @@index([usedAt])
 }
 
 // Stripe webhook idempotency: Stripe may deliver the same event multiple

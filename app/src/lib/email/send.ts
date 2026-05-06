@@ -27,5 +27,16 @@ export async function sendEmail(args: SendArgs): Promise<{ id: string | null }> 
     text: args.text,
     replyTo: args.replyTo,
   });
+  // Resend's SDK resolves with { data, error } instead of throwing on
+  // delivery failure (unverified domain, sandbox sender, free-tier limit).
+  // Caller-visible error semantics matter — upstream code uses try/catch
+  // to fall back to a devLink. Promote `error` into a real throw.
+  if (result.error) {
+    const code = (result.error as { name?: string }).name ?? "RESEND_ERROR";
+    const msg = (result.error as { message?: string }).message ?? "send failed";
+    const err = new Error(`${code}: ${msg}`);
+    (err as { statusCode?: number }).statusCode = (result.error as { statusCode?: number }).statusCode;
+    throw err;
+  }
   return { id: result.data?.id ?? null };
 }

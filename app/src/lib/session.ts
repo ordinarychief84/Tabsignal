@@ -5,6 +5,7 @@ const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
 
 export type ResolvedSession = {
   sessionId: string;
+  sessionToken: string;
   venueId: string;
   tableId: string;
   venueName: string;
@@ -52,6 +53,7 @@ export async function resolveGuestSession(
   if (existing) {
     return {
       sessionId: existing.id,
+      sessionToken: existing.sessionToken,
       venueId: venue.id,
       tableId: table.id,
       venueName: venue.name,
@@ -70,6 +72,7 @@ export async function resolveGuestSession(
 
   return {
     sessionId: session.id,
+    sessionToken: session.sessionToken,
     venueId: venue.id,
     tableId: table.id,
     venueName: venue.name,

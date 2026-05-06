@@ -272,18 +272,18 @@ function PayForm({
 
 function ErrorPanel({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-2xl bg-red-50 p-6">
-      <p className="text-sm font-semibold text-red-900">{title}</p>
-      <p className="mt-1 text-sm text-red-800">{body}</p>
+    <div className="rounded-2xl border border-coral/40 bg-coral/15 p-6">
+      <p className="text-sm font-medium text-coral">{title}</p>
+      <p className="mt-1 text-sm text-slate/70">{body}</p>
     </div>
   );
 }
 
 function Row({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className={["flex items-center justify-between py-1", bold ? "font-semibold text-slate-900" : "text-slate-600"].join(" ")}>
+    <div className={["flex items-center justify-between py-1", bold ? "font-medium text-slate" : "text-slate/65"].join(" ")}>
       <span>{label}</span>
-      <span className="font-mono">{value}</span>
+      <span className="font-mono tabular-nums">{value}</span>
     </div>
   );
 }

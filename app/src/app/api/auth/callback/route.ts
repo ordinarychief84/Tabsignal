@@ -1,22 +1,66 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { verifyLinkToken, signSessionToken } from "@/lib/auth/token";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 
+/**
+ * Resolve the public origin from the request — Next.js binds to 0.0.0.0 in
+ * dev, so `req.url` reports `http://0.0.0.0:3000` and any redirect built
+ * from it would be unreachable from a phone. The Host header carries
+ * whatever URL the client actually used.
+ */
+function originFromRequest(req: Request): string {
+  const fwdProto = req.headers.get("x-forwarded-proto");
+  const fwdHost = req.headers.get("x-forwarded-host");
+  const host = fwdHost ?? req.headers.get("host");
+  if (host) {
+    const proto = fwdProto ?? (host.startsWith("localhost") || /^\d/.test(host) ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+  return process.env.APP_URL ?? "http://localhost:3000";
+}
+
+/**
+ * Only allow same-origin path redirects from the `next` param. Reject
+ * absolute URLs and protocol-relative URLs to prevent open-redirect.
+ */
+function safeNext(next: string | null | undefined): string {
+  if (!next) return "/staff";
+  if (!next.startsWith("/")) return "/staff";
+  if (next.startsWith("//")) return "/staff";
+  return next;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const origin = originFromRequest(req);
   const token = url.searchParams.get("token");
   if (!token) {
-    return NextResponse.redirect(new URL("/staff/login?err=missing", url.origin));
+    return NextResponse.redirect(`${origin}/staff/login?err=missing`);
   }
   const claims = await verifyLinkToken(token);
   if (!claims) {
-    return NextResponse.redirect(new URL("/staff/login?err=expired", url.origin));
+    return NextResponse.redirect(`${origin}/staff/login?err=expired`);
+  }
+
+  // Single-use enforcement: consume the jti atomically. If the row already
+  // exists, this attempt is a replay (forwarded email, browser preview,
+  // password manager prefetch) — refuse.
+  try {
+    await db.linkTokenUse.create({
+      data: { jti: claims.jti, staffId: claims.staffId },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.redirect(`${origin}/staff/login?err=already_used`);
+    }
+    throw err;
   }
 
   const staff = await db.staffMember.findUnique({ where: { id: claims.staffId } });
   if (!staff || staff.email.toLowerCase() !== claims.email.toLowerCase()) {
-    return NextResponse.redirect(new URL("/staff/login?err=invalid", url.origin));
+    return NextResponse.redirect(`${origin}/staff/login?err=invalid`);
   }
 
   const session = await signSessionToken({
@@ -27,7 +71,8 @@ export async function GET(req: Request) {
     role: staff.role,
   });
 
-  const res = NextResponse.redirect(new URL("/staff", url.origin));
+  const dest = safeNext(claims.next ?? url.searchParams.get("next"));
+  const res = NextResponse.redirect(`${origin}${dest}`);
   res.cookies.set(SESSION_COOKIE, session, sessionCookieOptions());
   return res;
 }

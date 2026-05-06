@@ -18,12 +18,28 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
   const session = await db.guestSession.findUnique({
     where: { id: ctx.params.id },
-    include: { venue: { select: { zipCode: true, stripeAccountId: true } } },
+    include: {
+      venue: {
+        select: {
+          zipCode: true,
+          stripeAccountId: true,
+          stripeChargesEnabled: true,
+        },
+      },
+    },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
+  }
+  // If the venue has a Connect account but it's not yet authorized to take
+  // charges, refuse rather than minting a doomed PaymentIntent.
+  if (session.venue.stripeAccountId && !session.venue.stripeChargesEnabled) {
+    return NextResponse.json(
+      { error: "VENUE_NOT_READY", detail: "This venue's Stripe account isn't onboarded yet." },
+      { status: 503 }
+    );
   }
 
   const items = parseLineItems(session.lineItems);

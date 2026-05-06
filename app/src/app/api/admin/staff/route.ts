@@ -39,7 +39,9 @@ export async function POST(req: Request) {
   let devLink: string | null = null;
   if (parsed.send) {
     const token = await signLinkToken({ kind: "link", staffId: staff.id, email });
-    const base = process.env.APP_URL ?? "http://localhost:3000";
+    const fwdHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+    const proto = req.headers.get("x-forwarded-proto") ?? (fwdHost?.startsWith("localhost") || (fwdHost && /^\d/.test(fwdHost)) ? "http" : "https");
+    const base = fwdHost ? `${proto}://${fwdHost}` : (process.env.APP_URL ?? "http://localhost:3000");
     const link = `${base}/api/auth/callback?token=${encodeURIComponent(token)}`;
     try {
       await sendMagicLinkEmail({
@@ -49,7 +51,8 @@ export async function POST(req: Request) {
         link,
       });
     } catch (err) {
-      if (process.env.NODE_ENV !== "production") {
+      const allowDevLinks = process.env.TABSIGNAL_DEV_LINKS === "true" || process.env.NODE_ENV === "development";
+      if (allowDevLinks) {
         console.warn("[admin/staff] email send failed; surfacing devLink", (err as Error).message);
         devLink = link;
       }

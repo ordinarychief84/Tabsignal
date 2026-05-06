@@ -156,7 +156,7 @@ export function StaffQueue({
   return (
     <>
       {reconnecting ? (
-        <div className="mb-3 rounded-lg bg-coral/10 px-3 py-2 text-center text-xs text-coral">
+        <div className="mb-3 rounded-lg bg-sea/20 px-3 py-2 text-center text-xs text-oat/70">
           Reconnecting…
         </div>
       ) : null}

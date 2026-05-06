@@ -3,6 +3,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { slugify } from "@/lib/slug";
 import { newQrToken } from "@/lib/qr";
+import { getStaffSession } from "@/lib/auth/session";
+import { isOperator } from "@/lib/auth/operator";
 
 const Body = z.object({
   ownerName: z.string().min(1).max(120),
@@ -15,7 +17,18 @@ const Body = z.object({
   tableCount: z.number().int().min(1).max(120).default(10),
 });
 
+// Concierge onboarding: only TabCall operators can create venues. New
+// customers are onboarded by us creating their venue and sending a magic
+// link to the manager. This closes the public DB-fill DOS vector.
 export async function POST(req: Request) {
+  const session = await getStaffSession();
+  if (!isOperator(session)) {
+    return NextResponse.json(
+      { error: "OPERATOR_ONLY", detail: "New venues are onboarded by TabCall — email hello@tabcall.app." },
+      { status: 401 }
+    );
+  }
+
   let parsed;
   try {
     parsed = Body.parse(await req.json());

@@ -38,6 +38,7 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
 
       <GuestRequestPanel
         sessionId={resolved.sessionId}
+        sessionToken={resolved.sessionToken}
         slug={params.slug}
         tableLabel={resolved.tableLabel}
       />

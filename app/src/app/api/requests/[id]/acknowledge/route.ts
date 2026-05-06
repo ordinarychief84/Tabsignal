@@ -16,15 +16,40 @@ export async function PATCH(_req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: "ALREADY_RESOLVED" }, { status: 409 });
   }
 
-  const updated = await db.request.update({
-    where: { id: existing.id },
+  // First-acker wins. Compare-and-swap via updateMany — only updates if
+  // no one else has claimed it yet. If the count is 0, we lost the race
+  // and report the actual acker back so optimistic UIs can reconcile.
+  const cas = await db.request.updateMany({
+    where: { id: existing.id, acknowledgedById: null },
     data: {
       status: "ACKNOWLEDGED",
-      acknowledgedAt: existing.acknowledgedAt ?? new Date(),
+      acknowledgedAt: new Date(),
       acknowledgedById: session.staffId,
     },
-    include: { table: { select: { label: true } } },
   });
+
+  if (cas.count === 0) {
+    const cur = await db.request.findUnique({
+      where: { id: existing.id },
+      include: { acknowledgedBy: { select: { name: true } } },
+    });
+    return NextResponse.json({
+      id: cur?.id,
+      status: cur?.status,
+      acknowledgedAt: cur?.acknowledgedAt?.toISOString() ?? null,
+      acknowledgedBy: cur?.acknowledgedBy ? { name: cur.acknowledgedBy.name } : null,
+      alreadyAcked: true,
+    });
+  }
+
+  const updated = await db.request.findUnique({
+    where: { id: existing.id },
+    include: {
+      table: { select: { label: true } },
+      acknowledgedBy: { select: { name: true } },
+    },
+  });
+  if (!updated) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   void events.requestAcknowledged(updated.venueId, updated.sessionId, {
     id: updated.id,
@@ -33,9 +58,8 @@ export async function PATCH(_req: Request, ctx: { params: { id: string } }) {
     acknowledgedById: updated.acknowledgedById,
     tableLabel: updated.table.label,
     type: updated.type,
+    acknowledgedBy: updated.acknowledgedBy ? { name: updated.acknowledgedBy.name } : null,
   });
-
-  // TODO: cancel BullMQ escalation jobs for this request
 
   return NextResponse.json({ id: updated.id, status: updated.status });
 }

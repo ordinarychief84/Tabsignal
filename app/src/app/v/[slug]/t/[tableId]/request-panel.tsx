@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getSocket, joinRoom } from "@/lib/socket";
+import { configureSocketAuth, getSocket, joinRoom } from "@/lib/socket";
 
 const REQUEST_TYPES = [
   { id: "DRINK",  label: "Order a drink" },
@@ -16,10 +16,12 @@ type Status = "idle" | "submitting" | "sent" | "ack" | "error" | "rate_limited";
 
 export function GuestRequestPanel({
   sessionId,
+  sessionToken,
   slug,
   tableLabel,
 }: {
   sessionId: string;
+  sessionToken: string;
   slug: string;
   tableLabel: string;
 }) {
@@ -29,6 +31,21 @@ export function GuestRequestPanel({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    // Configure socket auth as the guest before any join — passes the
+    // session's secret token so the realtime server can verify the room
+    // belongs to us.
+    configureSocketAuth(async () => {
+      try {
+        const r = await fetch("/api/realtime/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guestSessionId: sessionId, sessionToken }),
+        });
+        if (!r.ok) return null;
+        const body = await r.json();
+        return typeof body?.token === "string" ? body.token : null;
+      } catch { return null; }
+    });
     const leave = joinRoom({ guestSessionId: sessionId });
     const socket = getSocket();
     function onAck(payload: { request?: { id: string } } | null) {
@@ -42,7 +59,7 @@ export function GuestRequestPanel({
       socket.off("request_acknowledged", onAck);
       leave();
     };
-  }, [sessionId, lastRequestId]);
+  }, [sessionId, sessionToken, lastRequestId]);
 
   async function submit(type: RequestType) {
     if (status === "submitting") return;

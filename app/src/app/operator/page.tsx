@@ -70,7 +70,7 @@ export default async function OperatorConsole() {
               </svg>
             </span>
             <span className="text-lg font-medium tracking-tight text-slate">TabCall</span>
-            <span className="ml-3 rounded-full bg-coral/30 px-2 py-0.5 text-[11px] font-medium text-umber">
+            <span className="ml-3 rounded-full bg-sea/40 px-2 py-0.5 text-[11px] font-medium text-slate">
               operator
             </span>
           </Link>

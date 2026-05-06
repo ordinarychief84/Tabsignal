@@ -4,7 +4,21 @@ import { db } from "@/lib/db";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 
-const Body = z.object({ email: z.string().email() });
+const Body = z.object({
+  email: z.string().email(),
+  next: z.string().optional(),
+});
+
+function originFromRequest(req: Request): string {
+  const fwdProto = req.headers.get("x-forwarded-proto");
+  const fwdHost = req.headers.get("x-forwarded-host");
+  const host = fwdHost ?? req.headers.get("host");
+  if (host) {
+    const proto = fwdProto ?? (host.startsWith("localhost") || /^\d/.test(host) ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+  return process.env.APP_URL ?? "http://localhost:3000";
+}
 
 export async function POST(req: Request) {
   let parsed;
@@ -23,9 +37,13 @@ export async function POST(req: Request) {
   });
 
   if (staff) {
-    const token = await signLinkToken({ kind: "link", staffId: staff.id, email });
-    const base = process.env.APP_URL ?? "http://localhost:3000";
-    const link = `${base}/api/auth/callback?token=${encodeURIComponent(token)}`;
+    const token = await signLinkToken({
+      kind: "link",
+      staffId: staff.id,
+      email,
+      ...(parsed.next ? { next: parsed.next } : {}),
+    });
+    const link = `${originFromRequest(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
     try {
       await sendMagicLinkEmail({
         to: email,
@@ -34,12 +52,16 @@ export async function POST(req: Request) {
         link,
       });
     } catch (err) {
-      // In dev with no Resend key, surface the link in the response so testing
-      // doesn't grind to a halt. Production should never hit this path.
-      if (process.env.NODE_ENV !== "production") {
+      // In dev (TABSIGNAL_DEV_LINKS opt-in OR NODE_ENV !== production), surface
+      // the link in the response so testing doesn't grind to a halt. Production
+      // must never hit this path — gate strictly so a misconfigured preview
+      // doesn't leak tokens in HTTP bodies.
+      const allowDevLinks = process.env.TABSIGNAL_DEV_LINKS === "true" || process.env.NODE_ENV === "development";
+      if (allowDevLinks) {
         console.warn("[auth/start] email send failed, returning link in response", (err as Error).message);
         return NextResponse.json({ ok: true, devLink: link });
       }
+      console.warn("[auth/start] email send failed", (err as { statusCode?: number }).statusCode);
     }
   }
 

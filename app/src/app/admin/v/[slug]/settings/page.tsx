@@ -14,7 +14,9 @@ export default async function SettingsPage({ params }: { params: { slug: string 
   });
   if (!venue || venue.id !== session.venueId) return null;
 
-  const stripeReady = !!venue.stripeAccountId;
+  const stripeAttached = !!venue.stripeAccountId;
+  const stripeReady = stripeAttached && venue.stripeChargesEnabled;
+  const reviewsConfigured = !!venue.googlePlaceId;
 
   return (
     <>
@@ -40,27 +42,35 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           <p className="text-sm text-slate/65">
             Charges settle directly to your Stripe account. TabCall keeps a 0.5% platform fee.
           </p>
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px]"
-            style={{
-              backgroundColor: stripeReady ? "#EEEFC81A" : "#EFC8C81A",
-              color: stripeReady ? "#7B6767" : "#7B6767",
-              border: stripeReady ? "1px solid #EEEFC8" : "1px solid #EFC8C8",
-            }}
+          <div
+            className={[
+              "mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] text-umber",
+              stripeReady ? "border-chartreuse bg-chartreuse/15" : "border-coral bg-coral/15",
+            ].join(" ")}
           >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: stripeReady ? "#EEEFC8" : "#EFC8C8" }}
-            />
-            {stripeReady ? "Connected" : "Not connected — onboard via Stripe"}
+            <span className={["h-1.5 w-1.5 rounded-full", stripeReady ? "bg-chartreuse" : "bg-coral"].join(" ")} />
+            {stripeReady
+              ? "Charges enabled"
+              : stripeAttached
+              ? "Account attached — onboarding incomplete"
+              : "Not connected"}
           </div>
-          {stripeReady ? (
+
+          {stripeAttached ? (
+            <div className="mt-4 space-y-1.5 text-[12px]">
+              <Flag label="Details submitted" on={venue.stripeDetailsSubmitted} />
+              <Flag label="Charges enabled" on={venue.stripeChargesEnabled} />
+              <Flag label="Payouts enabled" on={venue.stripePayoutsEnabled} />
+            </div>
+          ) : null}
+
+          {stripeAttached ? (
             <p className="mt-3 font-mono text-[11px] text-slate/45">
               {venue.stripeAccountId}
             </p>
           ) : (
             <p className="mt-3 text-[12px] text-slate/55">
-              Stripe Express onboarding ships in the next milestone. For now,
-              ask TabCall support to attach your account.
+              Email TabCall — we&rsquo;ll attach your Stripe Express account on a 5-minute call.
             </p>
           )}
         </Card>
@@ -90,10 +100,17 @@ export default async function SettingsPage({ params }: { params: { slug: string 
 
         <Card title="Reviews routing">
           <Row label="Google Place ID" value={venue.googlePlaceId ?? "—"} mono />
-          <p className="mt-2 text-[12px] text-slate/55">
-            With this set, 4–5 star feedback offers a one-tap link to your
-            Google review page.
-          </p>
+          {reviewsConfigured ? (
+            <p className="mt-2 text-[12px] text-slate/55">
+              4–5 star feedback offers a one-tap link to your Google review page.
+            </p>
+          ) : (
+            <p className="mt-2 rounded-lg bg-coral/15 px-3 py-2 text-[12px] text-slate/70">
+              No Place ID set. 4–5 star ratings show a generic &ldquo;thanks&rdquo; instead of
+              a Google link — you&rsquo;re leaving public reviews on the table. Email TabCall
+              to add yours.
+            </p>
+          )}
         </Card>
       </div>
     </>
@@ -114,6 +131,23 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
     <div className="flex items-center justify-between border-b border-slate/5 py-1.5 text-sm last:border-0">
       <span className="text-slate/55">{label}</span>
       <span className={mono ? "font-mono text-[12px] text-slate" : "text-slate"}>{value}</span>
+    </div>
+  );
+}
+
+function Flag({ label, on }: { label: string; on: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-[12px]">
+      <span className="text-slate/55">{label}</span>
+      <span
+        className={[
+          "inline-flex items-center gap-1.5 font-medium",
+          on ? "text-umber" : "text-coral",
+        ].join(" ")}
+      >
+        <span className={["h-1.5 w-1.5 rounded-full", on ? "bg-chartreuse" : "bg-coral"].join(" ")} />
+        {on ? "Yes" : "No"}
+      </span>
     </div>
   );
 }

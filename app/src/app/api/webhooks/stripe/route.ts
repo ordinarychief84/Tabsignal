@@ -23,10 +23,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_SIGNATURE" }, { status: 400 });
   }
 
-  // Idempotency. Try to insert by Stripe event ID. If it already exists with
-  // a non-null processedAt, this delivery is a retry — return 200 immediately
-  // so Stripe stops retrying. If it exists but unprocessed (a previous
-  // attempt crashed), fall through and try again.
+  // Idempotency. Try to insert by Stripe event ID; on conflict the original
+  // delivery wins. Concurrent retries serialize through a row-level lock so
+  // we never run processEvent twice for the same event.
   try {
     await db.webhookEvent.create({
       data: {
@@ -40,47 +39,52 @@ export async function POST(req: Request) {
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === "P2002" // unique constraint
     ) {
-      const existing = await db.webhookEvent.findUnique({
-        where: { id: event.id },
-        select: { processedAt: true },
-      });
-      if (existing?.processedAt) {
-        return NextResponse.json({ received: true, duplicate: true });
-      }
-      // unprocessed: fall through to re-attempt processing below
+      // Concurrent or duplicate delivery — fall through to the locked read.
     } else {
       throw err;
     }
   }
 
-  let processError: string | null = null;
   try {
-    await processEvent(event);
-  } catch (err) {
-    processError = err instanceof Error ? err.message : "unknown";
-    // Mark and rethrow so Stripe retries.
-    await db.webhookEvent.update({
-      where: { id: event.id },
-      data: { error: processError },
+    const result = await db.$transaction(async tx => {
+      // Lock the row for the duration of processing. SELECT … FOR UPDATE
+      // serializes parallel deliveries so only one runs processEvent.
+      const rows = await tx.$queryRaw<Array<{ processedAt: Date | null }>>`
+        SELECT "processedAt" FROM "WebhookEvent" WHERE "id" = ${event.id} FOR UPDATE
+      `;
+      const row = rows[0];
+      if (!row) throw new Error("WEBHOOK_ROW_MISSING");
+      if (row.processedAt) {
+        return { duplicate: true as const };
+      }
+      await processEvent(event, tx);
+      await tx.webhookEvent.update({
+        where: { id: event.id },
+        data: { processedAt: new Date(), error: null },
+      });
+      return { duplicate: false as const };
     });
-    return NextResponse.json({ error: "PROCESSING_FAILED", detail: processError }, { status: 500 });
+    if (result.duplicate) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "unknown";
+    await db.webhookEvent.update({ where: { id: event.id }, data: { error: detail } }).catch(() => {});
+    return NextResponse.json({ error: "PROCESSING_FAILED", detail }, { status: 500 });
   }
-
-  await db.webhookEvent.update({
-    where: { id: event.id },
-    data: { processedAt: new Date(), error: null },
-  });
 
   return NextResponse.json({ received: true });
 }
 
-async function processEvent(event: Stripe.Event) {
+type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+async function processEvent(event: Stripe.Event, tx: Tx) {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const intent = event.data.object as Stripe.PaymentIntent;
       const sessionId = intent.metadata?.tabcall_session_id;
       if (!sessionId) return;
-      const session = await db.guestSession.findUnique({
+      const session = await tx.guestSession.findUnique({
         where: { id: sessionId },
         include: {
           venue: { select: { id: true, name: true, zipCode: true } },
@@ -89,7 +93,7 @@ async function processEvent(event: Stripe.Event) {
       });
       if (!session || session.paidAt) return;
 
-      await db.guestSession.update({
+      await tx.guestSession.update({
         where: { id: session.id },
         data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
       });
@@ -106,8 +110,6 @@ async function processEvent(event: Stripe.Event) {
         totalDisplay: dollars(totals.totalCents),
         paymentIntentId: intent.id,
       });
-
-      // TODO: FCM push to staff with table+total+tip (Phase C, requires Firebase config)
       return;
     }
 
@@ -117,14 +119,36 @@ async function processEvent(event: Stripe.Event) {
     }
 
     case "account.updated": {
-      // Stripe Connect onboarding state change. Mirror the connected account ID onto the Venue.
+      // Stripe Connect onboarding state. Persist the onboarding flags so
+      // the manager dashboard / settings page can show real status, and
+      // /api/session/:id/payment can refuse intents to non-onboarded venues.
       const acct = event.data.object as Stripe.Account;
-      if (acct.id) {
-        await db.venue.updateMany({
-          where: { stripeAccountId: acct.id },
-          data: { stripeAccountId: acct.id },
-        });
-      }
+      if (!acct.id) return;
+      await tx.venue.updateMany({
+        where: { stripeAccountId: acct.id },
+        data: {
+          stripeChargesEnabled: !!acct.charges_enabled,
+          stripePayoutsEnabled: !!acct.payouts_enabled,
+          stripeDetailsSubmitted: !!acct.details_submitted,
+        },
+      });
+      return;
+    }
+
+    case "account.application.deauthorized": {
+      // The venue revoked TabCall's Connect access. Stripe sends `account`
+      // on the event itself, not in event.data. Mark the venue as not-ready.
+      const acctId = (event as Stripe.Event & { account?: string }).account;
+      if (!acctId) return;
+      await tx.venue.updateMany({
+        where: { stripeAccountId: acctId },
+        data: {
+          stripeAccountId: null,
+          stripeChargesEnabled: false,
+          stripePayoutsEnabled: false,
+          stripeDetailsSubmitted: false,
+        },
+      });
       return;
     }
 

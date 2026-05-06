@@ -135,17 +135,44 @@ function formatSec(sec: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * The instant of "today's local midnight in the venue's timezone", expressed
+ * as a UTC Date. Naive `Date(ymd + 'T00:00:00Z')` lands at UTC midnight on
+ * that date — for America/Chicago that's 6pm CT *yesterday*, missing the
+ * morning of the venue's local day. Compute the IANA UTC offset against the
+ * candidate midnight to land on the correct instant.
+ */
 function startOfTodayUTC(timeZone: string): Date {
   try {
     const now = new Date();
-    const fmt = new Intl.DateTimeFormat("en-CA", {
+    const dateFmt = new Intl.DateTimeFormat("en-CA", {
       timeZone,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     });
-    const ymd = fmt.format(now); // YYYY-MM-DD in target tz
-    return new Date(`${ymd}T00:00:00Z`);
+    const ymd = dateFmt.format(now); // YYYY-MM-DD in target tz
+    // Start with naive UTC midnight on that date, then shift by the tz's offset
+    // *at that moment* so we land at local midnight in UTC.
+    const naiveUtc = new Date(`${ymd}T00:00:00Z`);
+    const tzAtCandidate = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "shortOffset",
+    });
+    // Pull the offset string ("GMT-5", "GMT+1") from the candidate.
+    const parts = tzAtCandidate.formatToParts(naiveUtc);
+    const tzNamePart = parts.find(p => p.type === "timeZoneName")?.value ?? "GMT+0";
+    const m = tzNamePart.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+    if (!m) return naiveUtc;
+    const sign = m[1] === "+" ? 1 : -1;
+    const hours = Number(m[2] ?? 0);
+    const mins = Number(m[3] ?? 0);
+    const offsetMin = sign * (hours * 60 + mins);
+    // Local midnight in the target tz == UTC midnight - offset.
+    return new Date(naiveUtc.getTime() - offsetMin * 60 * 1000);
   } catch {
     const d = new Date();
     d.setUTCHours(0, 0, 0, 0);

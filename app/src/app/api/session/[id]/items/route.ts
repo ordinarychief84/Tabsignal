@@ -2,16 +2,20 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { LineItem as LineItemSchema, parseLineItems } from "@/lib/bill";
+import { getStaffSession } from "@/lib/auth/session";
 
-// TODO(auth): once NextAuth staff sessions are wired, require an authenticated
-// staff member at the same venue as the session. For now this is unauthenticated
-// so dev/seed flows work.
+// Staff-only: only authenticated staff at the same venue as the session
+// can mutate line items. This closes a bill-inflation vector where any
+// session ID could be used to add fake items to another guest's tab.
 const Body = z.object({
-  items: z.array(LineItemSchema).min(1),
+  items: z.array(LineItemSchema.extend({ name: z.string().min(1).max(120) })).min(1).max(50),
   mode: z.enum(["append", "replace"]).default("append"),
 });
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const staffSession = await getStaffSession();
+  if (!staffSession) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
   let parsed;
   try {
     parsed = Body.parse(await req.json());
@@ -24,6 +28,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
   const session = await db.guestSession.findUnique({ where: { id: ctx.params.id } });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
+  if (session.venueId !== staffSession.venueId) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
   if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
