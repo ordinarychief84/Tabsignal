@@ -14,11 +14,12 @@ export const metadata: Metadata = {
     "TabCall sits on top of any POS. Guests scan, staff get alerted, service moves.",
 };
 
+// WCAG 1.4.4: never block pinch-zoom. Guests in dim bars need it,
+// staff with one-hand-on-tray need it. Fixed-width layout doesn't
+// reflow under zoom, so disabling it costs accessibility for nothing.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: "#2B2539",
 };
 

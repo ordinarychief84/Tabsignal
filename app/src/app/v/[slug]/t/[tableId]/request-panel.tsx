@@ -146,7 +146,7 @@ export function GuestRequestPanel({
             {acknowledged ? "Acknowledged" : "Request sent"}
           </p>
           <h2 className="mt-3 text-2xl font-medium text-slate">
-            {acknowledged ? "Staff is on the way" : "Sent. We&rsquo;re alerting your server."}
+            {acknowledged ? "Staff is on the way" : "Sent. We’re alerting your server."}
           </h2>
           <p className="mt-2 text-sm text-slate/60">
             {acknowledged

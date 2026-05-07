@@ -4,7 +4,13 @@ import { useState } from "react";
 
 type Phase = "rating" | "note" | "google" | "thanks" | "submitting";
 
-export function FeedbackScreen({ sessionId }: { sessionId: string }) {
+export function FeedbackScreen({
+  sessionId,
+  sessionToken,
+}: {
+  sessionId: string;
+  sessionToken: string;
+}) {
   const [phase, setPhase] = useState<Phase>("rating");
   const [rating, setRating] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
@@ -25,7 +31,7 @@ export function FeedbackScreen({ sessionId }: { sessionId: string }) {
       const res = await fetch(`/api/session/${sessionId}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating: stars, note: noteText ?? undefined }),
+        body: JSON.stringify({ rating: stars, note: noteText ?? undefined, sessionToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);

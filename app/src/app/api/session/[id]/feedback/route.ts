@@ -8,9 +8,13 @@ import { signCompToken } from "@/lib/auth/comp-token";
 
 const COMP_DEFAULT_CENTS = 2000; // $20
 
+// Tie feedback to the guest who actually owns the tab. Without this
+// check, anyone who scrapes a session ID (visible in the QR URL flow)
+// can fire a 1-star + AI/email amplification per session.
 const Body = z.object({
   rating: z.number().int().min(1).max(5),
   note: z.string().max(400).optional(),
+  sessionToken: z.string().min(1),
 });
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
@@ -28,6 +32,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     include: { venue: { select: { id: true, name: true, googlePlaceId: true } }, table: { select: { label: true } } },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
+  if (session.sessionToken !== parsed.sessionToken) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
 
   // PRD F4: only one feedback per session.
   const existing = await db.feedbackReport.findFirst({ where: { sessionId: session.id } });

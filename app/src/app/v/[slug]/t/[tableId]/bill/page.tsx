@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { parseLineItems, totalsFor } from "@/lib/bill";
@@ -12,20 +13,65 @@ export default async function BillPage({ params }: { params: { slug: string; tab
   if (!venue) notFound();
 
   const tableSeg = safeDecode(params.tableId);
+  // Look up the latest session for this table regardless of paid state.
+  // A guest who paid and reloads should see "thanks", not a 404.
   const session = await db.guestSession.findFirst({
     where: {
       venueId: venue.id,
       OR: [{ tableId: tableSeg }, { table: { label: tableSeg } }],
-      paidAt: null,
-      expiresAt: { gt: new Date() },
     },
     orderBy: { createdAt: "desc" },
     include: { table: { select: { label: true } } },
   });
   if (!session) notFound();
 
+  // Already paid → success state with feedback CTA.
+  if (session.paidAt) {
+    return (
+      <main className="flex min-h-screen flex-col bg-oat text-slate">
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="max-w-sm text-center">
+            <p className="text-3xl">·</p>
+            <h1 className="mt-3 text-2xl font-medium tracking-tight">Tab paid</h1>
+            <p className="mt-3 text-sm leading-relaxed text-slate/60">
+              Thanks for visiting {venue.name}. We&rsquo;ll get out of your way.
+            </p>
+            <Link
+              href={`/v/${venue.slug}/t/${encodeURIComponent(tableSeg)}/feedback`}
+              className="mt-6 inline-block rounded-full bg-slate px-5 py-2 text-sm text-oat hover:bg-slate/90"
+            >
+              Leave feedback
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Expired (open but past TTL) → ask staff for fresh QR.
+  if (session.expiresAt.getTime() <= Date.now()) {
+    return (
+      <main className="flex min-h-screen flex-col bg-oat text-slate">
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="max-w-sm text-center">
+            <p className="text-3xl">·</p>
+            <h1 className="mt-3 text-2xl font-medium tracking-tight">Tab expired</h1>
+            <p className="mt-3 text-sm leading-relaxed text-slate/60">
+              Ask your server for a fresh QR — this one timed out.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   const items = parseLineItems(session.lineItems);
-  const totals = totalsFor(items, venue.zipCode ?? "", DEFAULT_TIP_PERCENT);
+  // Honor a previously-chosen tip rather than always resetting to 20%.
+  const tipPercent =
+    typeof session.tipPercent === "number" && session.tipPercent >= 0
+      ? session.tipPercent
+      : DEFAULT_TIP_PERCENT;
+  const totals = totalsFor(items, venue.zipCode ?? "", tipPercent);
 
   return (
     <main className="min-h-screen bg-oat text-slate">
@@ -44,7 +90,7 @@ export default async function BillPage({ params }: { params: { slug: string; tab
             venueName: venue.name,
             tableLabel: session.table.label,
             items,
-            defaultTipPercent: DEFAULT_TIP_PERCENT,
+            defaultTipPercent: tipPercent,
             totals,
           }}
         />

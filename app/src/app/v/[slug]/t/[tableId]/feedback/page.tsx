@@ -39,7 +39,7 @@ export default async function FeedbackPage({ params }: { params: { slug: string;
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">How was tonight?</h1>
         </header>
-        <FeedbackScreen sessionId={session.id} />
+        <FeedbackScreen sessionId={session.id} sessionToken={session.sessionToken} />
       </div>
     </main>
   );

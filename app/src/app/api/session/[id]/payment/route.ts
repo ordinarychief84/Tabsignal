@@ -49,24 +49,33 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   // Stripe Connect: settle to the venue's connected account, take a 0.5% platform fee (PRD §13).
   const platformFeeCents = Math.round(totalCents * 0.005);
 
-  const intent = await stripe().paymentIntents.create({
-    amount: totalCents,
-    currency: "usd",
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      tabcall_session_id: session.id,
-      tabcall_venue_id: session.venueId,
-      tabcall_table_id: session.tableId,
-      tip_cents: String(tipCents),
-      tip_percent: String(parsed.tipPercent),
+  // Idempotency: a guest who taps Continue twice — or whose phone retries
+  // on a flaky network — must not produce two PaymentIntents. Stripe
+  // dedupes by `idempotency_key` for 24h. Key on session+amount+tip so a
+  // legitimate "I changed my tip" still cuts a fresh PI.
+  const idempotencyKey = `pi_${session.id}_${totalCents}_${parsed.tipPercent}`;
+
+  const intent = await stripe().paymentIntents.create(
+    {
+      amount: totalCents,
+      currency: "usd",
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        tabcall_session_id: session.id,
+        tabcall_venue_id: session.venueId,
+        tabcall_table_id: session.tableId,
+        tip_cents: String(tipCents),
+        tip_percent: String(parsed.tipPercent),
+      },
+      ...(session.venue.stripeAccountId
+        ? {
+            application_fee_amount: platformFeeCents,
+            transfer_data: { destination: session.venue.stripeAccountId },
+          }
+        : {}),
     },
-    ...(session.venue.stripeAccountId
-      ? {
-          application_fee_amount: platformFeeCents,
-          transfer_data: { destination: session.venue.stripeAccountId },
-        }
-      : {}),
-  });
+    { idempotencyKey }
+  );
 
   await db.guestSession.update({
     where: { id: session.id },

@@ -44,6 +44,16 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/staff/login?err=expired`);
   }
 
+  // Validate the staff record FIRST. If we burned the jti before this
+  // check and the staff was missing or email mismatched, the legitimate
+  // user's link would be permanently dead — and an attacker who fired
+  // the link with garbage state would lock the victim out. Look up
+  // first, then consume the jti atomically as a single-use guard.
+  const staff = await db.staffMember.findUnique({ where: { id: claims.staffId } });
+  if (!staff || staff.email.toLowerCase() !== claims.email.toLowerCase()) {
+    return NextResponse.redirect(`${origin}/staff/login?err=invalid`);
+  }
+
   // Single-use enforcement: consume the jti atomically. If the row already
   // exists, this attempt is a replay (forwarded email, browser preview,
   // password manager prefetch) — refuse.
@@ -56,11 +66,6 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}/staff/login?err=already_used`);
     }
     throw err;
-  }
-
-  const staff = await db.staffMember.findUnique({ where: { id: claims.staffId } });
-  if (!staff || staff.email.toLowerCase() !== claims.email.toLowerCase()) {
-    return NextResponse.redirect(`${origin}/staff/login?err=invalid`);
   }
 
   const session = await signSessionToken({
