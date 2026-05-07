@@ -3,6 +3,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { EditableField } from "./editable-field";
 import { ToggleField } from "./toggle-field";
+import { ConnectStripeButton } from "./connect-stripe-button";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — settings" };
@@ -70,11 +71,14 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             <p className="mt-3 font-mono text-[11px] text-slate/45">
               {venue.stripeAccountId}
             </p>
-          ) : (
-            <p className="mt-3 text-[12px] text-slate/55">
-              Email TabCall — we&rsquo;ll attach your Stripe Express account on a 5-minute call.
-            </p>
-          )}
+          ) : null}
+
+          {/* Self-serve Stripe Connect Express onboarding. Hidden once
+              charges are enabled — the venue is fully provisioned and
+              this button would only confuse a working manager. */}
+          {!stripeReady ? (
+            <ConnectStripeButton slug={params.slug} attached={stripeAttached} />
+          ) : null}
         </Card>
 
         <Card title="POS bridge">

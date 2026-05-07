@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { events } from "@/lib/realtime";
 
 const Body = z.object({
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
 
-  const limit = rateLimit(`req:${parsed.sessionId}`, { windowMs: WINDOW_MS, max: MAX_PER_WINDOW });
+  const limit = await rateLimitAsync(`req:${parsed.sessionId}`, { windowMs: WINDOW_MS, max: MAX_PER_WINDOW });
   if (!limit.ok) {
     return NextResponse.json(
       { error: "RATE_LIMITED", retryAfterMs: limit.retryAfterMs },

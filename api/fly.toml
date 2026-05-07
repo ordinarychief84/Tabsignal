@@ -1,0 +1,54 @@
+# Fly.io config for the TabSignal Fastify + Socket.io realtime server.
+#
+# To deploy:
+#   1. Install Fly CLI: `brew install flyctl` (or curl install).
+#   2. From repo root: `cd api && fly auth login`.
+#   3. `fly launch --no-deploy --copy-config` (accepts this fly.toml).
+#   4. Set secrets:
+#        fly secrets set NEXTAUTH_SECRET="<same value as Vercel>"
+#        fly secrets set INTERNAL_API_SECRET="<same value as Vercel>"
+#        fly secrets set ALLOWED_ORIGINS="https://tabsignal.vercel.app"
+#        # Optional: SENTRY_DSN, LOG_LEVEL=info
+#   5. `fly deploy`.
+#   6. Note the assigned hostname (e.g. tabsignal-api.fly.dev), then in
+#      Vercel set:
+#        NEXT_PUBLIC_SOCKET_URL=https://tabsignal-api.fly.dev
+#        FASTIFY_INTERNAL_URL=https://tabsignal-api.fly.dev
+#      And redeploy the Next app.
+#
+# Region: iad (Ashburn) for proximity to Supabase us-east-1 and Vercel
+# default region. Single shared-cpu-1x machine fits the free tier and
+# easily covers the demo loop. Scale up when WS connections cross
+# ~500 concurrent.
+
+app = "tabsignal-api"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PORT = "4000"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  # Don't auto-stop: WebSocket connections need the machine awake. Free
+  # tier still grants enough machine-hours for one always-on small VM.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
