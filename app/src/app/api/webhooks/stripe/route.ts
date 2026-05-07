@@ -10,16 +10,24 @@ export const runtime = "nodejs"; // raw body required for signature verification
 
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!sig || !secret) {
+  const secrets = [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_WEBHOOK_SECRET_TEST].filter(
+    (s): s is string => !!s,
+  );
+  if (!sig || secrets.length === 0) {
     return NextResponse.json({ error: "SIGNATURE_MISSING" }, { status: 400 });
   }
 
   const raw = await req.text();
-  let event: Stripe.Event;
-  try {
-    event = stripe().webhooks.constructEvent(raw, sig, secret);
-  } catch {
+  let event: Stripe.Event | null = null;
+  for (const secret of secrets) {
+    try {
+      event = stripe().webhooks.constructEvent(raw, sig, secret);
+      break;
+    } catch {
+      // try next secret (live vs test mode)
+    }
+  }
+  if (!event) {
     return NextResponse.json({ error: "INVALID_SIGNATURE" }, { status: 400 });
   }
 
