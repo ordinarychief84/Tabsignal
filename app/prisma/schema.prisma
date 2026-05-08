@@ -398,3 +398,16 @@ model FeedbackReport {
 
   @@index([venueId, createdAt])
 }
+
+// =====================================================================
+// Tier 3 — Multi-location, reservations, loyalty, benchmarking
+// Each section below is owned by its corresponding feature agent.
+// =====================================================================
+
+// --- Tier 3a: Multi-location operator console (OrgMember) ---
+
+// --- Tier 3b: Reservations + waitlist (Reservation, Waitlist, enums) ---
+
+// --- Tier 3c: Loyalty (GuestProfile) ---
+
+// --- Tier 3d: Benchmarking (BenchmarkSnapshot) ---
