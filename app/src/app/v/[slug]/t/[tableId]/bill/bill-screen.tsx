@@ -91,10 +91,11 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
         />
       );
     }
+    const tokenSegment = `?s=${encodeURIComponent(data.sessionToken)}`;
     const returnUrl =
       typeof window !== "undefined"
-        ? `${window.location.origin}/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback`
-        : `/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback`;
+        ? `${window.location.origin}/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback${tokenSegment}`
+        : `/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback${tokenSegment}`;
     return (
       <Elements
         stripe={getStripe()}

@@ -1,10 +1,23 @@
 import { notFound } from "next/navigation";
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { FeedbackScreen } from "./feedback-screen";
 
 export const dynamic = "force-dynamic";
 
-export default async function FeedbackPage({ params }: { params: { slug: string; tableId: string } }) {
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+type PageProps = {
+  params: { slug: string; tableId: string };
+  searchParams: { s?: string };
+};
+
+export default async function FeedbackPage({ params, searchParams }: PageProps) {
   const venue = await db.venue.findUnique({ where: { slug: params.slug } });
   if (!venue) notFound();
 
@@ -15,6 +28,26 @@ export default async function FeedbackPage({ params }: { params: { slug: string;
     include: { feedback: true },
   });
   if (!session) notFound();
+
+  // Without the matching session token, anyone could navigate here and the
+  // page would render a FeedbackScreen pre-loaded with the previous party's
+  // sessionToken (a secret) — letting them silently take over the tab.
+  const providedToken = searchParams.s ?? "";
+  if (!providedToken || !tokensEqual(session.sessionToken, providedToken)) {
+    return (
+      <main className="flex min-h-screen flex-col bg-oat text-slate">
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="max-w-sm text-center">
+            <p className="text-3xl">·</p>
+            <h1 className="mt-3 text-2xl font-medium tracking-tight">Scan the QR</h1>
+            <p className="mt-3 text-sm leading-relaxed text-slate/60">
+              Feedback is tied to your scan. Scan the table QR to leave a rating.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (session.feedback.length > 0) {
     return (

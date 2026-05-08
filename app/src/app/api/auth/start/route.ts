@@ -3,22 +3,12 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
+import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
   email: z.string().email(),
   next: z.string().optional(),
 });
-
-function originFromRequest(req: Request): string {
-  const fwdProto = req.headers.get("x-forwarded-proto");
-  const fwdHost = req.headers.get("x-forwarded-host");
-  const host = fwdHost ?? req.headers.get("host");
-  if (host) {
-    const proto = fwdProto ?? (host.startsWith("localhost") || /^\d/.test(host) ? "http" : "https");
-    return `${proto}://${host}`;
-  }
-  return process.env.APP_URL ?? "http://localhost:3000";
-}
 
 export async function POST(req: Request) {
   let parsed;
@@ -43,7 +33,7 @@ export async function POST(req: Request) {
       email,
       ...(parsed.next ? { next: parsed.next } : {}),
     });
-    const link = `${originFromRequest(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
+    const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
     try {
       await sendMagicLinkEmail({
         to: email,

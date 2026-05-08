@@ -1,5 +1,4 @@
-// TabCall — Prisma schema (v2.0 PRD §9)
-// 7 entities only. Menu/loyalty/happy-hour deferred to Phase 2 (YAGNI).
+// TabCall — Prisma schema (v2.0 PRD §9 + Phase 2 menu/billing/tip extensions)
 
 generator client {
   provider = "prisma-client-js"
@@ -15,6 +14,27 @@ enum Plan {
   STARTER
   FLAT
   FOUNDING
+}
+
+enum SubscriptionStatus {
+  NONE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum PreOrderStatus {
+  PENDING
+  READY
+  PICKED_UP
+  CANCELED
+}
+
+enum TipPoolPeriod {
+  SHIFT
+  DAY
+  WEEK
 }
 
 enum PosType {
@@ -43,76 +63,128 @@ enum RequestStatus {
 }
 
 model Organization {
-  id                   String   @id @default(cuid())
-  name                 String
-  plan                 Plan     @default(FOUNDING)
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  createdAt            DateTime @default(now())
-  venues               Venue[]
+  id                    String             @id @default(cuid())
+  name                  String
+  plan                  Plan               @default(FOUNDING)
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  // Stripe Billing snapshot — populated by customer.subscription.* webhooks.
+  // Drives the "is the org current?" gate that hides paywalled features.
+  subscriptionStatus    SubscriptionStatus @default(NONE)
+  subscriptionPriceId   String?
+  subscriptionPeriodEnd DateTime?
+  trialEndsAt           DateTime?
+  createdAt             DateTime           @default(now())
+  venues                Venue[]
 }
 
 model Venue {
-  id                String      @id @default(cuid())
-  orgId             String
-  slug              String      @unique
-  name              String
-  address           String?
-  zipCode           String?
-  timezone          String      @default("America/Chicago")
-  posType           PosType     @default(NONE)
-  posWebhookUrl     String?
-  googlePlaceId     String?
-  stripeAccountId   String?
+  id                     String           @id @default(cuid())
+  orgId                  String
+  slug                   String           @unique
+  name                   String
+  address                String?
+  zipCode                String?
+  timezone               String           @default("America/Chicago")
+  posType                PosType          @default(NONE)
+  posWebhookUrl          String?
+  googlePlaceId          String?
+  stripeAccountId        String?
   // Stripe Connect onboarding state — populated by account.updated webhook.
   // chargesEnabled gates the bill flow; payoutsEnabled affects settlement.
-  stripeChargesEnabled  Boolean @default(false)
-  stripePayoutsEnabled  Boolean @default(false)
-  stripeDetailsSubmitted Boolean @default(false)
+  stripeChargesEnabled   Boolean          @default(false)
+  stripePayoutsEnabled   Boolean          @default(false)
+  stripeDetailsSubmitted Boolean          @default(false)
   // Compliance: when true, the first DRINK request on a fresh guest session
   // sets `idCheckRequired` on the request so staff see a coral "ID check"
   // badge before tapping Got it.
-  requireIdOnFirstDrink Boolean @default(false)
-  brandColor      String?
-  logoUrl         String?
-  createdAt       DateTime      @default(now())
-  org             Organization  @relation(fields: [orgId], references: [id])
-  tables          Table[]
-  staff           StaffMember[]
-  sessions        GuestSession[]
-  requests        Request[]
-  feedback        FeedbackReport[]
+  requireIdOnFirstDrink  Boolean          @default(false)
+  brandColor             String?
+  logoUrl                String?
+  createdAt              DateTime         @default(now())
+  org                    Organization     @relation(fields: [orgId], references: [id])
+  tables                 Table[]
+  staff                  StaffMember[]
+  sessions               GuestSession[]
+  requests               Request[]
+  feedback               FeedbackReport[]
+  menuCategories         MenuCategory[]
+  menuItems              MenuItem[]
+  tipPools               TipPool[]
+  preOrders              PreOrder[]
 
   @@index([orgId])
 }
 
-model Table {
-  id        String   @id @default(cuid())
+// Phase 2: menu management. Bills are still authored as JSON line items on
+// GuestSession (kept for flexibility — comps, custom drinks, etc.) but the
+// menu drives the staff "add to tab" picker and the guest browse/pre-order
+// experience.
+model MenuCategory {
+  id        String     @id @default(cuid())
   venueId   String
-  label     String
-  qrToken   String   @unique
-  zone      String?
-  createdAt DateTime @default(now())
-  venue     Venue    @relation(fields: [venueId], references: [id])
-  sessions  GuestSession[]
-  requests  Request[]
+  name      String
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  items     MenuItem[]
+
+  @@index([venueId])
+}
+
+model MenuItem {
+  id            String        @id @default(cuid())
+  venueId       String
+  categoryId    String?
+  name          String
+  description   String?
+  priceCents    Int
+  isActive      Boolean       @default(true)
+  sortOrder     Int           @default(0)
+  imageUrl      String?
+  // Drinks/alcohol → trip the same first-drink ID-check flag a DRINK
+  // request would. Lets a venue mark a soda as non-alcoholic so a refill
+  // doesn't ask for ID.
+  ageRestricted Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  venue         Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  category      MenuCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, isActive])
+  @@index([categoryId])
+}
+
+model Table {
+  id          String            @id @default(cuid())
+  venueId     String
+  label       String
+  qrToken     String            @unique
+  zone        String?
+  createdAt   DateTime          @default(now())
+  venue       Venue             @relation(fields: [venueId], references: [id])
+  sessions    GuestSession[]
+  requests    Request[]
   assignments TableAssignment[]
+  preOrders   PreOrder[]
 
   @@unique([venueId, label])
   @@index([venueId])
 }
 
 model StaffMember {
-  id        String      @id @default(cuid())
-  venueId   String
-  name      String
-  email     String      @unique
-  role      StaffRole   @default(STAFF)
-  fcmToken  String?
-  createdAt DateTime    @default(now())
-  venue     Venue       @relation(fields: [venueId], references: [id])
-  ackedRequests Request[] @relation("AcknowledgedBy")
-  assignments TableAssignment[]
+  id            String            @id @default(cuid())
+  venueId       String
+  name          String
+  email         String            @unique
+  role          StaffRole         @default(STAFF)
+  fcmToken      String?
+  createdAt     DateTime          @default(now())
+  venue         Venue             @relation(fields: [venueId], references: [id])
+  ackedRequests Request[]         @relation("AcknowledgedBy")
+  assignments   TableAssignment[]
 
   @@index([venueId])
 }
@@ -133,45 +205,135 @@ model TableAssignment {
 }
 
 model GuestSession {
-  id                    String    @id @default(cuid())
+  id                    String           @id @default(cuid())
   venueId               String
   tableId               String
-  sessionToken          String    @unique
-  lineItems             Json      @default("[]")
+  sessionToken          String           @unique
+  lineItems             Json             @default("[]")
   tipPercent            Float?
   paidAt                DateTime?
   stripePaymentIntentId String?
   expiresAt             DateTime
-  createdAt             DateTime  @default(now())
-  venue                 Venue     @relation(fields: [venueId], references: [id])
-  table                 Table     @relation(fields: [tableId], references: [id])
+  createdAt             DateTime         @default(now())
+  venue                 Venue            @relation(fields: [venueId], references: [id])
+  table                 Table            @relation(fields: [tableId], references: [id])
   requests              Request[]
   feedback              FeedbackReport[]
+  splits                BillSplit[]
+  preOrders             PreOrder[]
 
   @@index([venueId, tableId])
   @@index([expiresAt])
 }
 
+// Bill split: a single GuestSession can be paid in N parts, each a separate
+// Stripe PaymentIntent. The session is marked paidAt only when all splits
+// have been paid (sum of split.paidCents >= bill total).
+model BillSplit {
+  id                    String       @id @default(cuid())
+  sessionId             String
+  // Optional human label ("Maya", "Tab 1", etc.) so guests at the same
+  // table can tell which split is theirs.
+  label                 String?
+  amountCents           Int
+  tipPercent            Float
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  createdAt             DateTime     @default(now())
+  session               GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([stripePaymentIntentId])
+}
+
+// Pre-order: guest browses menu via QR before/while seated, pays now,
+// staff sees a "make these" card. Optional table — pre-orders without a
+// table are pickup orders the guest grabs from the bar.
+model PreOrder {
+  id                    String         @id @default(cuid())
+  venueId               String
+  tableId               String?
+  sessionId             String?
+  status                PreOrderStatus @default(PENDING)
+  items                 Json // [{ menuItemId, name, quantity, unitCents }]
+  subtotalCents         Int
+  tipCents              Int            @default(0)
+  totalCents            Int
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  guestName             String?
+  guestPhone            String?
+  pickupCode            String? // 4-digit short code shown on confirmation
+  notes                 String?
+  readyAt               DateTime?
+  pickedUpAt            DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  venue                 Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table                 Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  session               GuestSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, status])
+  @@index([sessionId])
+}
+
+// Tip pooling: aggregate tips over a period and distribute across staff
+// who worked. We do NOT touch funds — we record splits and the manager
+// settles via cash/payroll. Stripe Connect doesn't support arbitrary
+// venue → staff transfers without a marketplace marketplace setup.
+model TipPool {
+  id             String         @id @default(cuid())
+  venueId        String
+  period         TipPoolPeriod  @default(SHIFT)
+  startedAt      DateTime
+  endedAt        DateTime?
+  // Total tips collected during this period (mirrored from GuestSession
+  // tipPercent + payment data at close time).
+  totalTipsCents Int            @default(0)
+  closedAt       DateTime?
+  createdAt      DateTime       @default(now())
+  venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  shares         TipPoolShare[]
+
+  @@index([venueId, startedAt])
+}
+
+model TipPoolShare {
+  id            String    @id @default(cuid())
+  poolId        String
+  staffMemberId String
+  // Hours worked or weight assigned (e.g., bartender = 1.0, barback = 0.5).
+  shareWeight   Float     @default(1.0)
+  // Computed payout once the pool is closed.
+  payoutCents   Int       @default(0)
+  paidOutAt     DateTime?
+  createdAt     DateTime  @default(now())
+  pool          TipPool   @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, staffMemberId])
+  @@index([staffMemberId])
+}
+
 model Request {
-  id              String        @id @default(cuid())
-  venueId         String
-  tableId         String
-  sessionId       String
-  type            RequestType
-  status          RequestStatus @default(PENDING)
-  note            String?
+  id               String        @id @default(cuid())
+  venueId          String
+  tableId          String
+  sessionId        String
+  type             RequestType
+  status           RequestStatus @default(PENDING)
+  note             String?
   // For DRINK requests on a fresh session at compliance-flagged venues:
   // staff must acknowledge having checked ID before tapping Got it.
-  idCheckRequired Boolean       @default(false)
+  idCheckRequired  Boolean       @default(false)
   acknowledgedById String?
-  acknowledgedAt  DateTime?
-  resolvedAt      DateTime?
-  escalatedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  venue           Venue         @relation(fields: [venueId], references: [id])
-  table           Table         @relation(fields: [tableId], references: [id])
-  session         GuestSession  @relation(fields: [sessionId], references: [id])
-  acknowledgedBy  StaffMember?  @relation("AcknowledgedBy", fields: [acknowledgedById], references: [id])
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+  escalatedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  venue            Venue         @relation(fields: [venueId], references: [id])
+  table            Table         @relation(fields: [tableId], references: [id])
+  session          GuestSession  @relation(fields: [sessionId], references: [id])
+  acknowledgedBy   StaffMember?  @relation("AcknowledgedBy", fields: [acknowledgedById], references: [id])
 
   @@index([venueId, status])
   @@index([sessionId])
@@ -182,9 +344,9 @@ model Request {
 // On subsequent attempts the unique constraint blocks a fresh session.
 // Rows older than 24h can be GC'd by a cron — token TTL is 15 minutes.
 model LinkTokenUse {
-  jti       String   @id
-  staffId   String
-  usedAt    DateTime @default(now())
+  jti     String   @id
+  staffId String
+  usedAt  DateTime @default(now())
 
   @@index([usedAt])
 }
@@ -194,12 +356,12 @@ model LinkTokenUse {
 // JWT with a jti; applying the comp inserts the jti here so the link
 // can't be replayed (e.g. forwarded to another manager).
 model CompAction {
-  jti          String   @id
-  sessionId    String
-  venueId      String
-  amountCents  Int
-  reason       String?
-  appliedAt    DateTime @default(now())
+  jti         String   @id
+  sessionId   String
+  venueId     String
+  amountCents Int
+  reason      String?
+  appliedAt   DateTime @default(now())
 
   @@index([sessionId])
   @@index([venueId, appliedAt])
@@ -209,7 +371,7 @@ model CompAction {
 // times. We insert by event ID; the unique constraint dedupes retries.
 // `processedAt` lets us detect events that crashed mid-processing.
 model WebhookEvent {
-  id          String    @id          // Stripe event ID, e.g. evt_1Abc...
+  id          String    @id // Stripe event ID, e.g. evt_1Abc...
   type        String
   payload     Json
   receivedAt  DateTime  @default(now())
@@ -220,19 +382,19 @@ model WebhookEvent {
 }
 
 model FeedbackReport {
-  id              String        @id @default(cuid())
-  venueId         String
-  sessionId       String
-  rating          Int
-  note            String?
+  id           String       @id @default(cuid())
+  venueId      String
+  sessionId    String
+  rating       Int
+  note         String?
   // AI classification (PRD v2.0 F4 — bad-review intercept)
-  aiCategory      String?       // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
-  aiSuggestion    String?
-  aiServerName    String?
-  seenByMgr       Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  venue           Venue         @relation(fields: [venueId], references: [id])
-  session         GuestSession  @relation(fields: [sessionId], references: [id])
+  aiCategory   String? // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
+  aiSuggestion String?
+  aiServerName String?
+  seenByMgr    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  venue        Venue        @relation(fields: [venueId], references: [id])
+  session      GuestSession @relation(fields: [sessionId], references: [id])
 
   @@index([venueId, createdAt])
 }

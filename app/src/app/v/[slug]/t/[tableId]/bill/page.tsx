@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { parseLineItems, totalsFor } from "@/lib/bill";
 import { BillScreen } from "./bill-screen";
@@ -8,7 +9,19 @@ const DEFAULT_TIP_PERCENT = 20;
 
 export const dynamic = "force-dynamic";
 
-export default async function BillPage({ params }: { params: { slug: string; tableId: string } }) {
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+type PageProps = {
+  params: { slug: string; tableId: string };
+  searchParams: { s?: string };
+};
+
+export default async function BillPage({ params, searchParams }: PageProps) {
   const venue = await db.venue.findUnique({ where: { slug: params.slug } });
   if (!venue) notFound();
 
@@ -25,6 +38,27 @@ export default async function BillPage({ params }: { params: { slug: string; tab
   });
   if (!session) notFound();
 
+  // Privacy: only the guest who owns this tab can see the bill. Without a
+  // matching token, anyone with the slug + table label could navigate
+  // directly and read the prior party's line items.
+  const providedToken = searchParams.s ?? "";
+  if (!providedToken || !tokensEqual(session.sessionToken, providedToken)) {
+    return (
+      <main className="flex min-h-screen flex-col bg-oat text-slate">
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="max-w-sm text-center">
+            <p className="text-3xl">·</p>
+            <h1 className="mt-3 text-2xl font-medium tracking-tight">Scan the QR</h1>
+            <p className="mt-3 text-sm leading-relaxed text-slate/60">
+              Bills are tied to your scan. Scan the table QR or tap &ldquo;Get the bill&rdquo;
+              from the table page to view yours.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   // Already paid → success state with feedback CTA.
   if (session.paidAt) {
     return (
@@ -37,7 +71,7 @@ export default async function BillPage({ params }: { params: { slug: string; tab
               Thanks for visiting {venue.name}. We&rsquo;ll get out of your way.
             </p>
             <Link
-              href={`/v/${venue.slug}/t/${encodeURIComponent(tableSeg)}/feedback`}
+              href={`/v/${venue.slug}/t/${encodeURIComponent(tableSeg)}/feedback?s=${encodeURIComponent(session.sessionToken)}`}
               className="mt-6 inline-block rounded-full bg-slate px-5 py-2 text-sm text-oat hover:bg-slate/90"
             >
               Leave feedback

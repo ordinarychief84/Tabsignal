@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
+import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
   email: z.string().email(),
@@ -39,10 +40,7 @@ export async function POST(req: Request) {
   let devLink: string | null = null;
   if (parsed.send) {
     const token = await signLinkToken({ kind: "link", staffId: staff.id, email });
-    const fwdHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-    const proto = req.headers.get("x-forwarded-proto") ?? (fwdHost?.startsWith("localhost") || (fwdHost && /^\d/.test(fwdHost)) ? "http" : "https");
-    const base = fwdHost ? `${proto}://${fwdHost}` : (process.env.APP_URL ?? "http://localhost:3000");
-    const link = `${base}/api/auth/callback?token=${encodeURIComponent(token)}`;
+    const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
     try {
       await sendMagicLinkEmail({
         to: email,

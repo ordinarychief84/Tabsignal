@@ -98,7 +98,7 @@ export function GuestRequestPanel({
       // Special case: BILL request → take guest to bill screen.
       if (type === "BILL") {
         setTimeout(() => {
-          window.location.href = `/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill`;
+          window.location.href = `/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill?s=${encodeURIComponent(sessionToken)}`;
         }, 600);
       }
     } catch (e) {
