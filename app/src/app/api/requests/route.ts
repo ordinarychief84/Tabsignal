@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { events } from "@/lib/realtime";
 
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
 const Body = z.object({
   sessionId: z.string().min(1),
+  sessionToken: z.string().min(1),
   type: z.enum(["DRINK", "BILL", "HELP", "REFILL"]),
   note: z.string().max(120).optional(),
 });
@@ -35,6 +44,11 @@ export async function POST(req: Request) {
     include: { venue: { select: { requireIdOnFirstDrink: true } } },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
+  // Constant-time-ish equality on the secret token. Without this any guest
+  // who knows another session's id could submit requests on its behalf.
+  if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
   }

@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { LineItem as LineItemSchema, parseLineItems } from "@/lib/bill";
 import { getStaffSession } from "@/lib/auth/session";
+
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 // Staff-only: only authenticated staff at the same venue as the session
 // can mutate line items. This closes a bill-inflation vector where any
@@ -62,12 +70,26 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   });
 }
 
-export async function GET(_req: Request, ctx: { params: { id: string } }) {
+export async function GET(req: Request, ctx: { params: { id: string } }) {
+  // Either staff at the session's venue OR the guest with a valid sessionToken
+  // can read items. Without one of those, refuse — anyone with a session id
+  // could otherwise enumerate bills (privacy + ordering-pattern leakage).
+  const url = new URL(req.url);
+  const tokenFromQuery = url.searchParams.get("sessionToken");
+  const staffSession = await getStaffSession();
+
   const session = await db.guestSession.findUnique({
     where: { id: ctx.params.id },
-    select: { id: true, lineItems: true, paidAt: true, expiresAt: true },
+    select: { id: true, lineItems: true, paidAt: true, expiresAt: true, sessionToken: true, venueId: true },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
+
+  const isStaffAtVenue = !!staffSession && staffSession.venueId === session.venueId;
+  const isGuestWithToken = !!tokenFromQuery && tokensEqual(session.sessionToken, tokenFromQuery);
+  if (!isStaffAtVenue && !isGuestWithToken) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
   return NextResponse.json({
     sessionId: session.id,
     paid: !!session.paidAt,

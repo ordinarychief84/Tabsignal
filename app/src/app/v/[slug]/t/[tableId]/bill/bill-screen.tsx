@@ -12,6 +12,7 @@ import { dollars, totalsFor, type LineItem } from "@/lib/bill";
 
 type BillData = {
   sessionId: string;
+  sessionToken: string;
   venueName: string;
   tableLabel: string;
   items: LineItem[];
@@ -67,7 +68,7 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
       const res = await fetch(`/api/session/${data.sessionId}/payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipPercent }),
+        body: JSON.stringify({ tipPercent, sessionToken: data.sessionToken }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);

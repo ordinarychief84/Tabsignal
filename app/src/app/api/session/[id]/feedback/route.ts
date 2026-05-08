@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { classifyFeedback } from "@/lib/ai/classify-feedback";
 import { badRatingHtml, badRatingSubject, badRatingText } from "@/lib/email/bad-rating-email";
 import { sendEmail } from "@/lib/email/send";
 import { signCompToken } from "@/lib/auth/comp-token";
+
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 const COMP_DEFAULT_CENTS = 2000; // $20
 
@@ -32,7 +40,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     include: { venue: { select: { id: true, name: true, googlePlaceId: true } }, table: { select: { label: true } } },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
-  if (session.sessionToken !== parsed.sessionToken) {
+  if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
