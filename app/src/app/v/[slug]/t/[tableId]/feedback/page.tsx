@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { meetsAtLeast, planFromOrg } from "@/lib/plans";
+import { verifyProfileToken, PROFILE_COOKIE } from "@/lib/profile-cookie";
 import { FeedbackScreen } from "./feedback-screen";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +21,16 @@ type PageProps = {
 };
 
 export default async function FeedbackPage({ params, searchParams }: PageProps) {
-  const venue = await db.venue.findUnique({ where: { slug: params.slug } });
+  const venue = await db.venue.findUnique({
+    where: { slug: params.slug },
+    include: { org: { select: { subscriptionPriceId: true, subscriptionStatus: true } } },
+  });
   if (!venue) notFound();
+  const isPro = meetsAtLeast(planFromOrg(venue.org), "pro");
+
+  // If the guest already has a profile cookie, skip the prompt entirely.
+  const profileToken = cookies().get(PROFILE_COOKIE)?.value;
+  const alreadyIdentified = !!profileToken && !!(await verifyProfileToken(profileToken));
 
   const tableSeg = safeDecode(params.tableId);
   const session = await db.guestSession.findFirst({
@@ -72,7 +83,12 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">How was tonight?</h1>
         </header>
-        <FeedbackScreen sessionId={session.id} sessionToken={session.sessionToken} />
+        <FeedbackScreen
+          slug={params.slug}
+          sessionId={session.id}
+          sessionToken={session.sessionToken}
+          showIdentify={isPro && !alreadyIdentified}
+        />
       </div>
     </main>
   );
