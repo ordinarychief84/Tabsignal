@@ -14,6 +14,7 @@ export function AdminNav({ slug, operator }: { slug: string; operator: boolean }
     { href: `/admin/v/${slug}/staff`,     label: "Staff"      },
     { href: `/admin/v/${slug}/tips`,      label: "Tips"       },
     { href: `/admin/v/${slug}/qr-tents`,  label: "QR tents"   },
+    { href: `/admin/v/${slug}/billing`,   label: "Billing"    },
     { href: `/admin/v/${slug}/settings`,  label: "Settings"   },
   ];
 

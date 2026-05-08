@@ -226,7 +226,69 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       return;
     }
 
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const sub = event.data.object as Stripe.Subscription;
+      const orgId = sub.metadata?.tabcall_org_id;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+
+      // Match by metadata first (set on checkout) and fall back to customer
+      // id so subs created in the Stripe dashboard still attach correctly.
+      const org = orgId
+        ? await tx.organization.findUnique({ where: { id: orgId } })
+        : await tx.organization.findFirst({ where: { stripeCustomerId: customerId } });
+      if (!org) return;
+
+      const status = subscriptionStatusFor(sub.status);
+      const priceId = sub.items.data[0]?.price.id ?? null;
+      const periodEnd = sub.current_period_end
+        ? new Date(sub.current_period_end * 1000)
+        : null;
+      const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
+
+      await tx.organization.update({
+        where: { id: org.id },
+        data: {
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: sub.id,
+          subscriptionStatus: status,
+          subscriptionPriceId: priceId,
+          subscriptionPeriodEnd: periodEnd,
+          trialEndsAt: trialEnd,
+        },
+      });
+      return;
+    }
+
+    case "customer.subscription.deleted": {
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+      await tx.organization.updateMany({
+        where: { stripeCustomerId: customerId },
+        data: {
+          subscriptionStatus: "CANCELED",
+          subscriptionPriceId: null,
+          subscriptionPeriodEnd: null,
+        },
+      });
+      return;
+    }
+
     default:
       return;
+  }
+}
+
+function subscriptionStatusFor(s: Stripe.Subscription.Status): "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "NONE" {
+  switch (s) {
+    case "trialing": return "TRIALING";
+    case "active":   return "ACTIVE";
+    case "past_due": return "PAST_DUE";
+    case "unpaid":   return "PAST_DUE";
+    case "incomplete": return "PAST_DUE";
+    case "canceled": return "CANCELED";
+    case "incomplete_expired": return "CANCELED";
+    case "paused":   return "CANCELED";
+    default:         return "NONE";
   }
 }
