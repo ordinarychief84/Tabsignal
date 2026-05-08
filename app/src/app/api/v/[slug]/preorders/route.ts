@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { taxRateForZip } from "@/lib/tax";
+import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 
 const Body = z.object({
   items: z
@@ -42,9 +43,14 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
       zipCode: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
     },
   });
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if (!meetsAtLeast(planFromOrg(venue.org), "growth")) {
+    // Pre-order requires Growth — 404 so we don't leak feature availability.
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
   if (venue.stripeAccountId && !venue.stripeChargesEnabled) {
     return NextResponse.json(
       { error: "VENUE_NOT_READY", detail: "Pre-orders aren't accepted yet at this venue." },

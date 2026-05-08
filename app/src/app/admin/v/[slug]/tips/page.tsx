@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
+import { venuePlanForVenueId } from "@/lib/plan-gate";
+import { meetsAtLeast } from "@/lib/plans";
+import { UpgradeRequired } from "../upgrade-required";
 import { TipsPanel } from "./tips-panel";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +15,19 @@ export default async function TipsPage({ params }: { params: { slug: string } })
 
   const venue = await db.venue.findUnique({ where: { slug: params.slug }, select: { id: true } });
   if (!venue || venue.id !== session.venueId) return null;
+
+  const plan = await venuePlanForVenueId(venue.id);
+  if (!meetsAtLeast(plan, "growth")) {
+    return (
+      <>
+        <header className="mb-6">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Pooling</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">Tip pool</h1>
+        </header>
+        <UpgradeRequired slug={params.slug} feature="Tip pooling" current={plan} required="growth" />
+      </>
+    );
+  }
 
   const staff = await db.staffMember.findMany({
     where: { venueId: venue.id },

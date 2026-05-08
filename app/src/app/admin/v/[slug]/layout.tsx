@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { isOperator } from "@/lib/auth/operator";
+import { meetsAtLeast, planFromOrg } from "@/lib/plans";
 import { AdminNav } from "./admin-nav";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,11 @@ export default async function AdminVenueLayout({
 
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+    },
   });
   if (!venue) notFound();
   if (venue.id !== session.venueId) {
@@ -47,6 +52,7 @@ export default async function AdminVenueLayout({
   }
 
   const operator = isOperator(session);
+  const isPaidPlan = meetsAtLeast(planFromOrg(venue.org), "growth");
 
   return (
     <div className="flex min-h-screen flex-col bg-oat text-slate md:flex-row">
@@ -66,7 +72,7 @@ export default async function AdminVenueLayout({
             <p className="truncate text-sm font-medium text-slate">{venue.name}</p>
           </div>
         </div>
-        <AdminNav slug={params.slug} operator={operator} />
+        <AdminNav slug={params.slug} operator={operator} isPaidPlan={isPaidPlan} />
         <div className="hidden md:block md:px-6 md:py-6">
           <form action="/api/auth/logout" method="post">
             <button

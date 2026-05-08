@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { venueAnalytics, type AnalyticsRange } from "@/lib/analytics";
 import { dollars } from "@/lib/bill";
+import { venuePlanForVenueId } from "@/lib/plan-gate";
+import { meetsAtLeast } from "@/lib/plans";
+import { UpgradeRequired } from "../upgrade-required";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — analytics" };
@@ -29,6 +32,19 @@ export default async function AnalyticsPage({
     select: { id: true },
   });
   if (!venue || venue.id !== session.venueId) return null;
+
+  const plan = await venuePlanForVenueId(venue.id);
+  if (!meetsAtLeast(plan, "growth")) {
+    return (
+      <>
+        <header className="mb-6">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Insights</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">Analytics</h1>
+        </header>
+        <UpgradeRequired slug={params.slug} feature="Analytics" current={plan} required="growth" />
+      </>
+    );
+  }
 
   const range: AnalyticsRange =
     searchParams.range === "month" ? "month" :

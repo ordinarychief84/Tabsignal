@@ -17,13 +17,28 @@ type Props = {
   plans: PlanCard[];
   hasSubscription: boolean;
   status: string;
+  trialEndsAt: string | null;
 };
 
 function dollars(cents: number): string {
   return `$${(cents / 100).toFixed(0)}`;
 }
 
-export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, status }: Props) {
+function statusLabel(status: string): { label: string; tone: "ok" | "warn" | "bad" | "neutral" } {
+  switch (status) {
+    case "ACTIVE":   return { label: "Active",                  tone: "ok"      };
+    case "TRIALING": return { label: "Trialing",                tone: "ok"      };
+    case "PAST_DUE": return { label: "Payment failed",          tone: "bad"     };
+    case "CANCELED": return { label: "Canceled",                tone: "neutral" };
+    default:         return { label: "Inactive",                tone: "neutral" };
+  }
+}
+
+function daysBetween(target: Date, from: Date): number {
+  return Math.ceil((target.getTime() - from.getTime()) / 86_400_000);
+}
+
+export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, status, trialEndsAt }: Props) {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,12 +80,64 @@ export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, stat
         <p className="rounded-lg border border-coral/40 bg-coral/5 px-4 py-3 text-sm text-coral">{error}</p>
       ) : null}
 
+      {status === "PAST_DUE" ? (
+        <section className="rounded-2xl border border-coral/40 bg-coral/5 p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-coral">Action needed</p>
+              <p className="mt-1 text-base font-medium text-slate">Your last payment failed.</p>
+              <p className="mt-1 text-xs text-slate/70">
+                Stripe will retry, but features will be cut off if it doesn&rsquo;t go through soon.
+                Update your card to keep your subscription active.
+              </p>
+            </div>
+            <button
+              onClick={openPortal}
+              disabled={pending === "portal"}
+              className="shrink-0 rounded-full bg-coral px-4 py-2 text-sm text-white hover:bg-coral/90 disabled:opacity-50"
+            >
+              {pending === "portal" ? "Opening…" : "Update payment"}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {status === "TRIALING" && trialEndsAt ? (
+        (() => {
+          const days = daysBetween(new Date(trialEndsAt), new Date());
+          if (days < 0) return null;
+          return (
+            <section className="rounded-2xl border border-chartreuse/40 bg-chartreuse/10 p-5">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Trial</p>
+              <p className="mt-1 text-base font-medium text-slate">
+                {days === 0 ? "Trial ends today." : `Trial ends in ${days} day${days === 1 ? "" : "s"}.`}
+              </p>
+              <p className="mt-1 text-xs text-slate/70">
+                Your card will be charged on {new Date(trialEndsAt).toLocaleDateString()} unless you cancel.
+              </p>
+            </section>
+          );
+        })()
+      ) : null}
+
       {hasSubscription ? (
         <section className="rounded-2xl border border-slate/10 bg-white p-5">
           <div className="flex items-baseline justify-between">
             <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Current</p>
-              <p className="mt-1 text-base font-medium">Status: {status}</p>
+              <p className="mt-1 text-base font-medium">
+                Status:{" "}
+                <span
+                  className={[
+                    statusLabel(status).tone === "ok"   ? "text-slate"  : "",
+                    statusLabel(status).tone === "bad"  ? "text-coral"  : "",
+                    statusLabel(status).tone === "warn" ? "text-umber"  : "",
+                    statusLabel(status).tone === "neutral" ? "text-slate/60" : "",
+                  ].join(" ")}
+                >
+                  {statusLabel(status).label}
+                </span>
+              </p>
             </div>
             <button
               onClick={openPortal}

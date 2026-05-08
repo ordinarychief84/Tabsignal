@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getStaffSession } from "@/lib/auth/session";
+import { gateAdminRoute } from "@/lib/plan-gate";
 
 async function gateCategory(slug: string, categoryId: string) {
-  const session = await getStaffSession();
-  if (!session) return { ok: false as const, status: 401, body: { error: "UNAUTHORIZED" } };
-  const venue = await db.venue.findUnique({ where: { slug }, select: { id: true } });
-  if (!venue) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
-  if (venue.id !== session.venueId) return { ok: false as const, status: 403, body: { error: "FORBIDDEN" } };
+  const gate = await gateAdminRoute(slug, "growth");
+  if (!gate.ok) return gate;
   const cat = await db.menuCategory.findUnique({ where: { id: categoryId } });
-  if (!cat || cat.venueId !== venue.id) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
-  return { ok: true as const, venueId: venue.id, category: cat };
+  if (!cat || cat.venueId !== gate.venueId) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
+  return { ok: true as const, venueId: gate.venueId, category: cat };
 }
 
 const PatchBody = z.object({

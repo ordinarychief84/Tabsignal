@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getStaffSession } from "@/lib/auth/session";
-
-async function gateVenue(slug: string) {
-  const session = await getStaffSession();
-  if (!session) return { ok: false as const, status: 401, body: { error: "UNAUTHORIZED" } };
-  const venue = await db.venue.findUnique({ where: { slug }, select: { id: true } });
-  if (!venue) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
-  if (venue.id !== session.venueId) return { ok: false as const, status: 403, body: { error: "FORBIDDEN" } };
-  return { ok: true as const, venueId: venue.id };
-}
+import { gateAdminRoute } from "@/lib/plan-gate";
 
 export async function GET(_req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateVenue(ctx.params.slug);
+  const gate = await gateAdminRoute(ctx.params.slug, "growth");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   const items = await db.menuItem.findMany({
@@ -50,7 +41,7 @@ const CreateBody = z.object({
 });
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateVenue(ctx.params.slug);
+  const gate = await gateAdminRoute(ctx.params.slug, "growth");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let parsed;

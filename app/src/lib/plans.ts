@@ -84,3 +84,19 @@ export function rankOf(plan: PlanId): number {
 export function meetsAtLeast(current: PlanId, required: PlanId): boolean {
   return rankOf(current) >= rankOf(required);
 }
+
+// Subscription statuses that grant access to the paid plan. PAST_DUE keeps
+// the venue running while Stripe retries — the billing page nags them to
+// fix payment. CANCELED / NONE drops them back to free.
+const ACCESS_GRANTING: ReadonlyArray<string> = ["ACTIVE", "TRIALING", "PAST_DUE"];
+
+type OrgPlanFields = {
+  subscriptionPriceId: string | null;
+  subscriptionStatus: string;
+};
+
+export function planFromOrg(org: OrgPlanFields): PlanId {
+  if (!ACCESS_GRANTING.includes(org.subscriptionStatus)) return "free";
+  if (!org.subscriptionPriceId) return "free";
+  return planByPriceId(org.subscriptionPriceId) ?? "free";
+}
