@@ -91,6 +91,54 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
     case "payment_intent.succeeded": {
       const intent = event.data.object as Stripe.PaymentIntent;
       const sessionId = intent.metadata?.tabcall_session_id;
+      const splitId = intent.metadata?.tabcall_split_id;
+      // Split payment: mark the split, and mark the session paid only when
+      // every split has been settled. The non-split path falls through.
+      if (splitId && sessionId) {
+        const split = await tx.billSplit.findUnique({ where: { id: splitId } });
+        if (!split || split.paidAt) return;
+        await tx.billSplit.update({
+          where: { id: splitId },
+          data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
+        });
+
+        const allSplits = await tx.billSplit.findMany({
+          where: { sessionId },
+          select: { paidAt: true },
+        });
+        const allPaid = allSplits.every(s => s.paidAt !== null);
+
+        const session = await tx.guestSession.findUnique({
+          where: { id: sessionId },
+          include: {
+            venue: { select: { id: true, name: true, zipCode: true } },
+            table: { select: { label: true } },
+          },
+        });
+        if (!session) return;
+
+        if (allPaid && !session.paidAt) {
+          await tx.guestSession.update({
+            where: { id: sessionId },
+            data: { paidAt: new Date() },
+          });
+        }
+
+        const totals = totalsFor(parseLineItems(session.lineItems), session.venue.zipCode ?? "", 0);
+        void events.paymentConfirmed(session.venueId, session.id, {
+          sessionId: session.id,
+          tableLabel: session.table.label,
+          venueName: session.venue.name,
+          totalCents: totals.subtotalCents + totals.taxCents,
+          tipCents: 0,
+          tipPercent: 0,
+          totalDisplay: dollars(totals.subtotalCents + totals.taxCents),
+          paymentIntentId: intent.id,
+          split: { splitId, allPaid },
+        });
+        return;
+      }
+
       if (!sessionId) return;
       const session = await tx.guestSession.findUnique({
         where: { id: sessionId },
