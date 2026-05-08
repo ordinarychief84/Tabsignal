@@ -7,23 +7,26 @@ export function AdminNav({
   slug,
   operator,
   isPaidPlan,
+  isProPlan,
 }: {
   slug: string;
   operator: boolean;
   isPaidPlan: boolean;
+  isProPlan: boolean;
 }) {
   const pathname = usePathname();
-  const items: { href: string; label: string; growth?: boolean }[] = [
-    { href: `/admin/v/${slug}`,           label: "Dashboard"  },
-    { href: `/admin/v/${slug}/analytics`, label: "Analytics", growth: true },
-    { href: `/admin/v/${slug}/menu`,      label: "Menu",      growth: true },
-    { href: `/admin/v/${slug}/orders`,    label: "Orders",    growth: true },
-    { href: `/admin/v/${slug}/reviews`,   label: "Reviews"    },
-    { href: `/admin/v/${slug}/staff`,     label: "Staff"      },
-    { href: `/admin/v/${slug}/tips`,      label: "Tips",      growth: true },
-    { href: `/admin/v/${slug}/qr-tents`,  label: "QR tents"   },
-    { href: `/admin/v/${slug}/billing`,   label: "Billing"    },
-    { href: `/admin/v/${slug}/settings`,  label: "Settings"   },
+  const items: { href: string; label: string; growth?: boolean; pro?: boolean }[] = [
+    { href: `/admin/v/${slug}`,             label: "Dashboard"  },
+    { href: `/admin/v/${slug}/analytics`,   label: "Analytics", growth: true },
+    { href: `/admin/v/${slug}/menu`,        label: "Menu",      growth: true },
+    { href: `/admin/v/${slug}/orders`,      label: "Orders",    growth: true },
+    { href: `/admin/v/${slug}/reservations`, label: "Reservations", pro: true },
+    { href: `/admin/v/${slug}/reviews`,     label: "Reviews"    },
+    { href: `/admin/v/${slug}/staff`,       label: "Staff"      },
+    { href: `/admin/v/${slug}/tips`,        label: "Tips",      growth: true },
+    { href: `/admin/v/${slug}/qr-tents`,    label: "QR tents"   },
+    { href: `/admin/v/${slug}/billing`,     label: "Billing"    },
+    { href: `/admin/v/${slug}/settings`,    label: "Settings"   },
   ];
 
   function isActive(href: string) {
@@ -36,7 +39,9 @@ export function AdminNav({
       <ul className="flex gap-1 overflow-x-auto md:flex-col md:gap-0.5">
         {items.map(it => {
           const active = isActive(it.href);
-          const locked = it.growth && !isPaidPlan;
+          const lockedGrowth = it.growth && !isPaidPlan;
+          const lockedPro = it.pro && !isProPlan;
+          const lockLabel = lockedPro ? "Pro" : lockedGrowth ? "Growth" : null;
           return (
             <li key={it.href}>
               <Link
@@ -49,12 +54,12 @@ export function AdminNav({
                 ].join(" ")}
               >
                 <span>{it.label}</span>
-                {locked ? (
+                {lockLabel ? (
                   <span className={[
                     "ml-2 rounded-full px-1.5 text-[9px] uppercase tracking-wider",
                     active ? "bg-oat/20 text-oat" : "bg-slate/10 text-slate/50",
                   ].join(" ")}>
-                    Growth
+                    {lockLabel}
                   </span>
                 ) : null}
               </Link>

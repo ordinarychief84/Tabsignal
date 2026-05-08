@@ -52,7 +52,9 @@ export default async function AdminVenueLayout({
   }
 
   const operator = isOperator(session);
-  const isPaidPlan = meetsAtLeast(planFromOrg(venue.org), "growth");
+  const orgPlan = planFromOrg(venue.org);
+  const isPaidPlan = meetsAtLeast(orgPlan, "growth");
+  const isProPlan = meetsAtLeast(orgPlan, "pro");
 
   return (
     <div className="flex min-h-screen flex-col bg-oat text-slate md:flex-row">
@@ -72,7 +74,7 @@ export default async function AdminVenueLayout({
             <p className="truncate text-sm font-medium text-slate">{venue.name}</p>
           </div>
         </div>
-        <AdminNav slug={params.slug} operator={operator} isPaidPlan={isPaidPlan} />
+        <AdminNav slug={params.slug} operator={operator} isPaidPlan={isPaidPlan} isProPlan={isProPlan} />
         <div className="hidden md:block md:px-6 md:py-6">
           <form action="/api/auth/logout" method="post">
             <button
