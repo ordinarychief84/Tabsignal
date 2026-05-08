@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { parseLineItems, totalsFor } from "@/lib/bill";
 
 const Body = z.object({
-  tipPercent: z.number().min(0).max(50),
+  tipPercent: z.number().min(0).max(50).finite(),
+  sessionToken: z.string().min(1),
 });
+
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   let parsed;
@@ -29,6 +38,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
+  if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
   if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });

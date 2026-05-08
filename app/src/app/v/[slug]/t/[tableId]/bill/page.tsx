@@ -87,6 +87,7 @@ export default async function BillPage({ params }: { params: { slug: string; tab
           zipCode={venue.zipCode ?? ""}
           data={{
             sessionId: session.id,
+            sessionToken: session.sessionToken,
             venueName: venue.name,
             tableLabel: session.table.label,
             items,

@@ -81,7 +81,7 @@ export function GuestRequestPanel({
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, type }),
+        body: JSON.stringify({ sessionId, sessionToken, type }),
       });
       if (res.status === 429) {
         setStatus("rate_limited");

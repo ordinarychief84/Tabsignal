@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
+
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 /**
  * Guest-initiated "start fresh" — closes the current session so the next
@@ -26,7 +34,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   // Either the session token matches OR (future: staff session check).
   // Staff-side close ships when we add a "clear tab" action to the manager
   // dashboard; for now guest-initiated only.
-  if (!parsed.sessionToken || parsed.sessionToken !== session.sessionToken) {
+  if (!parsed.sessionToken || !tokensEqual(session.sessionToken, parsed.sessionToken)) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
