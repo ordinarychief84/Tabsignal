@@ -83,4 +83,7 @@ export const events = {
       emit({ kind: "venue", id: venueId, event: "payment_confirmed", payload: summary }),
       emit({ kind: "guest", id: sessionId, event: "payment_confirmed", payload: summary }),
     ]).then(() => undefined),
+
+  preOrderPaid: (venueId: string, order: unknown) =>
+    emit({ kind: "venue", id: venueId, event: "preorder_paid", payload: { order } }),
 };

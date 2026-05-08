@@ -90,6 +90,24 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const intent = event.data.object as Stripe.PaymentIntent;
+      const preOrderId = intent.metadata?.tabcall_preorder_id;
+      // Pre-order payment: mark order paid so it appears on the staff queue.
+      if (preOrderId) {
+        const pre = await tx.preOrder.findUnique({ where: { id: preOrderId } });
+        if (!pre || pre.paidAt) return;
+        await tx.preOrder.update({
+          where: { id: preOrderId },
+          data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
+        });
+        // Realtime nudge so staff queue updates instantly.
+        void events.preOrderPaid(pre.venueId, {
+          id: pre.id,
+          pickupCode: pre.pickupCode,
+          totalCents: pre.totalCents,
+        });
+        return;
+      }
+
       const sessionId = intent.metadata?.tabcall_session_id;
       const splitId = intent.metadata?.tabcall_split_id;
       // Split payment: mark the split, and mark the session paid only when

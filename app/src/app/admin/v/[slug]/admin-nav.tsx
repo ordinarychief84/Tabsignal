@@ -9,6 +9,7 @@ export function AdminNav({ slug, operator }: { slug: string; operator: boolean }
     { href: `/admin/v/${slug}`,           label: "Dashboard"  },
     { href: `/admin/v/${slug}/analytics`, label: "Analytics"  },
     { href: `/admin/v/${slug}/menu`,      label: "Menu"       },
+    { href: `/admin/v/${slug}/orders`,    label: "Orders"     },
     { href: `/admin/v/${slug}/reviews`,   label: "Reviews"    },
     { href: `/admin/v/${slug}/staff`,     label: "Staff"      },
     { href: `/admin/v/${slug}/tips`,      label: "Tips"       },
