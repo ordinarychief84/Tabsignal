@@ -107,7 +107,7 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
             Updates instantly via WebSocket.
           </p>
         </header>
-        <ManagerFloor venueId={venue.id} />
+        <ManagerFloor venueId={venue.id} slug={params.slug} />
       </section>
 
       <section className="mt-12">

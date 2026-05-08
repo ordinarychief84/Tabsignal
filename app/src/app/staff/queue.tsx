@@ -46,6 +46,14 @@ export function StaffQueue({
   );
   const [staffMates, setStaffMates] = useState<StaffMate[]>([]);
   const [handoffToast, setHandoffToast] = useState<string | null>(null);
+  // Tier 3e: regular at one of your tables. Buzzes once, persists for 90s.
+  const [regularToast, setRegularToast] = useState<{
+    profileId: string;
+    name: string;
+    visits: number;
+    topItem: string | null;
+    pinnedNote: string | null;
+  } | null>(null);
   const aborter = useRef<AbortController | null>(null);
   const assignedSet = new Set(assignedTableIds);
 
@@ -111,10 +119,35 @@ export function StaffQueue({
       refresh();
     }
 
+    function onRegularArrivedForYou(payload: {
+      sessionId?: string;
+      tableId?: string | null;
+      preview?: {
+        profileId: string;
+        displayName: string | null;
+        visits: number;
+        topItem: string | null;
+        pinnedNote: string | null;
+      };
+    } | null) {
+      const p = payload?.preview;
+      if (!p) return;
+      setRegularToast({
+        profileId: p.profileId,
+        name: p.displayName ?? "Returning guest",
+        visits: p.visits,
+        topItem: p.topItem,
+        pinnedNote: p.pinnedNote,
+      });
+      // Auto-clear after 90s.
+      setTimeout(() => setRegularToast(curr => curr?.profileId === p.profileId ? null : curr), 90_000);
+    }
+
     socket.on("new_request", onNew);
     socket.on("request_acknowledged", onAck);
     socket.on("request_resolved", onResolved);
     socket.on("request_handed_off_to_you", onHandedOffToYou);
+    socket.on("regular_arrived_for_you", onRegularArrivedForYou);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
 
@@ -125,6 +158,7 @@ export function StaffQueue({
       socket.off("request_acknowledged", onAck);
       socket.off("request_resolved", onResolved);
       socket.off("request_handed_off_to_you", onHandedOffToYou);
+      socket.off("regular_arrived_for_you", onRegularArrivedForYou);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       aborter.current?.abort();
@@ -281,6 +315,35 @@ export function StaffQueue({
       {handoffToast ? (
         <div className="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-xl bg-chartreuse px-4 py-2 text-sm font-medium text-slate shadow-lg">
           {handoffToast}
+        </div>
+      ) : null}
+
+      {regularToast ? (
+        <div className="fixed bottom-20 left-1/2 z-30 w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl border border-chartreuse/40 bg-white px-4 py-3 shadow-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Regular at your table</p>
+              <p className="mt-1 text-sm font-medium">
+                {regularToast.name}
+                <span className="text-slate/60"> · visit #{regularToast.visits + 1}</span>
+              </p>
+              {regularToast.topItem ? (
+                <p className="mt-0.5 text-xs text-slate/70">Usually: {regularToast.topItem}</p>
+              ) : null}
+              {regularToast.pinnedNote ? (
+                <p className="mt-1 rounded bg-chartreuse/10 px-2 py-1 text-xs text-slate/80">
+                  {regularToast.pinnedNote}
+                </p>
+              ) : null}
+            </div>
+            <button
+              onClick={() => setRegularToast(null)}
+              className="shrink-0 rounded-full border border-slate/15 px-2 py-0.5 text-[11px] text-slate/60"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
         </div>
       ) : null}
     </>

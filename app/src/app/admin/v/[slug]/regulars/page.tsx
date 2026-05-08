@@ -7,6 +7,7 @@ import { meetsAtLeast } from "@/lib/plans";
 import { listRegulars } from "@/lib/regulars";
 import { dollars } from "@/lib/bill";
 import { UpgradeRequired } from "../upgrade-required";
+import { ImportPanel } from "./import-panel";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — regulars" };
@@ -43,6 +44,10 @@ export default async function RegularsPage({ params }: { params: { slug: string 
           Tap a row to open the dossier and add notes.
         </p>
       </header>
+
+      <div className="mb-6">
+        <ImportPanel slug={params.slug} />
+      </div>
 
       {regulars.length === 0 ? (
         <div className="rounded-2xl border border-slate/10 bg-white px-6 py-10 text-center text-sm text-slate/55">
