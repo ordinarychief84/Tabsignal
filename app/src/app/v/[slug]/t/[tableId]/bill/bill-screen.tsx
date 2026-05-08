@@ -91,10 +91,11 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
         />
       );
     }
+    const tokenSegment = `?s=${encodeURIComponent(data.sessionToken)}`;
     const returnUrl =
       typeof window !== "undefined"
-        ? `${window.location.origin}/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback`
-        : `/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback`;
+        ? `${window.location.origin}/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback${tokenSegment}`
+        : `/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/feedback${tokenSegment}`;
     return (
       <Elements
         stripe={getStripe()}
@@ -197,6 +198,13 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
       >
         {creating ? "Preparing payment…" : `Continue · ${dollars(totals.totalCents)}`}
       </button>
+
+      <a
+        href={`/v/${slug}/t/${encodeURIComponent(data.tableLabel)}/bill/split?s=${encodeURIComponent(data.sessionToken)}`}
+        className="block w-full rounded-xl border border-slate/15 bg-white py-3 text-center text-sm font-medium text-slate/70 hover:border-slate/30"
+      >
+        Split this bill
+      </a>
 
       <p className="text-center text-[11px] text-slate/40">
         Encrypted by Stripe. Apple Pay and Google Pay supported.

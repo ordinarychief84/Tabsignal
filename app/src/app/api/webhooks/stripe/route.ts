@@ -90,7 +90,73 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const intent = event.data.object as Stripe.PaymentIntent;
+      const preOrderId = intent.metadata?.tabcall_preorder_id;
+      // Pre-order payment: mark order paid so it appears on the staff queue.
+      if (preOrderId) {
+        const pre = await tx.preOrder.findUnique({ where: { id: preOrderId } });
+        if (!pre || pre.paidAt) return;
+        await tx.preOrder.update({
+          where: { id: preOrderId },
+          data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
+        });
+        // Realtime nudge so staff queue updates instantly.
+        void events.preOrderPaid(pre.venueId, {
+          id: pre.id,
+          pickupCode: pre.pickupCode,
+          totalCents: pre.totalCents,
+        });
+        return;
+      }
+
       const sessionId = intent.metadata?.tabcall_session_id;
+      const splitId = intent.metadata?.tabcall_split_id;
+      // Split payment: mark the split, and mark the session paid only when
+      // every split has been settled. The non-split path falls through.
+      if (splitId && sessionId) {
+        const split = await tx.billSplit.findUnique({ where: { id: splitId } });
+        if (!split || split.paidAt) return;
+        await tx.billSplit.update({
+          where: { id: splitId },
+          data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
+        });
+
+        const allSplits = await tx.billSplit.findMany({
+          where: { sessionId },
+          select: { paidAt: true },
+        });
+        const allPaid = allSplits.every(s => s.paidAt !== null);
+
+        const session = await tx.guestSession.findUnique({
+          where: { id: sessionId },
+          include: {
+            venue: { select: { id: true, name: true, zipCode: true } },
+            table: { select: { label: true } },
+          },
+        });
+        if (!session) return;
+
+        if (allPaid && !session.paidAt) {
+          await tx.guestSession.update({
+            where: { id: sessionId },
+            data: { paidAt: new Date() },
+          });
+        }
+
+        const totals = totalsFor(parseLineItems(session.lineItems), session.venue.zipCode ?? "", 0);
+        void events.paymentConfirmed(session.venueId, session.id, {
+          sessionId: session.id,
+          tableLabel: session.table.label,
+          venueName: session.venue.name,
+          totalCents: totals.subtotalCents + totals.taxCents,
+          tipCents: 0,
+          tipPercent: 0,
+          totalDisplay: dollars(totals.subtotalCents + totals.taxCents),
+          paymentIntentId: intent.id,
+          split: { splitId, allPaid },
+        });
+        return;
+      }
+
       if (!sessionId) return;
       const session = await tx.guestSession.findUnique({
         where: { id: sessionId },
@@ -160,7 +226,69 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       return;
     }
 
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const sub = event.data.object as Stripe.Subscription;
+      const orgId = sub.metadata?.tabcall_org_id;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+
+      // Match by metadata first (set on checkout) and fall back to customer
+      // id so subs created in the Stripe dashboard still attach correctly.
+      const org = orgId
+        ? await tx.organization.findUnique({ where: { id: orgId } })
+        : await tx.organization.findFirst({ where: { stripeCustomerId: customerId } });
+      if (!org) return;
+
+      const status = subscriptionStatusFor(sub.status);
+      const priceId = sub.items.data[0]?.price.id ?? null;
+      const periodEnd = sub.current_period_end
+        ? new Date(sub.current_period_end * 1000)
+        : null;
+      const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
+
+      await tx.organization.update({
+        where: { id: org.id },
+        data: {
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: sub.id,
+          subscriptionStatus: status,
+          subscriptionPriceId: priceId,
+          subscriptionPeriodEnd: periodEnd,
+          trialEndsAt: trialEnd,
+        },
+      });
+      return;
+    }
+
+    case "customer.subscription.deleted": {
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+      await tx.organization.updateMany({
+        where: { stripeCustomerId: customerId },
+        data: {
+          subscriptionStatus: "CANCELED",
+          subscriptionPriceId: null,
+          subscriptionPeriodEnd: null,
+        },
+      });
+      return;
+    }
+
     default:
       return;
+  }
+}
+
+function subscriptionStatusFor(s: Stripe.Subscription.Status): "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "NONE" {
+  switch (s) {
+    case "trialing": return "TRIALING";
+    case "active":   return "ACTIVE";
+    case "past_due": return "PAST_DUE";
+    case "unpaid":   return "PAST_DUE";
+    case "incomplete": return "PAST_DUE";
+    case "canceled": return "CANCELED";
+    case "incomplete_expired": return "CANCELED";
+    case "paused":   return "CANCELED";
+    default:         return "NONE";
   }
 }
