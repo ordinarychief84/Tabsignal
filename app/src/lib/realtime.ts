@@ -86,4 +86,30 @@ export const events = {
 
   preOrderPaid: (venueId: string, order: unknown) =>
     emit({ kind: "venue", id: venueId, event: "preorder_paid", payload: { order } }),
+
+  // Tier 3e: a paired regular has just sat down. Fans out to every
+  // staff PWA at the venue + the per-staff rooms for assigned tables.
+  regularArrived: (
+    venueId: string,
+    sessionId: string,
+    tableId: string | null,
+    preview: unknown,
+    assignedStaffIds: string[] = []
+  ) =>
+    Promise.all([
+      emit({
+        kind: "venue",
+        id: venueId,
+        event: "regular_arrived",
+        payload: { sessionId, tableId, preview },
+      }),
+      ...assignedStaffIds.map(sid =>
+        emit({
+          kind: "staff",
+          id: sid,
+          event: "regular_arrived_for_you",
+          payload: { sessionId, tableId, preview },
+        })
+      ),
+    ]).then(() => undefined),
 };

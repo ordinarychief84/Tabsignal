@@ -21,6 +21,7 @@ export function AdminNav({
     { href: `/admin/v/${slug}/menu`,        label: "Menu",      growth: true },
     { href: `/admin/v/${slug}/orders`,      label: "Orders",    growth: true },
     { href: `/admin/v/${slug}/reservations`, label: "Reservations", pro: true },
+    { href: `/admin/v/${slug}/regulars`,    label: "Regulars",  pro: true },
     { href: `/admin/v/${slug}/reviews`,     label: "Reviews"    },
     { href: `/admin/v/${slug}/staff`,       label: "Staff"      },
     { href: `/admin/v/${slug}/tips`,        label: "Tips",      growth: true },

@@ -507,6 +507,28 @@ model GuestProfile {
   preferences            Json           @default("{}")
   createdAt              DateTime       @default(now())
   sessions               GuestSession[]
+  notes                  GuestNote[]
+}
+
+// Tier 3e: free-text notes pinned to a regular for staff handoff.
+// Authored per-venue so a regular's note at Bar A doesn't leak to Bar B
+// even if they have the same phone. Soft-delete via `deletedAt` so an
+// accidental delete is recoverable.
+model GuestNote {
+  id              String       @id @default(cuid())
+  guestProfileId  String
+  venueId         String
+  authorStaffId   String?
+  authorName      String       // denormalized for display after staff churn
+  body            String       @db.Text
+  pinned          Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  guestProfile    GuestProfile @relation(fields: [guestProfileId], references: [id], onDelete: Cascade)
+
+  @@index([guestProfileId, venueId])
+  @@index([venueId, createdAt])
 }
 
 // 6-digit OTPs for phone-based guest identification. SHA-256 hashed so
