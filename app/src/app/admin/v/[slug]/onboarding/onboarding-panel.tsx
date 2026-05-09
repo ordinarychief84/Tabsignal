@@ -205,7 +205,10 @@ function ConnectStripeInline({ slug, attached }: { slug: string; attached: boole
     try {
       const res = await fetch(`/api/admin/v/${slug}/stripe/connect`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        // Surface Stripe's actual reason instead of a generic STRIPE_ERROR.
+        throw new Error(data?.detail || data?.error || `HTTP ${res.status}`);
+      }
       if (!data.url) throw new Error("no_url");
       window.location.href = data.url;
       // Note: leave loading=true while we redirect. If the navigation fails

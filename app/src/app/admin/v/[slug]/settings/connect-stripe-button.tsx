@@ -28,7 +28,11 @@ export function ConnectStripeButton({
         method: "POST",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        // Surface Stripe's actual reason (e.g. "Connect platform not
+        // activated", invalid api key) instead of a generic shrug.
+        throw new Error(data?.detail || data?.error || `HTTP ${res.status}`);
+      }
       if (!data.url) throw new Error("no_url");
       // Stripe-hosted onboarding flow. Manager fills business details,
       // bank info, identity verification — Stripe walks them through.
