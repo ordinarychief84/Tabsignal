@@ -9,10 +9,22 @@ import { getStaffSession } from "@/lib/auth/session";
  * concierge-only.
  */
 const Body = z.object({
+  // Identity (newly editable)
+  name: z.string().min(1).max(120).optional(),
+  address: z.string().max(240).nullable().optional(),
+  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/).nullable().optional(),
+  timezone: z.string().min(1).max(60).optional(),
+  // Reviews + branding
   googlePlaceId: z.string().max(120).nullable().optional(),
   brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   logoUrl: z.string().url().max(2048).nullable().optional(),
   requireIdOnFirstDrink: z.boolean().optional(),
+  // Notification routing — comma-separated emails or null to clear.
+  alertEmails: z.string().max(500).nullable().optional(),
+  // Per-shift kill switches.
+  requestsEnabled: z.boolean().optional(),
+  preorderEnabled: z.boolean().optional(),
+  reservationsEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
@@ -41,10 +53,18 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   // (clear it). `parsed.x !== undefined` is precise; the previous `"x" in
   // parsed` form was brittle if Zod ever emitted undefined-valued keys.
   const data: Record<string, string | boolean | null> = {};
+  if (parsed.name !== undefined) data.name = parsed.name;
+  if (parsed.address !== undefined) data.address = parsed.address;
+  if (parsed.zipCode !== undefined) data.zipCode = parsed.zipCode;
+  if (parsed.timezone !== undefined) data.timezone = parsed.timezone;
   if (parsed.googlePlaceId !== undefined) data.googlePlaceId = parsed.googlePlaceId;
   if (parsed.brandColor !== undefined) data.brandColor = parsed.brandColor;
   if (parsed.logoUrl !== undefined) data.logoUrl = parsed.logoUrl;
   if (parsed.requireIdOnFirstDrink !== undefined) data.requireIdOnFirstDrink = parsed.requireIdOnFirstDrink;
+  if (parsed.alertEmails !== undefined) data.alertEmails = parsed.alertEmails;
+  if (parsed.requestsEnabled !== undefined) data.requestsEnabled = parsed.requestsEnabled;
+  if (parsed.preorderEnabled !== undefined) data.preorderEnabled = parsed.preorderEnabled;
+  if (parsed.reservationsEnabled !== undefined) data.reservationsEnabled = parsed.reservationsEnabled;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "NOTHING_TO_UPDATE" }, { status: 400 });
@@ -55,10 +75,18 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
     data,
     select: {
       id: true,
+      name: true,
+      address: true,
+      zipCode: true,
+      timezone: true,
       googlePlaceId: true,
       brandColor: true,
       logoUrl: true,
       requireIdOnFirstDrink: true,
+      alertEmails: true,
+      requestsEnabled: true,
+      preorderEnabled: true,
+      reservationsEnabled: true,
     },
   });
 

@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 
-type Field = "googlePlaceId" | "brandColor" | "logoUrl";
+type Field =
+  | "name"
+  | "address"
+  | "zipCode"
+  | "timezone"
+  | "googlePlaceId"
+  | "brandColor"
+  | "logoUrl"
+  | "alertEmails";
 
 export function EditableField({
   slug,

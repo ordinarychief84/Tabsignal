@@ -36,13 +36,21 @@ export default async function RegularsPage({ params }: { params: { slug: string 
 
   return (
     <>
-      <header className="mb-6">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Regulars</p>
-        <h1 className="mt-2 text-3xl font-medium tracking-tight">Your people</h1>
-        <p className="mt-2 text-sm text-slate/60">
-          Guests who&rsquo;ve identified themselves and visited more than once.
-          Tap a row to open the dossier and add notes.
-        </p>
+      <header className="mb-6 flex items-baseline justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Regulars</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">Your people</h1>
+          <p className="mt-2 text-sm text-slate/60">
+            Guests who&rsquo;ve identified themselves and visited more than once.
+            Tap a row to open the dossier and add notes.
+          </p>
+        </div>
+        <a
+          href={`/api/admin/v/${params.slug}/export/regulars`}
+          className="shrink-0 rounded-full border border-slate/15 bg-white px-3 py-1.5 text-xs text-slate/70 hover:border-slate/40"
+        >
+          ↓ Export CSV
+        </a>
       </header>
 
       <div className="mb-6">
