@@ -53,6 +53,13 @@ const Optional = z.object({
   // Benchmarks cron — bearer token gating /api/cron/benchmarks. Optional
   // in dev (the cron only runs in prod via Vercel Cron).
   BENCHMARK_CRON_SECRET: z.string().optional(),
+
+  // Supabase Storage. NEXT_PUBLIC_SUPABASE_URL + the service role key
+  // power server-side image uploads (venue logos, etc.). Service role is
+  // server-only — never expose to the browser. Optional in dev: the
+  // upload endpoint surfaces a clear "not configured" error if missing.
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 });
 
 const ProdRequired = z.object({

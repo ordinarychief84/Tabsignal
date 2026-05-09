@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { EditableField } from "./editable-field";
 import { ToggleField } from "./toggle-field";
 import { ConnectStripeButton } from "./connect-stripe-button";
+import { LogoUpload } from "./logo-upload";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — settings" };
@@ -106,14 +107,7 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             help="Six-digit hex like #1D9E75. Appears on QR tents and the guest landing header."
             pattern="^#[0-9a-fA-F]{6}$"
           />
-          <EditableField
-            slug={params.slug}
-            field="logoUrl"
-            label="Logo URL"
-            placeholder="https://example.com/logo.png"
-            initial={venue.logoUrl ?? ""}
-            help="Public URL to a square logo. Optional — wordmark fallback otherwise."
-          />
+          <LogoUpload slug={params.slug} initialUrl={venue.logoUrl} />
         </Card>
 
         <Card title="Compliance">
