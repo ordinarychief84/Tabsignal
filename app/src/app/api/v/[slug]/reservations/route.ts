@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { gateGuestVenuePlan } from "@/lib/plan-gate";
 import { checkConflict, rateCheck } from "@/lib/reservations";
 import { sendSms, normalizePhone } from "@/lib/sms";
+import { sendEmail } from "@/lib/email/send";
+import { venueAlertRecipients } from "@/lib/email/recipients";
 
 const Body = z.object({
   partySize: z.number().int().min(1).max(20),
@@ -81,10 +83,40 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
 
   // SMS courtesy. Booking is confirmed regardless of SMS outcome.
   const formatted = startsAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+  const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { name: true } });
+  const venueName = venue?.name ?? "TabCall venue";
+  const codeShort = reservation.guestCode.slice(0, 6);
   void sendSms(
     phone,
-    `Reservation confirmed at TabCall venue for ${parsed.partySize} on ${formatted}. Code: ${reservation.guestCode.slice(0, 6)}`
+    `Reservation confirmed at ${venueName} for ${parsed.partySize} on ${formatted}. Code: ${codeShort}`
   );
+
+  // Email the venue's alert recipients (manager + owners) so they have a
+  // copy in their inbox without needing to refresh the reservations page.
+  // Fire-and-forget; never break the booking on email failure.
+  void (async () => {
+    const to = await venueAlertRecipients(gate.venueId);
+    if (to.length === 0) return;
+    const subject = `[${venueName}] New reservation · ${formatted} · ${parsed.partySize} · ${parsed.guestName}`;
+    const html = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#2B2539;background:#EBE9E4;padding:24px;">
+        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7B6767;">${venueName}</p>
+        <h2 style="margin:0 0 12px;font-weight:500;">New reservation</h2>
+        <p style="margin:0 0 6px;"><strong>Guest:</strong> ${parsed.guestName} (${phone})</p>
+        <p style="margin:0 0 6px;"><strong>Party:</strong> ${parsed.partySize}</p>
+        <p style="margin:0 0 6px;"><strong>When:</strong> ${formatted}</p>
+        ${parsed.zone ? `<p style="margin:0 0 6px;"><strong>Zone:</strong> ${parsed.zone}</p>` : ""}
+        ${parsed.notes ? `<p style="margin:0 0 6px;"><strong>Notes:</strong> ${parsed.notes}</p>` : ""}
+        <p style="margin:12px 0 0;font-size:11px;color:#7B6767;">Code: ${codeShort}</p>
+      </div>
+    `.trim();
+    const text = `${venueName} — new reservation\n\nGuest: ${parsed.guestName} (${phone})\nParty: ${parsed.partySize}\nWhen: ${formatted}\n${parsed.zone ? `Zone: ${parsed.zone}\n` : ""}${parsed.notes ? `Notes: ${parsed.notes}\n` : ""}Code: ${codeShort}`;
+    try {
+      await sendEmail({ to, subject, html, text });
+    } catch (err) {
+      console.warn("[reservation] manager email failed", err);
+    }
+  })();
 
   return NextResponse.json({
     id: reservation.id,
