@@ -225,6 +225,7 @@ export function SignupForm() {
           name="email"
           type="email"
           required
+          autoFocus
           placeholder="you@yourbar.com"
           autoComplete="email"
           inputMode="email"
@@ -277,7 +278,6 @@ export function SignupForm() {
           />
           <Field
             label="Tables (rough)"
-            unit="tables"
             name="tableCount"
             type="number"
             min={1}
@@ -297,9 +297,13 @@ export function SignupForm() {
           disabled={submitting}
           options={[
             { value: "America/Chicago", label: "Central (Houston)" },
-            { value: "America/New_York", label: "Eastern" },
-            { value: "America/Denver", label: "Mountain" },
-            { value: "America/Los_Angeles", label: "Pacific" },
+            { value: "America/New_York", label: "Eastern (NYC, ATL, MIA)" },
+            { value: "America/Denver", label: "Mountain (DEN)" },
+            { value: "America/Phoenix", label: "Arizona (no DST)" },
+            { value: "America/Los_Angeles", label: "Pacific (LA, SF, SEA)" },
+            { value: "America/Anchorage", label: "Alaska" },
+            { value: "Pacific/Honolulu", label: "Hawaii" },
+            { value: "America/Puerto_Rico", label: "Puerto Rico" },
           ]}
         />
       </Section>
@@ -322,8 +326,11 @@ export function SignupForm() {
       </button>
 
       <p className="text-center text-[11px] text-slate/45">
-        By creating an account you agree to TabCall&rsquo;s terms. We never email
-        guests; you&rsquo;ll only hear from us about your own venue.
+        By creating an account you agree to{" "}
+        <a href="/terms" className="text-umber underline-offset-4 hover:underline">
+          TabCall&rsquo;s terms
+        </a>
+        . We never email guests; you&rsquo;ll only hear from us about your own venue.
       </p>
     </form>
   );

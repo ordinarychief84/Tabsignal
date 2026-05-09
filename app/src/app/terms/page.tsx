@@ -1,0 +1,134 @@
+import Link from "next/link";
+
+export const metadata = { title: "TabCall — terms of service" };
+
+// Stub terms page. Real legal copy lives here once we have it. Linked from
+// the signup footer so "agree to TabCall's terms" actually points somewhere.
+export default function TermsPage() {
+  return (
+    <main className="min-h-screen bg-oat text-slate">
+      <header className="border-b border-slate/10 bg-white">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#EEEFC8" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="16" r="2" fill="#EEEFC8" />
+              </svg>
+            </span>
+            <span className="text-lg font-medium tracking-tight">TabCall</span>
+          </Link>
+          <Link href="/signup" className="text-xs tracking-wide text-slate/50 hover:text-slate">
+            Start free →
+          </Link>
+        </div>
+      </header>
+
+      <article className="mx-auto max-w-2xl px-6 py-12">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Terms of Service</p>
+        <h1 className="mt-2 text-4xl font-medium tracking-tight">The short version.</h1>
+        <p className="mt-4 text-base leading-relaxed text-slate/70">
+          Effective May 9, 2026. We&rsquo;ll keep this readable. The lawyer-language
+          version is on the way; until then, this is what you&rsquo;re agreeing to.
+        </p>
+
+        <Section title="Who runs TabCall">
+          <p>
+            TabCall is operated by Tab-Call (we / us / our), a US-based company
+            building software for independent bars and restaurants. Reach us at{" "}
+            <a href="mailto:hello@tabcall.app" className="text-umber underline-offset-4 hover:underline">
+              hello@tabcall.app
+            </a>
+            .
+          </p>
+        </Section>
+
+        <Section title="Your account">
+          <p>
+            You sign in with email — no passwords. We send a one-tap link that
+            expires in 15 minutes. Keep your email account secure; anyone with
+            access to it can sign in to your venue.
+          </p>
+        </Section>
+
+        <Section title="Pricing">
+          <p>
+            Starter is free with a 0.5% transaction fee on payments processed
+            through TabCall (Stripe&rsquo;s 2.9% + 30¢ is passed through at cost).
+            Growth is $99/mo, Pro is $299/mo, billed monthly. Cancel any time;
+            you&rsquo;ll be billed through the end of the current cycle.
+          </p>
+        </Section>
+
+        <Section title="Your data">
+          <p>
+            You own your venue&rsquo;s data — sessions, requests, feedback, regulars.
+            We process it to run the service. We never sell guest data to third
+            parties. Guests opt into the regulars dossier via phone OTP; their
+            data stays at the venue level (no cross-venue identity sharing without
+            explicit consent).
+          </p>
+          <p>
+            If you stop using TabCall, you can export your data via CSV from the
+            admin panel or by emailing us. We delete it on request.
+          </p>
+        </Section>
+
+        <Section title="Payments">
+          <p>
+            Payments are processed by Stripe. Funds settle directly to your
+            Stripe account; TabCall takes its 0.5% as a Stripe Application Fee.
+            We never see, store, or transmit card data.
+          </p>
+        </Section>
+
+        <Section title="Liability">
+          <p>
+            TabCall is provided &ldquo;as is.&rdquo; We aim for very high uptime but can&rsquo;t
+            promise zero outages. We&rsquo;re not responsible for missed orders,
+            stranded tabs, or service disruptions caused by upstream providers
+            (Stripe, your POS, your wifi). Run a paper backup process for the
+            first week so you&rsquo;re comfortable.
+          </p>
+        </Section>
+
+        <Section title="Service-of-alcohol responsibility">
+          <p>
+            TabCall surfaces guest requests and AI-classified feedback to your
+            staff. It does <strong>not</strong> verify guest age or sobriety.
+            Responsibility for compliance with TABC / state alcohol regulations
+            remains entirely with the venue and its staff. Use the &ldquo;Check ID on
+            first drink&rdquo; setting as one tool in your compliance kit, not the
+            whole kit.
+          </p>
+        </Section>
+
+        <Section title="Changes">
+          <p>
+            We&rsquo;ll update these terms as the product evolves. Material changes
+            will be emailed to your account at least 30 days before they take
+            effect. Continuing to use TabCall after that means you accept the
+            update.
+          </p>
+        </Section>
+
+        <p className="mt-12 text-[11px] text-slate/45">
+          Questions? Email{" "}
+          <a href="mailto:hello@tabcall.app" className="text-umber underline-offset-4 hover:underline">
+            hello@tabcall.app
+          </a>
+          . We answer.
+        </p>
+      </article>
+    </main>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-10 rounded-2xl border border-slate/10 bg-white px-6 py-5">
+      <h2 className="text-[11px] uppercase tracking-[0.18em] text-umber">{title}</h2>
+      <div className="mt-3 space-y-3 text-sm leading-relaxed text-slate/75">{children}</div>
+    </section>
+  );
+}
