@@ -76,6 +76,7 @@ model Organization {
   trialEndsAt           DateTime?
   createdAt             DateTime           @default(now())
   venues                Venue[]
+  members               OrgMember[]
 }
 
 model Venue {
@@ -101,6 +102,9 @@ model Venue {
   requireIdOnFirstDrink  Boolean          @default(false)
   brandColor             String?
   logoUrl                String?
+  // Tier 3a: optional grouping tag for hierarchical filtering in the
+  // multi-location operator console (e.g. "Texas locations only").
+  regionTag              String?
   createdAt              DateTime         @default(now())
   org                    Organization     @relation(fields: [orgId], references: [id])
   tables                 Table[]
@@ -112,6 +116,8 @@ model Venue {
   menuItems              MenuItem[]
   tipPools               TipPool[]
   preOrders              PreOrder[]
+  reservations           Reservation[]
+  waitlist               Waitlist[]
 
   @@index([orgId])
 }
@@ -169,6 +175,7 @@ model Table {
   requests    Request[]
   assignments TableAssignment[]
   preOrders   PreOrder[]
+  reservations Reservation[]
 
   @@unique([venueId, label])
   @@index([venueId])
@@ -213,6 +220,9 @@ model GuestSession {
   tipPercent            Float?
   paidAt                DateTime?
   stripePaymentIntentId String?
+  // Tier 3c: optional link to a returning guest's profile. Set when the
+  // guest identified via /api/v/[slug]/profile/identify before paying.
+  guestProfileId        String?
   expiresAt             DateTime
   createdAt             DateTime         @default(now())
   venue                 Venue            @relation(fields: [venueId], references: [id])
@@ -221,9 +231,11 @@ model GuestSession {
   feedback              FeedbackReport[]
   splits                BillSplit[]
   preOrders             PreOrder[]
+  guestProfile          GuestProfile?    @relation(fields: [guestProfileId], references: [id])
 
   @@index([venueId, tableId])
   @@index([expiresAt])
+  @@index([guestProfileId])
 }
 
 // Bill split: a single GuestSession can be paid in N parts, each a separate
@@ -397,4 +409,163 @@ model FeedbackReport {
   session      GuestSession @relation(fields: [sessionId], references: [id])
 
   @@index([venueId, createdAt])
+}
+
+// =====================================================================
+// Tier 3 — Multi-location, reservations, loyalty, benchmarking
+// =====================================================================
+
+// --- Tier 3a: Multi-location operator console (OrgMember) ---
+
+enum OrgMemberRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+model OrgMember {
+  id        String        @id @default(cuid())
+  orgId     String
+  email     String
+  role      OrgMemberRole @default(VIEWER)
+  createdAt DateTime      @default(now())
+  org       Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, email])
+  @@index([email])
+}
+
+// --- Tier 3b: Reservations + waitlist (Reservation, Waitlist, enums) ---
+
+enum ReservationStatus {
+  PENDING
+  ARRIVED
+  SEATED
+  NO_SHOW
+  CANCELED
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  SEATED
+  ABANDONED
+}
+
+model Reservation {
+  id         String            @id @default(cuid())
+  venueId    String
+  tableId    String?
+  zone       String?
+  partySize  Int
+  startsAt   DateTime
+  endsAt     DateTime
+  guestName  String
+  guestPhone String
+  status     ReservationStatus @default(PENDING)
+  notes      String?
+  arrivedAt  DateTime?
+  seatedAt   DateTime?
+  // Short code the guest gets in their SMS — used to look up / cancel
+  // their booking from the public page without exposing the row id.
+  guestCode  String            @default(cuid())
+  createdAt  DateTime          @default(now())
+  venue      Venue             @relation(fields: [venueId], references: [id])
+  table      Table?            @relation(fields: [tableId], references: [id])
+
+  @@index([venueId, startsAt])
+  @@index([guestPhone])
+}
+
+model Waitlist {
+  id            String         @id @default(cuid())
+  venueId       String
+  partySize     Int
+  guestName     String
+  guestPhone    String
+  quotedWaitMin Int
+  joinedAt      DateTime       @default(now())
+  notifiedAt    DateTime?
+  seatedAt      DateTime?
+  status        WaitlistStatus @default(WAITING)
+  venue         Venue          @relation(fields: [venueId], references: [id])
+
+  @@index([venueId, joinedAt])
+}
+
+// --- Tier 3c: Loyalty (GuestProfile + OTP) ---
+
+model GuestProfile {
+  id                     String         @id @default(cuid())
+  phone                  String         @unique
+  displayName            String?
+  email                  String?        @unique
+  // Per-venue points balance: { [venueId]: integer }. Mutated under
+  // row-level lock during webhook processing so concurrent payments
+  // don't race.
+  loyaltyPointsByVenueId Json           @default("{}")
+  preferences            Json           @default("{}")
+  createdAt              DateTime       @default(now())
+  sessions               GuestSession[]
+  notes                  GuestNote[]
+}
+
+// Tier 3e: free-text notes pinned to a regular for staff handoff.
+// Authored per-venue so a regular's note at Bar A doesn't leak to Bar B
+// even if they have the same phone. Soft-delete via `deletedAt` so an
+// accidental delete is recoverable.
+model GuestNote {
+  id              String       @id @default(cuid())
+  guestProfileId  String
+  venueId         String
+  authorStaffId   String?
+  authorName      String       // denormalized for display after staff churn
+  body            String       @db.Text
+  pinned          Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  guestProfile    GuestProfile @relation(fields: [guestProfileId], references: [id], onDelete: Cascade)
+
+  @@index([guestProfileId, venueId])
+  @@index([venueId, createdAt])
+}
+
+// 6-digit OTPs for phone-based guest identification. SHA-256 hashed so
+// the table doesn't store plaintext codes. 5-minute TTL; max 5 attempts
+// per row.
+model GuestProfileOtp {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, createdAt])
+}
+
+// --- Tier 3d: Benchmarking (BenchmarkSnapshot) ---
+
+model BenchmarkSnapshot {
+  id          String   @id @default(cuid())
+  date        DateTime
+  // Stable hash of the segmentJson for unique-key purposes (Prisma
+  // doesn't reliably support unique on Json). Compute via sha256 of
+  // sorted-key stringified segmentJson.
+  segmentKey  String
+  segmentJson Json
+  metric      String
+  p25         Float
+  p50         Float
+  p75         Float
+  p90         Float
+  // K-anonymity guard: never expose values from segments where this is
+  // below 5. The cron job refuses to write rows with sampleCount < 5.
+  sampleCount Int
+  createdAt   DateTime @default(now())
+
+  @@unique([date, metric, segmentKey])
+  @@index([date, metric])
 }

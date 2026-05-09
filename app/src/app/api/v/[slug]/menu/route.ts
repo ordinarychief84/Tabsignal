@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 
 // Public guest-facing menu read. No auth — the menu is what a venue shows
 // on a printed list anyway. Only returns active categories and active
@@ -7,9 +8,18 @@ import { db } from "@/lib/db";
 export async function GET(_req: Request, ctx: { params: { slug: string } }) {
   const venue = await db.venue.findUnique({
     where: { slug: ctx.params.slug },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+    },
   });
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  // Menu (and therefore guest-facing browse) is a Growth feature. 404 so
+  // the guest UI naturally hides the menu link when there's nothing to show.
+  if (!meetsAtLeast(planFromOrg(venue.org), "growth")) {
+    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  }
 
   const [categories, uncategorizedItems] = await Promise.all([
     db.menuCategory.findMany({

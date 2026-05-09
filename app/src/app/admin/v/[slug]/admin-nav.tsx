@@ -3,19 +3,31 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function AdminNav({ slug, operator }: { slug: string; operator: boolean }) {
+export function AdminNav({
+  slug,
+  operator,
+  isPaidPlan,
+  isProPlan,
+}: {
+  slug: string;
+  operator: boolean;
+  isPaidPlan: boolean;
+  isProPlan: boolean;
+}) {
   const pathname = usePathname();
-  const items = [
-    { href: `/admin/v/${slug}`,           label: "Dashboard"  },
-    { href: `/admin/v/${slug}/analytics`, label: "Analytics"  },
-    { href: `/admin/v/${slug}/menu`,      label: "Menu"       },
-    { href: `/admin/v/${slug}/orders`,    label: "Orders"     },
-    { href: `/admin/v/${slug}/reviews`,   label: "Reviews"    },
-    { href: `/admin/v/${slug}/staff`,     label: "Staff"      },
-    { href: `/admin/v/${slug}/tips`,      label: "Tips"       },
-    { href: `/admin/v/${slug}/qr-tents`,  label: "QR tents"   },
-    { href: `/admin/v/${slug}/billing`,   label: "Billing"    },
-    { href: `/admin/v/${slug}/settings`,  label: "Settings"   },
+  const items: { href: string; label: string; growth?: boolean; pro?: boolean }[] = [
+    { href: `/admin/v/${slug}`,             label: "Dashboard"  },
+    { href: `/admin/v/${slug}/analytics`,   label: "Analytics", growth: true },
+    { href: `/admin/v/${slug}/menu`,        label: "Menu",      growth: true },
+    { href: `/admin/v/${slug}/orders`,      label: "Orders",    growth: true },
+    { href: `/admin/v/${slug}/reservations`, label: "Reservations", pro: true },
+    { href: `/admin/v/${slug}/regulars`,    label: "Regulars",  pro: true },
+    { href: `/admin/v/${slug}/reviews`,     label: "Reviews"    },
+    { href: `/admin/v/${slug}/staff`,       label: "Staff"      },
+    { href: `/admin/v/${slug}/tips`,        label: "Tips",      growth: true },
+    { href: `/admin/v/${slug}/qr-tents`,    label: "QR tents"   },
+    { href: `/admin/v/${slug}/billing`,     label: "Billing"    },
+    { href: `/admin/v/${slug}/settings`,    label: "Settings"   },
   ];
 
   function isActive(href: string) {
@@ -28,18 +40,29 @@ export function AdminNav({ slug, operator }: { slug: string; operator: boolean }
       <ul className="flex gap-1 overflow-x-auto md:flex-col md:gap-0.5">
         {items.map(it => {
           const active = isActive(it.href);
+          const lockedGrowth = it.growth && !isPaidPlan;
+          const lockedPro = it.pro && !isProPlan;
+          const lockLabel = lockedPro ? "Pro" : lockedGrowth ? "Growth" : null;
           return (
             <li key={it.href}>
               <Link
                 href={it.href}
                 className={[
-                  "block whitespace-nowrap rounded-lg px-4 py-2 text-sm transition-colors md:px-3",
+                  "flex items-center justify-between whitespace-nowrap rounded-lg px-4 py-2 text-sm transition-colors md:px-3",
                   active
                     ? "bg-slate text-oat"
                     : "text-slate/70 hover:bg-slate/5 hover:text-slate",
                 ].join(" ")}
               >
-                {it.label}
+                <span>{it.label}</span>
+                {lockLabel ? (
+                  <span className={[
+                    "ml-2 rounded-full px-1.5 text-[9px] uppercase tracking-wider",
+                    active ? "bg-oat/20 text-oat" : "bg-slate/10 text-slate/50",
+                  ].join(" ")}>
+                    {lockLabel}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );

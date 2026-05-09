@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getStaffSession } from "@/lib/auth/session";
+import { gateAdminRoute } from "@/lib/plan-gate";
 
 const Body = z.object({
   status: z.enum(["READY", "PICKED_UP", "CANCELED"]),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string; id: string } }) {
-  const session = await getStaffSession();
-  if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  const gate = await gateAdminRoute(ctx.params.slug, "growth");
+  if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let parsed;
   try { parsed = Body.parse(await req.json()); }
   catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }
 
-  const venue = await db.venue.findUnique({ where: { slug: ctx.params.slug }, select: { id: true } });
-  if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (venue.id !== session.venueId) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-
   const order = await db.preOrder.findUnique({ where: { id: ctx.params.id } });
-  if (!order || order.venueId !== venue.id) {
+  if (!order || order.venueId !== gate.venueId) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 

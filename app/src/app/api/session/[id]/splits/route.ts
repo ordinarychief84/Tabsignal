@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { parseLineItems, totalsFor } from "@/lib/bill";
+import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -27,13 +28,23 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const session = await db.guestSession.findUnique({
     where: { id: ctx.params.id },
     include: {
-      venue: { select: { zipCode: true } },
+      venue: {
+        select: {
+          zipCode: true,
+          org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+        },
+      },
       splits: { select: { id: true, paidAt: true } },
     },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  if (!meetsAtLeast(planFromOrg(session.venue.org), "growth")) {
+    // Bill split is a Growth feature. The guest UI should fall back to
+    // single-card pay; 404 keeps the response indistinguishable.
+    return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   }
   if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });
   if (session.expiresAt.getTime() <= Date.now()) {

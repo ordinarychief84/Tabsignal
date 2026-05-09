@@ -63,6 +63,7 @@ export default async function BillingPage({
         }))}
         hasSubscription={!!venue.org.subscriptionPriceId}
         status={venue.org.subscriptionStatus}
+        trialEndsAt={venue.org.trialEndsAt?.toISOString() ?? null}
       />
     </>
   );

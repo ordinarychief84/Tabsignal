@@ -43,6 +43,16 @@ const Optional = z.object({
 
   // Operator
   OPERATOR_EMAILS: z.string().optional(),
+
+  // Twilio (reservations + waitlist + loyalty OTP). Optional in dev — the
+  // SMS adapter mocks when these are absent.
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_NUMBER: z.string().optional(),
+
+  // Benchmarks cron — bearer token gating /api/cron/benchmarks. Optional
+  // in dev (the cron only runs in prod via Vercel Cron).
+  BENCHMARK_CRON_SECRET: z.string().optional(),
 });
 
 const ProdRequired = z.object({

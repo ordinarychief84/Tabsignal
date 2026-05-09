@@ -5,6 +5,7 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { events } from "@/lib/realtime";
 import { parseLineItems, totalsFor, dollars } from "@/lib/bill";
+import { awardPoints, pointsForCents } from "@/lib/loyalty";
 
 export const runtime = "nodejs"; // raw body required for signature verification
 
@@ -142,6 +143,17 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
           });
         }
 
+        // Tier 3c: award loyalty points for THIS split's contribution.
+        // Points never block the payment — wrap in try/catch so a points
+        // bug can't break the rest of the webhook.
+        if (session.guestProfileId) {
+          try {
+            await awardPoints(tx, session.guestProfileId, session.venueId, pointsForCents(split.amountCents));
+          } catch (loyaltyErr) {
+            console.error("loyalty:award:split failed", loyaltyErr);
+          }
+        }
+
         const totals = totalsFor(parseLineItems(session.lineItems), session.venue.zipCode ?? "", 0);
         void events.paymentConfirmed(session.venueId, session.id, {
           sessionId: session.id,
@@ -174,6 +186,21 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
 
       const tipPercent = Number(intent.metadata?.tip_percent ?? session.tipPercent ?? 20);
       const totals = totalsFor(parseLineItems(session.lineItems), session.venue.zipCode ?? "", tipPercent);
+
+      // Tier 3c: award loyalty for the full session payment. Points are
+      // computed off the subtotal+tax (not the tip).
+      if (session.guestProfileId) {
+        try {
+          await awardPoints(
+            tx,
+            session.guestProfileId,
+            session.venueId,
+            pointsForCents(totals.subtotalCents + totals.taxCents),
+          );
+        } catch (loyaltyErr) {
+          console.error("loyalty:award:single failed", loyaltyErr);
+        }
+      }
       void events.paymentConfirmed(session.venueId, session.id, {
         sessionId: session.id,
         tableLabel: session.table.label,

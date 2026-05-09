@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getStaffSession } from "@/lib/auth/session";
+import { gateAdminRoute } from "@/lib/plan-gate";
 import { parseLineItems, totalsFor } from "@/lib/bill";
 
 async function gatePool(slug: string, poolId: string) {
-  const session = await getStaffSession();
-  if (!session) return { ok: false as const, status: 401, body: { error: "UNAUTHORIZED" } };
-  const venue = await db.venue.findUnique({ where: { slug }, select: { id: true, zipCode: true } });
+  const gate = await gateAdminRoute(slug, "growth");
+  if (!gate.ok) return gate;
+  const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { id: true, zipCode: true } });
   if (!venue) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
-  if (venue.id !== session.venueId) return { ok: false as const, status: 403, body: { error: "FORBIDDEN" } };
   const pool = await db.tipPool.findUnique({ where: { id: poolId } });
   if (!pool || pool.venueId !== venue.id) {
     return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };

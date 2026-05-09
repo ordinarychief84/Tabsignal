@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getStaffSession } from "@/lib/auth/session";
+import { gateAdminRoute } from "@/lib/plan-gate";
 
 export async function GET(_req: Request, ctx: { params: { slug: string } }) {
-  const session = await getStaffSession();
-  if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  const venue = await db.venue.findUnique({ where: { slug: ctx.params.slug }, select: { id: true } });
-  if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (venue.id !== session.venueId) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const gate = await gateAdminRoute(ctx.params.slug, "growth");
+  if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   // Active queue: anything paid but not picked up yet, plus the last
   // 20 picked-up orders for context. The PWA polls every 5s.
   const orders = await db.preOrder.findMany({
     where: {
-      venueId: venue.id,
+      venueId: gate.venueId,
       paidAt: { not: null },
       OR: [
         { status: { in: ["PENDING", "READY"] } },

@@ -35,6 +35,38 @@ export function GuestRequestPanel({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [prev, setPrev] = useState<PrevTab | null>(prevTab);
   const [closingTab, setClosingTab] = useState(false);
+  // Tier 3e: shown briefly when the guest is recognized as a returning regular.
+  const [welcomeBack, setWelcomeBack] = useState<{ name: string | null; visits: number } | null>(null);
+
+  // Tier 3e: pair the session with the cookie-identified GuestProfile,
+  // if any. Fire-and-forget on mount — the buzz to the bartender's PWA
+  // happens server-side. We swallow non-200s (no cookie / non-Pro venue).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/session/${sessionId}/pair-profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionToken }),
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (cancelled) return;
+        if (body.isReturning && body.preview) {
+          setWelcomeBack({
+            name: body.preview.displayName ?? null,
+            visits: body.preview.visits ?? 0,
+          });
+          // Auto-fade after 6s so it doesn't crowd the request UI.
+          setTimeout(() => { if (!cancelled) setWelcomeBack(null); }, 6_000);
+        }
+      } catch {
+        /* swallow — not identified, not Pro, etc. */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [sessionId, sessionToken]);
 
   useEffect(() => {
     // Configure socket auth as the guest before any join — passes the
@@ -175,6 +207,17 @@ export function GuestRequestPanel({
 
   return (
     <section className="space-y-4 px-6">
+      {welcomeBack ? (
+        <div className="rounded-2xl border border-chartreuse/40 bg-chartreuse/15 px-5 py-3">
+          <p className="text-sm text-slate">
+            Welcome back{welcomeBack.name ? `, ${welcomeBack.name}` : ""}.{" "}
+            <span className="text-slate/60">
+              Visit #{welcomeBack.visits + 1} — your bartender knows.
+            </span>
+          </p>
+        </div>
+      ) : null}
+
       {prev ? (
         <div className="rounded-2xl border border-sea/40 bg-sea/20 px-5 py-4">
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
