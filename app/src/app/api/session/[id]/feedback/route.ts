@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { classifyFeedback } from "@/lib/ai/classify-feedback";
 import { badRatingHtml, badRatingSubject, badRatingText } from "@/lib/email/bad-rating-email";
 import { sendEmail } from "@/lib/email/send";
+import { venueAlertRecipients } from "@/lib/email/recipients";
 import { signCompToken } from "@/lib/auth/comp-token";
 
 function tokensEqual(a: string, b: string): boolean {
@@ -90,12 +91,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     },
   });
 
-  // Email owners + managers. Resolve recipients: any StaffMember with an email on this venue.
-  const recipients = await db.staffMember.findMany({
-    where: { venueId: session.venueId },
-    select: { email: true },
-  });
-  const to = recipients.map(r => r.email).filter(Boolean);
+  // Email owners + managers. Routing precedence: Venue.alertEmails (if
+  // set) → all StaffMembers → OPERATOR_EMAILS. The resolver dedupes +
+  // lowercases the result. Manager-configured override on Settings wins.
+  const to = await venueAlertRecipients(session.venueId);
 
   // If the tab is still open (not paid), include a "Comp $20 to Table N"
   // CTA in the email so the manager can apply the credit in one tap.

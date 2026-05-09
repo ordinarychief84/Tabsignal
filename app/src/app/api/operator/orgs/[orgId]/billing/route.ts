@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { canBroadcast, checkOrgAccess } from "@/lib/operator-rbac";
 import { planById } from "@/lib/plans";
+import { sendEmail } from "@/lib/email/send";
+import { orgAlertRecipients } from "@/lib/email/recipients";
 
 const Body = z.object({
   // Plan to set. "free" implicitly clears the subscription.
@@ -67,6 +69,17 @@ export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
     `by=${session?.email ?? "?"}${parsed.reason ? ` reason="${parsed.reason}"` : ""}`
   );
 
+  // Notify the org's alert recipients that their plan changed. This is
+  // the post-call confirmation: the founder flips them after the call,
+  // and within seconds they get an email saying "you're on Growth now,
+  // here's what unlocked."
+  void notifyPlanChange({
+    org: updated,
+    planId: parsed.planId,
+    status,
+    operatorEmail: session?.email ?? null,
+  }).catch(err => console.warn("[plan-flip] notify failed", err));
+
   return NextResponse.json({
     org: updated,
     plan: parsed.planId,
@@ -74,4 +87,57 @@ export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
       ? "Plan flipped, but STRIPE_PRICE_" + parsed.planId.toUpperCase() + " env is unset — billing won't actually charge until that's configured."
       : null,
   });
+}
+
+async function notifyPlanChange(args: {
+  org: { id: string; name: string };
+  planId: "free" | "growth" | "pro";
+  status: string;
+  operatorEmail: string | null;
+}): Promise<void> {
+  const recipients = await orgAlertRecipients(args.org.id);
+  if (recipients.length === 0) return;
+
+  const planLabel = args.planId === "free" ? "Starter" : args.planId === "growth" ? "Growth" : "Pro";
+  const perks = args.planId === "pro"
+    ? "Multi-location operator console, regulars dossier, custom branding, reservations, loyalty, benchmarking."
+    : args.planId === "growth"
+    ? "Menu management, pre-order at QR, analytics, bill split, tip pooling, unlimited staff."
+    : "Realtime request queue + AI bad-rating intercept. 0.5% per transaction, no monthly fee.";
+  const subject = `[${args.org.name}] Plan updated → ${planLabel}`;
+  const html = `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;color:#2B2539;background:#EBE9E4;">
+      <tr><td style="padding:24px;">
+        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7B6767;">${escapeHtml(args.org.name)}</p>
+        <h2 style="margin:0 0 12px;font-weight:500;">You&rsquo;re on ${escapeHtml(planLabel)} now.</h2>
+        <p style="margin:0 0 12px;color:#2B2539;">Status: <strong>${escapeHtml(args.status.toLowerCase())}</strong>.</p>
+        <p style="margin:0 0 16px;color:#2B2539;">${escapeHtml(perks)}</p>
+        <p style="margin:0 0 12px;font-size:13px;color:#7B6767;">
+          ${args.planId !== "free"
+            ? "Reach out if anything looks wrong — flipping a plan in the operator console doesn&rsquo;t auto-charge; we&rsquo;ll handle Stripe Subscription setup separately."
+            : "You&rsquo;ve been moved back to the Starter tier. Realtime queue + bad-rating intercept stay on; everything else gates back."
+          }
+        </p>
+        <p style="margin:24px 0 0;font-size:11px;color:#7B6767;">
+          Updated by ${escapeHtml(args.operatorEmail ?? "TabCall")}.
+        </p>
+      </td></tr>
+    </table>
+  `.trim();
+  const text = `${args.org.name} — plan updated → ${planLabel} (${args.status.toLowerCase()})\n\n${perks}\n\nUpdated by ${args.operatorEmail ?? "TabCall"}.`;
+
+  try {
+    await sendEmail({ to: recipients, subject, html, text });
+  } catch (err) {
+    console.warn("[plan-flip] sendEmail failed", err);
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
