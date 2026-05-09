@@ -127,21 +127,19 @@ export function OnboardingPanel({
         ) : null}
         <Link
           href={`/admin/v/${slug}`}
-          aria-disabled={!canFinish}
-          tabIndex={canFinish ? 0 : -1}
           className={[
             "block w-full rounded-xl py-4 text-center text-base font-medium transition-colors",
             canFinish
               ? "bg-chartreuse text-slate hover:bg-chartreuse/90"
-              : "bg-slate/10 text-slate/45 pointer-events-none",
+              : "bg-slate text-oat hover:bg-slate/90",
           ].join(" ")}
         >
-          {canFinish ? "Go to dashboard →" : "Finish Stripe to continue"}
+          {canFinish ? "Go to dashboard →" : "Tour the dashboard →"}
         </Link>
         {!canFinish ? (
-          <p className="mt-2 text-center text-[11px] text-slate/45">
-            Stripe is required because guest bills route through your account.
-            Skip the rest, but not this.
+          <p className="mt-2 text-center text-[11px] text-slate/55">
+            You can poke around the manager dashboard before connecting Stripe.
+            Bills won&rsquo;t close yet — finish Stripe from <span className="underline">Settings</span> when you have your business docs handy.
           </p>
         ) : null}
       </div>

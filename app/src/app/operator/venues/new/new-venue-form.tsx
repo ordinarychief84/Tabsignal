@@ -107,9 +107,13 @@ export function NewVenueForm({ orgs }: { orgs: Org[] }) {
           defaultValue="America/Chicago"
           options={[
             { value: "America/Chicago", label: "Central (Houston)" },
-            { value: "America/New_York", label: "Eastern" },
-            { value: "America/Denver", label: "Mountain" },
-            { value: "America/Los_Angeles", label: "Pacific" },
+            { value: "America/New_York", label: "Eastern (NYC, ATL, MIA)" },
+            { value: "America/Denver", label: "Mountain (DEN)" },
+            { value: "America/Phoenix", label: "Arizona (no DST)" },
+            { value: "America/Los_Angeles", label: "Pacific (LA, SF, SEA)" },
+            { value: "America/Anchorage", label: "Alaska" },
+            { value: "Pacific/Honolulu", label: "Hawaii" },
+            { value: "America/Puerto_Rico", label: "Puerto Rico" },
           ]}
         />
       </Section>
