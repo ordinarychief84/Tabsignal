@@ -82,12 +82,12 @@ function Navbar() {
           <a href="#pricing" className="hover:text-oat">Pricing</a>
           <Link href="/staff/login" className="hover:text-oat">Login</Link>
         </nav>
-        <a
-          href="mailto:hello@tabcall.app?subject=TabCall%20setup"
+        <Link
+          href="/signup"
           className="rounded-lg bg-chartreuse px-4 py-2 text-sm font-medium text-slate transition-colors hover:bg-chartreuse/90"
         >
-          Talk to us
-        </a>
+          Start free
+        </Link>
       </div>
     </header>
   );
@@ -110,12 +110,12 @@ function Hero() {
             to leave a 1-star tonight. So you can fix it before they hit Yelp.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-5">
-            <a
-              href="mailto:hello@tabcall.app?subject=TabCall%20setup"
+            <Link
+              href="/signup"
               className="rounded-lg bg-chartreuse px-6 py-3 text-base font-medium text-slate transition-colors hover:bg-chartreuse/90"
             >
-              Talk to TabCall
-            </a>
+              Start free → 3 minutes
+            </Link>
             <a
               href="#how"
               className="text-base font-medium text-oat underline-offset-4 hover:underline"
@@ -123,6 +123,9 @@ function Hero() {
               See how it works →
             </a>
           </div>
+          <p className="mt-4 text-[12px] text-oat/45">
+            Starter is free — 0.5% per transaction. Growth + Pro venues book a 15-min setup call with us first.
+          </p>
         </div>
 
         {/* RIGHT — the AI bad-review email mock (the wedge) */}
@@ -442,12 +445,12 @@ function CtaBand() {
         <p className="mx-auto mt-4 max-w-xl text-base text-oat/80">
           $199/month. Five-minute install. Cancel by text.
         </p>
-        <a
-          href="mailto:hello@tabcall.app?subject=TabCall%20setup"
+        <Link
+          href="/signup"
           className="mt-10 inline-block rounded-lg bg-chartreuse px-7 py-3.5 text-base font-medium text-slate transition-colors hover:bg-chartreuse/90"
         >
-          Email hello@tabcall.app
-        </a>
+          Start free → 3 minutes
+        </Link>
       </div>
     </section>
   );
@@ -474,7 +477,7 @@ function Footer() {
             <li><a href="#how" className="hover:text-oat">How it works</a></li>
             <li><a href="#product" className="hover:text-oat">Live queue</a></li>
             <li><a href="#pricing" className="hover:text-oat">Pricing</a></li>
-            <li><a href="mailto:hello@tabcall.app" className="hover:text-oat">Set up a venue</a></li>
+            <li><Link href="/signup" className="hover:text-oat">Set up a venue</Link></li>
           </ul>
         </div>
 

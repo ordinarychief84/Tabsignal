@@ -42,22 +42,15 @@ export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, stat
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function startCheckout(planId: "growth" | "pro") {
+  // Concierge intercept: instead of jumping to Stripe checkout, route
+  // Growth/Pro upgrades through a 15-min setup call screen first. After
+  // the call we flip the org via the operator console / SQL, then the
+  // existing checkout flow takes over for self-service plan changes
+  // (e.g. Growth → Pro). This is also the natural sales motion at the
+  // moment of intent.
+  function startCheckout(planId: "growth" | "pro") {
     setPending(planId);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/v/${slug}/billing/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.url) throw new Error(body?.error ?? `HTTP ${res.status}`);
-      window.location.href = body.url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start checkout");
-      setPending(null);
-    }
+    window.location.href = `/admin/v/${slug}/billing/upgrade-contact?plan=${planId}`;
   }
 
   async function openPortal() {
