@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
@@ -16,7 +17,14 @@ export default async function AdminVenueLayout({
   params: { slug: string };
 }) {
   const session = await getStaffSession();
-  if (!session) redirect(`/staff/login?next=/admin/v/${params.slug}`);
+  if (!session) {
+    // Preserve the full path the user was trying to reach (e.g.
+    // .../billing/upgrade-contact) so post-login they land where they
+    // started, not on the dashboard. Falls back to the venue dashboard
+    // if middleware hasn't stamped the header (shouldn't happen).
+    const reachedPath = headers().get("x-pathname") ?? `/admin/v/${params.slug}`;
+    redirect(`/staff/login?next=${encodeURIComponent(reachedPath)}`);
+  }
 
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
