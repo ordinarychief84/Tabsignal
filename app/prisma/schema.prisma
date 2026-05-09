@@ -62,6 +62,20 @@ enum RequestStatus {
   ESCALATED
 }
 
+// What the staff member actually did when resolving a request. Captured
+// at the time of resolution so analytics can split "served on time" from
+// "comped because we made them wait" from "couldn't help" etc. Required
+// when transitioning a request to RESOLVED — the staff queue UI shows a
+// small picker before flipping the status.
+enum ResolutionAction {
+  SERVED
+  COMPED
+  REFUSED
+  ESCALATED
+  NOT_ACTIONABLE
+  OTHER
+}
+
 model Organization {
   id                    String             @id @default(cuid())
   name                  String
@@ -127,8 +141,34 @@ model Venue {
   preOrders              PreOrder[]
   reservations           Reservation[]
   waitlist               Waitlist[]
+  specials               VenueSpecial[]
 
   @@index([orgId])
+}
+
+// Time-windowed promotions a venue surfaces to guests on the QR landing.
+// "Happy hour", "$5 well drinks until 7", "tonight's wine flight", etc.
+// Both window fields nullable so an "always-on" special is possible
+// (e.g. signature cocktail, weekly recurring on the manager's end).
+model VenueSpecial {
+  id          String    @id @default(cuid())
+  venueId     String
+  title       String
+  description String?
+  // Optional headline price. Stored in cents so analytics can compute
+  // discount-vs-rack later. Null = "see menu" or "ask staff".
+  priceCents  Int?
+  // Active window. Null/null = always shown when active.
+  startsAt    DateTime?
+  endsAt      DateTime?
+  // Soft toggle so a manager can pull a special without deleting it.
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  venue       Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, active, startsAt])
+  @@index([venueId, endsAt])
 }
 
 // Phase 2: menu management. Bills are still authored as JSON line items on
@@ -349,6 +389,11 @@ model Request {
   acknowledgedById String?
   acknowledgedAt   DateTime?
   resolvedAt       DateTime?
+  // What the staff member actually did, captured at resolve-time. Null
+  // for requests that were resolved by older versions of the app
+  // before this column existed.
+  resolutionAction ResolutionAction?
+  resolutionNote   String?
   escalatedAt      DateTime?
   createdAt        DateTime      @default(now())
   venue            Venue         @relation(fields: [venueId], references: [id])
