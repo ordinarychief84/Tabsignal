@@ -212,11 +212,24 @@ export function StaffQueue({
     }
   }
 
-  async function resolve(id: string) {
+  // The resolve endpoint now requires an action (SERVED / COMPED / REFUSED
+  // / ESCALATED / NOT_ACTIONABLE / OTHER) so we can track what the staff
+  // member actually did. The picker is rendered inline on the row.
+  async function resolve(id: string, action: string, note?: string) {
     setPendingId(id);
     try {
-      await fetch(`/api/requests/${id}/resolve`, { method: "PATCH" });
+      const res = await fetch(`/api/requests/${id}/resolve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
+      }
       setItems(prev => prev.filter(it => it.id !== id));
+    } catch (e) {
+      console.warn("[queue] resolve failed", e);
     } finally {
       setPendingId(null);
     }
@@ -305,7 +318,7 @@ export function StaffQueue({
               currentStaffId={staffId}
               staffMates={staffMates}
               onAck={() => ack(it.id)}
-              onResolve={() => resolve(it.id)}
+              onResolve={(action, note) => resolve(it.id, action, note)}
               onHandoff={(toStaffId) => handoff(it.id, toStaffId)}
             />
           ))}
@@ -366,7 +379,7 @@ function RequestCard({
   currentStaffId?: string;
   staffMates: StaffMate[];
   onAck: () => void;
-  onResolve: () => void;
+  onResolve: (action: string, note?: string) => void;
   onHandoff: (toStaffId: string) => void;
 }) {
   const acked = item.status === "ACKNOWLEDGED";
@@ -375,6 +388,7 @@ function RequestCard({
   const delayed = seconds > 180;
   const warning = !delayed && seconds > 60;
   const [showHandoff, setShowHandoff] = useState(false);
+  const [showResolveActions, setShowResolveActions] = useState(false);
   const others = staffMates.filter(s => s.id !== currentStaffId);
 
   return (
@@ -442,12 +456,44 @@ function RequestCard({
         ) : null}
         <button
           disabled={busy}
-          onClick={onResolve}
+          onClick={() => setShowResolveActions(s => !s)}
           className="rounded-lg border border-white/10 px-4 py-3 text-sm font-medium text-oat/70 hover:text-oat disabled:opacity-60"
         >
           Done
         </button>
       </div>
+
+      {showResolveActions ? (
+        <div className="mt-3 rounded-xl border border-white/5 bg-slate p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-oat/50">What did you do?</p>
+          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {[
+              { id: "SERVED", label: "Served" },
+              { id: "COMPED", label: "Comped" },
+              { id: "REFUSED", label: "Refused" },
+              { id: "ESCALATED", label: "Escalated" },
+              { id: "NOT_ACTIONABLE", label: "Stale" },
+              { id: "OTHER", label: "Other" },
+            ].map(a => (
+              <li key={a.id}>
+                <button
+                  disabled={busy}
+                  onClick={() => { setShowResolveActions(false); onResolve(a.id); }}
+                  className="w-full rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-oat/80 hover:bg-white/5 disabled:opacity-60"
+                >
+                  {a.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => setShowResolveActions(false)}
+            className="mt-2 text-[11px] text-oat/45 underline-offset-4 hover:text-oat hover:underline"
+          >
+            cancel
+          </button>
+        </div>
+      ) : null}
 
       {showHandoff && ackedByMe ? (
         <div className="mt-3 rounded-xl border border-white/5 bg-slate p-3">

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { configureSocketAuth, getSocket, joinRoom, resetSocket } from "@/lib/socket";
 
+// Type metadata. Icons + a short caption to make the four buttons feel
+// less like a form and more like physical taps. Captions are intentionally
+// terse — they're for skim-readers in dim bar light.
 const REQUEST_TYPES = [
-  { id: "DRINK",  label: "Order a drink" },
-  { id: "BILL",   label: "Get the bill"  },
-  { id: "HELP",   label: "Need help"     },
-  { id: "REFILL", label: "Refill"        },
+  { id: "DRINK",  label: "Order a drink", icon: "🍸", caption: "I'd like another round" },
+  { id: "BILL",   label: "Get the bill",  icon: "🧾", caption: "Ready to close out" },
+  { id: "HELP",   label: "Need help",     icon: "✋", caption: "Question for staff" },
+  { id: "REFILL", label: "Refill",        icon: "🥤", caption: "Water, ice, top-off" },
 ] as const;
 
 type RequestType = (typeof REQUEST_TYPES)[number]["id"];
@@ -251,6 +254,8 @@ export function GuestRequestPanel({
         </div>
       ) : null}
 
+      <SpecialsStrip slug={slug} />
+
       <div className="grid grid-cols-2 gap-3">
         {REQUEST_TYPES.map((rt) => {
           const isActive = activeType === rt.id && status === "submitting";
@@ -261,12 +266,14 @@ export function GuestRequestPanel({
               disabled={status === "submitting"}
               onClick={() => submit(rt.id)}
               className={[
-                "min-h-[96px] rounded-2xl border bg-white px-4 py-5 text-left text-base font-medium text-slate transition-all",
+                "min-h-[110px] rounded-2xl border bg-white px-4 py-4 text-left transition-all",
                 "active:scale-[0.98] disabled:opacity-60",
                 isActive ? "border-chartreuse ring-2 ring-chartreuse/40" : "border-slate/10 hover:border-slate/20",
               ].join(" ")}
             >
-              {rt.label}
+              <span aria-hidden className="text-2xl">{rt.icon}</span>
+              <span className="mt-2 block text-base font-medium text-slate">{rt.label}</span>
+              <span className="mt-0.5 block text-[11px] text-slate/55">{rt.caption}</span>
             </button>
           );
         })}
@@ -291,6 +298,64 @@ export function GuestRequestPanel({
           View running tab →
         </Link>
       </div>
+    </section>
+  );
+}
+
+type Special = {
+  id: string;
+  title: string;
+  description: string | null;
+  priceCents: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
+};
+
+function SpecialsStrip({ slug }: { slug: string }) {
+  const [specials, setSpecials] = useState<Special[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/v/${slug}/specials`, { cache: "no-store" });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (!cancelled) setSpecials(body.specials ?? []);
+      } catch {
+        /* swallow */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  if (!specials || specials.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-chartreuse/40 bg-chartreuse/15 p-4">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Tonight</p>
+      <ul className="mt-2 space-y-2">
+        {specials.map(s => (
+          <li key={s.id}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-sm font-medium text-slate">{s.title}</p>
+              {s.priceCents !== null ? (
+                <p className="shrink-0 font-mono text-sm text-slate">
+                  ${(s.priceCents / 100).toFixed(2)}
+                </p>
+              ) : null}
+            </div>
+            {s.description ? (
+              <p className="mt-0.5 text-xs leading-relaxed text-slate/70">{s.description}</p>
+            ) : null}
+            {s.endsAt ? (
+              <p className="mt-1 text-[10px] uppercase tracking-wider text-umber">
+                Ends {new Date(s.endsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              </p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
