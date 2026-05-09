@@ -1,0 +1,51 @@
+import Link from "next/link";
+import { SignupForm } from "./signup-form";
+
+export const metadata = { title: "TabCall — start free" };
+
+export default function SignupPage() {
+  return (
+    <main className="min-h-screen bg-oat text-slate">
+      <header className="border-b border-slate/10 bg-white">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
+          <Link href="/" className="inline-flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#EEEFC8" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="16" r="2" fill="#EEEFC8" />
+              </svg>
+            </span>
+            <span className="text-lg font-medium tracking-tight">TabCall</span>
+          </Link>
+          <p className="text-xs tracking-wide text-slate/50">
+            Already have a venue?{" "}
+            <Link href="/staff/login" className="text-umber underline-offset-4 hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-2xl px-6 py-12">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Start free</p>
+        <h1 className="mt-2 text-4xl font-medium tracking-tight">Live on your bar tonight.</h1>
+        <p className="mt-3 max-w-md text-base leading-relaxed text-slate/65">
+          One email, one venue, one sign-in link. We&rsquo;ll walk you through
+          Stripe Connect, tables, and printable QR tents on the next screen.
+          About three minutes — less if your phone&rsquo;s already in your hand.
+        </p>
+
+        <ul className="mt-6 space-y-1.5 text-sm text-slate/65">
+          <li>· Starter is free — 0.5% per transaction, no monthly fee, no contract.</li>
+          <li>· Realtime request queue + AI bad-rating intercept from minute one.</li>
+          <li>· Want Growth or Pro? You&rsquo;ll book a 15-min setup call after signup.</li>
+          <li>· If TabCall isn&rsquo;t earning its keep, cancel by text. We mean it.</li>
+        </ul>
+
+        <div className="mt-10">
+          <SignupForm />
+        </div>
+      </div>
+    </main>
+  );
+}

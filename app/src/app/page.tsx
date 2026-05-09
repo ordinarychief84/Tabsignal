@@ -24,6 +24,8 @@ export default function Landing() {
       <HowItWorks />
       <Product />
       <Benefits />
+      <Pricing />
+      <Faq />
       <CtaBand />
       <Footer />
     </>
@@ -82,12 +84,12 @@ function Navbar() {
           <a href="#pricing" className="hover:text-oat">Pricing</a>
           <Link href="/staff/login" className="hover:text-oat">Login</Link>
         </nav>
-        <a
-          href="mailto:hello@tabcall.app?subject=TabCall%20setup"
+        <Link
+          href="/signup"
           className="rounded-lg bg-chartreuse px-4 py-2 text-sm font-medium text-slate transition-colors hover:bg-chartreuse/90"
         >
-          Talk to us
-        </a>
+          Start free
+        </Link>
       </div>
     </header>
   );
@@ -105,17 +107,18 @@ function Hero() {
             Know about the bad review before it goes public.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-oat/75">
-            TabCall sits on top of your POS — Toast, Square, Clover, anything —
-            and tells you, by table and by server, exactly which guest was about
-            to leave a 1-star tonight. So you can fix it before they hit Yelp.
+            TabCall sits on top of your POS — Toast, Square, Clover, anything.
+            Guests scan a QR, tap a request, the closest server&rsquo;s phone
+            buzzes in under a second. And when a 1-star is brewing, our AI
+            sends it to your inbox — not Google.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-5">
-            <a
-              href="mailto:hello@tabcall.app?subject=TabCall%20setup"
+            <Link
+              href="/signup"
               className="rounded-lg bg-chartreuse px-6 py-3 text-base font-medium text-slate transition-colors hover:bg-chartreuse/90"
             >
-              Talk to TabCall
-            </a>
+              Start free → 3 minutes
+            </Link>
             <a
               href="#how"
               className="text-base font-medium text-oat underline-offset-4 hover:underline"
@@ -123,6 +126,9 @@ function Hero() {
               See how it works →
             </a>
           </div>
+          <p className="mt-4 text-[12px] text-oat/45">
+            Starter is free — 0.5% per transaction. Growth + Pro venues book a 15-min setup call with us first.
+          </p>
         </div>
 
         {/* RIGHT — the AI bad-review email mock (the wedge) */}
@@ -202,21 +208,21 @@ function HowItWorks() {
   const steps = [
     {
       n: "01",
-      title: "Guest taps, server moves.",
+      title: "Guest taps. Closest server’s phone buzzes.",
       body:
-        "Four buttons. One phone. No app to download. The closest staff member's phone lights up under a second.",
+        "Four buttons on the QR page: drink, bill, refill, help. No app to download, no waving, no eye contact across a packed room. Sub-second routing.",
     },
     {
       n: "02",
-      title: "Bill closes at the table.",
+      title: "Bill closes at the table. 90 seconds, end to end.",
       body:
-        "Apple Pay, Google Pay, card. Tip preselected. Average close time: 90 seconds. (Average POS close time: 8 minutes.)",
+        "Apple Pay, Google Pay, card. Tip preselected. Average POS close: 8 minutes. Yours: 90 seconds. That’s another turn before last call.",
     },
     {
       n: "03",
-      title: "Bad reviews stop at your inbox.",
+      title: "1–3★ rating? It comes to you, not Google.",
       body:
-        "5★ goes to Google. 1–3★ gets classified by our AI and emailed to you — by table, by server — so you can fix the cause, not the public score.",
+        "After payment, every guest rates. 5★ gets nudged to Google. 1–3★ gets classified by our AI and emailed to you — table, server, likely cause — before they post anywhere public.",
     },
   ];
   return (
@@ -275,10 +281,11 @@ function StepIcon({ n }: { n: string }) {
 
 function Product() {
   const bullets = [
-    "Real-time queue that updates faster than your staff can tap.",
+    "Live queue ordered by table, age, and urgency. The 3-minute red flag finds itself.",
     "Tip-aware bill view — Apple Pay, Google Pay, card. 90 seconds, end to end.",
-    "Auto-routes 1–3★ reviews to the manager, never to the public.",
-    "Works on top of Toast, Square, Clover or no POS at all.",
+    "AI intercept: 1–3★ ratings hit your inbox first; 4–5★ get nudged to Google.",
+    "Works on top of Toast, Square, Clover — or no POS at all.",
+    "Pro venues only: when a regular sits down, the bartender’s PWA buzzes with their name, usual drink, allergies, last note.",
   ];
   return (
     <section id="product" className="bg-slate">
@@ -386,19 +393,27 @@ function Benefits() {
   const items = [
     {
       title: "3 stars or below? You see it first.",
-      body: "Our AI reads every private feedback note in under a minute and emails you with the table, the server, and the likely cause. Owners using TabCall report ~3× fewer 1-star reviews going public.",
+      body: "Our AI reads every private feedback note in under a minute and emails you the table, the server, and the likely cause. Bars running TabCall see roughly 3× fewer 1-star reviews land in public.",
     },
     {
       title: "Stripe rates. Not Toast rates.",
-      body: "TabCall passes Stripe through at 2.9% + 30¢. Toast charges 2.49% + 15¢ but locks you into hardware that costs $849 to install. Your call.",
+      body: "TabCall passes Stripe through at 2.9% + 30¢. Toast charges 2.49% + 15¢ but locks you into $849 of hardware and a 3-year contract. Your call.",
     },
     {
       title: "Five-minute install. No POS rip-out.",
-      body: "Set up your venue, print your QR tents, hand a phone to a server. We don't talk to your POS. You don't have to talk to your POS vendor.",
+      body: "Set up your venue, print your QR tents, hand a phone to a server. We don’t talk to your POS. You don’t have to talk to your POS vendor.",
     },
     {
       title: "Tip percentage, by server, by week.",
-      body: "Average digital tip is 17.1% versus 15.8% on paper. Watch yours rise. Watch which servers earn the lift.",
+      body: "Average digital tip is 17.1% versus 15.8% on paper. Watch yours rise. Watch which servers earn the lift, and pool fairly when you want to.",
+    },
+    {
+      title: "Treat regulars like regulars again.",
+      body: "Pro venues get a regulars dossier: when a paired guest walks in, the bartender’s PWA buzzes with their name, usual drink, allergies, last-feedback note. The cheers-effect, every visit.",
+    },
+    {
+      title: "Cancel by text. Keep your data.",
+      body: "Month-to-month, no contract. If you leave, you keep your guest list, your reviews, your reports. We don’t hold floor data hostage.",
     },
   ];
   return (
@@ -430,6 +445,261 @@ function Benefits() {
   );
 }
 
+/* ------------------------------ pricing ---------------------------- */
+
+function Pricing() {
+  const tiers = [
+    {
+      name: "Starter",
+      price: "Free",
+      sub: "+ 0.5% per transaction",
+      tagline: "For the bar that wants to try it tonight.",
+      features: [
+        "Realtime QR request queue",
+        "AI bad-rating intercept",
+        "Stripe Connect at 2.9% + 30¢",
+        "Up to 1 staff seat",
+      ],
+      cta: "Start free",
+      ctaHref: "/signup",
+      highlight: false,
+    },
+    {
+      name: "Growth",
+      price: "$99",
+      sub: "per month, per venue",
+      tagline: "When the floor is full and the back office is messy.",
+      features: [
+        "Everything in Starter",
+        "Menu + pre-order at QR",
+        "Bill split (multi-card or named tabs)",
+        "Tip pooling by shift or by server",
+        "Per-server, per-shift analytics",
+        "Unlimited staff seats",
+      ],
+      cta: "Book setup call",
+      ctaHref: "/signup",
+      highlight: true,
+    },
+    {
+      name: "Pro",
+      price: "$299",
+      sub: "per month, per venue",
+      tagline: "For groups, regulars, and the long game.",
+      features: [
+        "Everything in Growth",
+        "Multi-location dashboard",
+        "Custom branding on the QR page",
+        "Regulars dossier (PWA buzz)",
+        "Loyalty + reservations",
+        "Benchmarking against peer venues",
+      ],
+      cta: "Book setup call",
+      ctaHref: "/signup",
+      highlight: false,
+    },
+  ];
+
+  return (
+    <section id="pricing" className="bg-slate">
+      <div className="mx-auto max-w-7xl px-6 py-20 md:py-24">
+        <header className="max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.18em] text-oat/50">
+            Pricing
+          </p>
+          <h2 className="mt-3 text-[28px] font-medium leading-tight text-oat md:text-[36px]">
+            Three tiers. No contracts. Start free.
+          </h2>
+          <p className="mt-4 max-w-xl text-base text-oat/70">
+            Starter is self-serve and live in 3 minutes. Growth and Pro include a
+            15-minute concierge call so we can wire up payouts, menu, and staff
+            with you.
+          </p>
+        </header>
+
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {tiers.map((t) => (
+            <article
+              key={t.name}
+              className={[
+                "flex flex-col rounded-2xl p-7",
+                t.highlight
+                  ? "bg-chartreuse text-slate ring-1 ring-chartreuse"
+                  : "bg-slate-light text-oat ring-1 ring-white/5",
+              ].join(" ")}
+            >
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-xl font-medium">{t.name}</h3>
+                {t.highlight ? (
+                  <span className="rounded-full bg-slate px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-chartreuse">
+                    Most picked
+                  </span>
+                ) : null}
+              </div>
+
+              <p
+                className={[
+                  "mt-5 text-4xl font-medium leading-none",
+                  t.highlight ? "text-slate" : "text-oat",
+                ].join(" ")}
+              >
+                {t.price}
+              </p>
+              <p
+                className={[
+                  "mt-1 text-xs",
+                  t.highlight ? "text-slate/70" : "text-oat/55",
+                ].join(" ")}
+              >
+                {t.sub}
+              </p>
+
+              <p
+                className={[
+                  "mt-5 text-sm leading-relaxed",
+                  t.highlight ? "text-slate/80" : "text-oat/70",
+                ].join(" ")}
+              >
+                {t.tagline}
+              </p>
+
+              <ul
+                className={[
+                  "mt-6 space-y-2.5 text-sm",
+                  t.highlight ? "text-slate/85" : "text-oat/80",
+                ].join(" ")}
+              >
+                {t.features.map((f) => (
+                  <li key={f} className="flex gap-3">
+                    <span
+                      aria-hidden
+                      className={[
+                        "mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                        t.highlight ? "bg-slate" : "bg-chartreuse",
+                      ].join(" ")}
+                    />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href={t.ctaHref}
+                className={[
+                  "mt-8 inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-medium transition-colors",
+                  t.highlight
+                    ? "bg-slate text-chartreuse hover:bg-slate/90"
+                    : "bg-chartreuse text-slate hover:bg-chartreuse/90",
+                ].join(" ")}
+              >
+                {t.cta}
+              </Link>
+            </article>
+          ))}
+        </div>
+
+        <p className="mt-8 text-xs text-oat/45">
+          All plans run month-to-month. No contracts. Cancel by text. Stripe
+          processing (2.9% + 30¢) is passed through at cost.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------ faq -------------------------------- */
+
+function Faq() {
+  const qs = [
+    {
+      q: "Do I need to replace my POS?",
+      a: "No. TabCall runs on top of Toast, Square, Clover, or anything else. We don’t touch your menu, your tax setup, or your printer chain. If you have no POS, we work on our own too.",
+    },
+    {
+      q: "How long until we’re live?",
+      a: "Starter is self-serve and takes about 3 minutes: connect Stripe, name your tables, print the QR tents. Growth and Pro include a 15-minute setup call so we can wire up payouts, menu sync, and staff seats with you.",
+    },
+    {
+      q: "What about staff who don’t have phones?",
+      a: "Buy a $80 Android off Amazon and clip it behind the bar. The PWA installs in one tap, no app store. Most venues run one shared phone for the bar and let servers use their own.",
+    },
+    {
+      q: "Why a 0.5% transaction fee on Starter?",
+      a: "Stripe Connect costs are real. The 0.5% covers our actual platform cost so we can keep Starter free. Growth and Pro flat-rate plans drop that to zero — Stripe is still passed through at 2.9% + 30¢, at cost.",
+    },
+    {
+      q: "Will guests have to download an app?",
+      a: "Never. The QR opens a regular webpage. Guests tap, request, pay, rate. No install, no account, no friction. About 60% of guests scan within the first 90 seconds of sitting down.",
+    },
+    {
+      q: "What actually happens to bad reviews?",
+      a: "After payment, every guest sees a star prompt. 4–5★ gets a one-tap link to your Google profile. 1–3★ goes private: our AI tags it (service speed, food, vibe, billing) and emails you the table, the server, and the likely cause. The guest never sees a public review form.",
+    },
+    {
+      q: "Is my guest data safe?",
+      a: "Yes. Guests opt in by phone number only — no name harvesting, no email scraping. Each venue’s data is isolated; we never sell, broker, or model on your floor data. If you cancel, we hand it to you and delete our copy.",
+    },
+    {
+      q: "Can I upgrade to Growth or Pro on my own?",
+      a: "Not yet. Growth and Pro require a 15-minute setup call so we can wire up Stripe payouts, menu sync, custom branding, and staff seats. It’s deliberately a real conversation — most owners use it to ask the questions they should have asked their POS rep three years ago.",
+    },
+  ];
+
+  return (
+    <section id="faq" className="bg-oat">
+      <div className="mx-auto max-w-3xl px-6 py-20 md:py-24">
+        <header className="max-w-2xl">
+          <p className="text-xs uppercase tracking-[0.18em] text-umber">
+            FAQ
+          </p>
+          <h2 className="mt-3 text-[28px] font-medium leading-tight text-slate md:text-[36px]">
+            The questions every owner asks on the call.
+          </h2>
+        </header>
+
+        <div className="mt-10 divide-y divide-slate/10 rounded-2xl border border-slate/10 bg-white">
+          {qs.map((item) => (
+            <details
+              key={item.q}
+              className="group px-6 py-5 [&_summary::-webkit-details-marker]:hidden"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-left">
+                <span className="text-base font-medium text-slate">
+                  {item.q}
+                </span>
+                <span
+                  aria-hidden
+                  className="ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate/20 text-slate/60 transition-transform group-open:rotate-45"
+                >
+                  <svg width="10" height="10" viewBox="0 0 12 12">
+                    <path
+                      d="M6 1v10M1 6h10"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+              </summary>
+              <p className="mt-3 text-base leading-relaxed text-slate/70">
+                {item.a}
+              </p>
+            </details>
+          ))}
+        </div>
+
+        <p className="mt-8 text-sm text-umber">
+          Still have a question?{" "}
+          <Link href="/signup" className="underline-offset-4 hover:underline">
+            Start free
+          </Link>{" "}
+          and ask us on the setup call — or email hello@tabcall.app.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------------ CTA band --------------------------- */
 
 function CtaBand() {
@@ -440,14 +710,14 @@ function CtaBand() {
           Be the bar that gets the email at 10:14, not the Yelp at 10:42.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-base text-oat/80">
-          $199/month. Five-minute install. Cancel by text.
+          Free to start. $99/mo for menu, pre-order, analytics. $299/mo for multi-location, regulars dossier, and reservations. Cancel by text.
         </p>
-        <a
-          href="mailto:hello@tabcall.app?subject=TabCall%20setup"
+        <Link
+          href="/signup"
           className="mt-10 inline-block rounded-lg bg-chartreuse px-7 py-3.5 text-base font-medium text-slate transition-colors hover:bg-chartreuse/90"
         >
-          Email hello@tabcall.app
-        </a>
+          Start free → 3 minutes
+        </Link>
       </div>
     </section>
   );
@@ -474,7 +744,8 @@ function Footer() {
             <li><a href="#how" className="hover:text-oat">How it works</a></li>
             <li><a href="#product" className="hover:text-oat">Live queue</a></li>
             <li><a href="#pricing" className="hover:text-oat">Pricing</a></li>
-            <li><a href="mailto:hello@tabcall.app" className="hover:text-oat">Set up a venue</a></li>
+            <li><a href="#faq" className="hover:text-oat">FAQ</a></li>
+            <li><Link href="/signup" className="hover:text-oat">Set up a venue</Link></li>
           </ul>
         </div>
 
