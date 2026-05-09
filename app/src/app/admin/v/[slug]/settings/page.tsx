@@ -34,11 +34,11 @@ export default async function SettingsPage({ params }: { params: { slug: string 
 
       <div className="space-y-6">
         <Card title="Venue">
-          <Row label="Name" value={venue.name} />
+          <EditableField slug={params.slug} field="name" label="Name" initial={venue.name} placeholder="Otto's Lounge" />
           <Row label="Slug" value={venue.slug} mono />
-          <Row label="Address" value={venue.address ?? "—"} />
-          <Row label="ZIP" value={venue.zipCode ?? "—"} mono />
-          <Row label="Timezone" value={venue.timezone} />
+          <EditableField slug={params.slug} field="address" label="Address" initial={venue.address ?? ""} placeholder="123 Main St" help="Optional. Used to derive city for benchmarks." />
+          <EditableField slug={params.slug} field="zipCode" label="ZIP code" initial={venue.zipCode ?? ""} placeholder="77006" pattern="^\d{5}(-\d{4})?$" help="Five digits or ZIP+4. Drives sales tax." />
+          <EditableField slug={params.slug} field="timezone" label="Timezone" initial={venue.timezone} placeholder="America/Chicago" help="IANA name. Affects how analytics buckets the day." />
         </Card>
 
         <Card title="Payments — Stripe Connect">
@@ -146,6 +146,46 @@ export default async function SettingsPage({ params }: { params: { slug: string 
               No Place ID set. 4–5★ ratings show a generic thanks — you&rsquo;re leaving public reviews on the table.
             </p>
           )}
+        </Card>
+
+        <Card title="Alerts routing">
+          <EditableField
+            slug={params.slug}
+            field="alertEmails"
+            label="Notification emails"
+            placeholder="manager@yourbar.com, owner@yourbar.com"
+            initial={venue.alertEmails ?? ""}
+            help="Comma-separated. Bad-rating intercepts and other venue alerts go here. Leave empty to use the default routing."
+          />
+        </Card>
+
+        <Card title="Tonight">
+          <p className="text-[12px] text-slate/55">
+            Per-shift kill switches. Flip off when the kitchen is slammed or
+            you need to pause a feature without losing data. New venues default
+            to all on.
+          </p>
+          <ToggleField
+            slug={params.slug}
+            field="requestsEnabled"
+            label="Guest request queue"
+            help="When off, the QR landing page hides the four request buttons. Bills can still close."
+            initial={venue.requestsEnabled}
+          />
+          <ToggleField
+            slug={params.slug}
+            field="preorderEnabled"
+            label="Pre-order at QR"
+            help="When off, the menu/pre-order tab disappears from the guest view. Existing orders complete normally."
+            initial={venue.preorderEnabled}
+          />
+          <ToggleField
+            slug={params.slug}
+            field="reservationsEnabled"
+            label="Reservations + waitlist"
+            help="When off, the public reservations page returns 404. Existing bookings stay visible to staff."
+            initial={venue.reservationsEnabled}
+          />
         </Card>
       </div>
     </>

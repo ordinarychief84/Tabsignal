@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
+import { isPlatformStaff } from "@/lib/auth/operator";
 import { checkOrgAccess } from "@/lib/operator-rbac";
+import { ImpersonateButton } from "./impersonate-button";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — org venues" };
@@ -12,6 +14,8 @@ export default async function OrgVenuesPage({ params }: { params: { orgId: strin
   if (!session) redirect(`/staff/login?next=/operator/orgs/${params.orgId}/venues`);
   const access = await checkOrgAccess(session, params.orgId);
   if (!access.ok) redirect("/operator");
+
+  const canImpersonate = isPlatformStaff(session);
 
   const venues = await db.venue.findMany({
     where: { orgId: params.orgId },
@@ -93,6 +97,9 @@ export default async function OrgVenuesPage({ params }: { params: { orgId: strin
                           <span className="hidden tabular-nums sm:inline">
                             {lp ? `paid ${formatRelative(lp)}` : "—"}
                           </span>
+                          {canImpersonate ? (
+                            <ImpersonateButton slug={v.slug} />
+                          ) : null}
                           <Link
                             href={`/admin/v/${v.slug}`}
                             className="text-umber underline-offset-4 hover:underline"

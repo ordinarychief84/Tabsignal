@@ -105,6 +105,15 @@ model Venue {
   // Tier 3a: optional grouping tag for hierarchical filtering in the
   // multi-location operator console (e.g. "Texas locations only").
   regionTag              String?
+  // Comma-separated extra email recipients for bad-rating alerts and
+  // similar venue-level notifications. Empty = use OPERATOR_EMAILS only.
+  alertEmails            String?
+  // Per-shift kill switches. Manager can flip these from Settings to
+  // pause a feature (kitchen slammed, no servers on the floor, etc.)
+  // without losing existing data. Default true so new venues "just work".
+  requestsEnabled        Boolean          @default(true)
+  preorderEnabled        Boolean          @default(true)
+  reservationsEnabled    Boolean          @default(true)
   createdAt              DateTime         @default(now())
   org                    Organization     @relation(fields: [orgId], references: [id])
   tables                 Table[]

@@ -63,12 +63,21 @@ export default async function AnalyticsPage({
 
   return (
     <>
-      <header className="mb-6">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Insights</p>
-        <h1 className="mt-2 text-3xl font-medium tracking-tight">Analytics</h1>
-        <p className="mt-2 text-sm text-slate/60">
-          What&rsquo;s working — based on payment + rating data through {new Date(data.rangeEnd).toLocaleString()}.
-        </p>
+      <header className="mb-6 flex items-baseline justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Insights</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">Analytics</h1>
+          <p className="mt-2 text-sm text-slate/60">
+            What&rsquo;s working — based on payment + rating data through {new Date(data.rangeEnd).toLocaleString()}.
+          </p>
+        </div>
+        <a
+          href={`/api/admin/v/${params.slug}/export/sessions?days=90`}
+          className="shrink-0 rounded-full border border-slate/15 bg-white px-3 py-1.5 text-xs text-slate/70 hover:border-slate/40"
+          title="Last 90 days of paid sessions, totals + tip + tax"
+        >
+          ↓ Export sessions CSV
+        </a>
       </header>
 
       <nav className="mb-8 flex gap-2">

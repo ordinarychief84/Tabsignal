@@ -82,6 +82,9 @@ export default async function OperatorOrgLayout({
           <ul className="space-y-0.5">
             <NavLink href={`/operator/orgs/${params.orgId}`} label="Overview" />
             <NavLink href={`/operator/orgs/${params.orgId}/venues`} label="Venues" />
+            <NavLink href={`/operator/orgs/${params.orgId}/billing`} label="Plan" />
+            <NavLink href={`/operator/orgs/${params.orgId}/members`} label="Members" />
+            <NavLink href={`/operator/orgs/${params.orgId}/broadcast`} label="Broadcast" />
           </ul>
         </nav>
         <div className="px-6 py-6">

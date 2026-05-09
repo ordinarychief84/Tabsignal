@@ -91,13 +91,19 @@ export default async function OperatorConsole() {
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-2 flex items-baseline justify-between">
           <h1 className="text-3xl font-medium tracking-tight">Operator console</h1>
-          <p className="text-[11px] tracking-wide text-slate/40">
-            Past 24 hours
-          </p>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/operator/venues/new"
+              className="rounded-full bg-slate px-4 py-1.5 text-xs text-oat hover:bg-slate/90"
+            >
+              + New venue
+            </Link>
+            <p className="text-[11px] tracking-wide text-slate/40">Past 24 hours</p>
+          </div>
         </div>
         <p className="text-sm text-slate/60">
-          Platform-wide view of TabCall. Read-only; structural changes still
-          require direct DB or Stripe access.
+          Platform-wide view of TabCall. Use per-org pages to flip plans,
+          manage members, and broadcast notices.
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
