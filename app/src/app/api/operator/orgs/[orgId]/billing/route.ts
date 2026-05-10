@@ -106,19 +106,19 @@ async function notifyPlanChange(args: {
     : "Realtime request queue + AI bad-rating intercept. 0.5% per transaction, no monthly fee.";
   const subject = `[${args.org.name}] Plan updated → ${planLabel}`;
   const html = `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;color:#2B2539;background:#EBE9E4;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;color:#0E0F1A;background:#F8F6F1;">
       <tr><td style="padding:24px;">
-        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7B6767;">${escapeHtml(args.org.name)}</p>
+        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${escapeHtml(args.org.name)}</p>
         <h2 style="margin:0 0 12px;font-weight:500;">You&rsquo;re on ${escapeHtml(planLabel)} now.</h2>
-        <p style="margin:0 0 12px;color:#2B2539;">Status: <strong>${escapeHtml(args.status.toLowerCase())}</strong>.</p>
-        <p style="margin:0 0 16px;color:#2B2539;">${escapeHtml(perks)}</p>
-        <p style="margin:0 0 12px;font-size:13px;color:#7B6767;">
+        <p style="margin:0 0 12px;color:#0E0F1A;">Status: <strong>${escapeHtml(args.status.toLowerCase())}</strong>.</p>
+        <p style="margin:0 0 16px;color:#0E0F1A;">${escapeHtml(perks)}</p>
+        <p style="margin:0 0 12px;font-size:13px;color:#8B6F4E;">
           ${args.planId !== "free"
             ? "Reach out if anything looks wrong — flipping a plan in the operator console doesn&rsquo;t auto-charge; we&rsquo;ll handle Stripe Subscription setup separately."
             : "You&rsquo;ve been moved back to the Starter tier. Realtime queue + bad-rating intercept stay on; everything else gates back."
           }
         </p>
-        <p style="margin:24px 0 0;font-size:11px;color:#7B6767;">
+        <p style="margin:24px 0 0;font-size:11px;color:#8B6F4E;">
           Updated by ${escapeHtml(args.operatorEmail ?? "TabCall")}.
         </p>
       </td></tr>

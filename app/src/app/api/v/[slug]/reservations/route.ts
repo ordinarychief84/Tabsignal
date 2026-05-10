@@ -99,15 +99,15 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     if (to.length === 0) return;
     const subject = `[${venueName}] New reservation · ${formatted} · ${parsed.partySize} · ${parsed.guestName}`;
     const html = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#2B2539;background:#EBE9E4;padding:24px;">
-        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#7B6767;">${venueName}</p>
+      <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#0E0F1A;background:#F8F6F1;padding:24px;">
+        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${venueName}</p>
         <h2 style="margin:0 0 12px;font-weight:500;">New reservation</h2>
         <p style="margin:0 0 6px;"><strong>Guest:</strong> ${parsed.guestName} (${phone})</p>
         <p style="margin:0 0 6px;"><strong>Party:</strong> ${parsed.partySize}</p>
         <p style="margin:0 0 6px;"><strong>When:</strong> ${formatted}</p>
         ${parsed.zone ? `<p style="margin:0 0 6px;"><strong>Zone:</strong> ${parsed.zone}</p>` : ""}
         ${parsed.notes ? `<p style="margin:0 0 6px;"><strong>Notes:</strong> ${parsed.notes}</p>` : ""}
-        <p style="margin:12px 0 0;font-size:11px;color:#7B6767;">Code: ${codeShort}</p>
+        <p style="margin:12px 0 0;font-size:11px;color:#8B6F4E;">Code: ${codeShort}</p>
       </div>
     `.trim();
     const text = `${venueName} — new reservation\n\nGuest: ${parsed.guestName} (${phone})\nParty: ${parsed.partySize}\nWhen: ${formatted}\n${parsed.zone ? `Zone: ${parsed.zone}\n` : ""}${parsed.notes ? `Notes: ${parsed.notes}\n` : ""}Code: ${codeShort}`;
