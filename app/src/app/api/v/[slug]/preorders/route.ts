@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { taxRateForZip } from "@/lib/tax";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 
@@ -106,26 +106,31 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     },
   });
 
-  const intent = await stripe().paymentIntents.create(
-    {
-      amount: totalCents,
-      currency: "usd",
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        tabcall_preorder_id: preOrder.id,
-        tabcall_venue_id: venue.id,
-        tip_cents: String(tipCents),
-        tip_percent: String(parsed.tipPercent),
+  let intent;
+  try {
+    intent = await stripe().paymentIntents.create(
+      {
+        amount: totalCents,
+        currency: "usd",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          tabcall_preorder_id: preOrder.id,
+          tabcall_venue_id: venue.id,
+          tip_cents: String(tipCents),
+          tip_percent: String(parsed.tipPercent),
+        },
+        ...(venue.stripeAccountId
+          ? {
+              application_fee_amount: platformFeeCents,
+              transfer_data: { destination: venue.stripeAccountId },
+            }
+          : {}),
       },
-      ...(venue.stripeAccountId
-        ? {
-            application_fee_amount: platformFeeCents,
-            transfer_data: { destination: venue.stripeAccountId },
-          }
-        : {}),
-    },
-    { idempotencyKey: `pi_preorder_${preOrder.id}` }
-  );
+      { idempotencyKey: `pi_preorder_${preOrder.id}` }
+    );
+  } catch (err) {
+    return stripeErrorResponse(err, "[preorders/payment]");
+  }
 
   await db.preOrder.update({
     where: { id: preOrder.id },

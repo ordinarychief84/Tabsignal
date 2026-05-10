@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripe, stripeErrorResponse } from "@/lib/stripe";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -60,28 +60,33 @@ export async function POST(
   const platformFeeCents = Math.round(totalCents * 0.005);
   const idempotencyKey = `pi_split_${split.id}_${totalCents}`;
 
-  const intent = await stripe().paymentIntents.create(
-    {
-      amount: totalCents,
-      currency: "usd",
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        tabcall_session_id: session.id,
-        tabcall_split_id: split.id,
-        tabcall_venue_id: session.venueId,
-        tabcall_table_id: session.tableId,
-        tip_cents: String(tipCents),
-        tip_percent: String(tipPercent),
+  let intent;
+  try {
+    intent = await stripe().paymentIntents.create(
+      {
+        amount: totalCents,
+        currency: "usd",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          tabcall_session_id: session.id,
+          tabcall_split_id: split.id,
+          tabcall_venue_id: session.venueId,
+          tabcall_table_id: session.tableId,
+          tip_cents: String(tipCents),
+          tip_percent: String(tipPercent),
+        },
+        ...(session.venue.stripeAccountId
+          ? {
+              application_fee_amount: platformFeeCents,
+              transfer_data: { destination: session.venue.stripeAccountId },
+            }
+          : {}),
       },
-      ...(session.venue.stripeAccountId
-        ? {
-            application_fee_amount: platformFeeCents,
-            transfer_data: { destination: session.venue.stripeAccountId },
-          }
-        : {}),
-    },
-    { idempotencyKey }
-  );
+      { idempotencyKey }
+    );
+  } catch (err) {
+    return stripeErrorResponse(err, "[session/splits/payment]");
+  }
 
   await db.billSplit.update({
     where: { id: split.id },

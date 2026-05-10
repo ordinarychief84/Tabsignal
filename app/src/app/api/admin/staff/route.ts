@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
+import { isVenueManager } from "@/lib/auth/venue-role";
 import { appOrigin } from "@/lib/origin";
 
 const Body = z.object({
@@ -15,6 +16,15 @@ const Body = z.object({
 export async function POST(req: Request) {
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  // Manager-only: a bartender shouldn't be able to add a co-conspirator
+  // and grant them magic-link access to the manager dashboard.
+  if (!(await isVenueManager(session, session.venueId))) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Only managers can add staff." },
+      { status: 403 },
+    );
+  }
 
   let parsed;
   try { parsed = Body.parse(await req.json()); }

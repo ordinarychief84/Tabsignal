@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { parseLineItems, totalsFor } from "@/lib/bill";
 
 const Body = z.object({
@@ -67,27 +67,32 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   // legitimate "I changed my tip" still cuts a fresh PI.
   const idempotencyKey = `pi_${session.id}_${totalCents}_${parsed.tipPercent}`;
 
-  const intent = await stripe().paymentIntents.create(
-    {
-      amount: totalCents,
-      currency: "usd",
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        tabcall_session_id: session.id,
-        tabcall_venue_id: session.venueId,
-        tabcall_table_id: session.tableId,
-        tip_cents: String(tipCents),
-        tip_percent: String(parsed.tipPercent),
+  let intent;
+  try {
+    intent = await stripe().paymentIntents.create(
+      {
+        amount: totalCents,
+        currency: "usd",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          tabcall_session_id: session.id,
+          tabcall_venue_id: session.venueId,
+          tabcall_table_id: session.tableId,
+          tip_cents: String(tipCents),
+          tip_percent: String(parsed.tipPercent),
+        },
+        ...(session.venue.stripeAccountId
+          ? {
+              application_fee_amount: platformFeeCents,
+              transfer_data: { destination: session.venue.stripeAccountId },
+            }
+          : {}),
       },
-      ...(session.venue.stripeAccountId
-        ? {
-            application_fee_amount: platformFeeCents,
-            transfer_data: { destination: session.venue.stripeAccountId },
-          }
-        : {}),
-    },
-    { idempotencyKey }
-  );
+      { idempotencyKey }
+    );
+  } catch (err) {
+    return stripeErrorResponse(err, "[session/payment]");
+  }
 
   await db.guestSession.update({
     where: { id: session.id },
