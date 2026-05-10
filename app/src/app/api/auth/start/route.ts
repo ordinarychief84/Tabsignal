@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 import { appOrigin } from "@/lib/origin";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 const Body = z.object({
   email: z.string().email(),
@@ -18,6 +19,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
   const email = parsed.email.toLowerCase().trim();
+
+  // Throttle by email and by IP. Without this an attacker can mailbomb a
+  // staff inbox or burn Resend quota by spamming /auth/start. Limits run
+  // through the shared Upstash-backed limiter so they survive Vercel cold
+  // starts; both gates fail-open if Upstash isn't configured.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const emailGate = await rateLimitAsync(`auth-start:email:${email}`, { windowMs: 60 * 60_000, max: 8 });
+  const ipGate    = await rateLimitAsync(`auth-start:ip:${ip}`,        { windowMs: 60 * 60_000, max: 30 });
+  if (!emailGate.ok || !ipGate.ok) {
+    // Same 200 shape as the success path so we don't leak which email
+    // address tripped the limiter (would otherwise enable enumeration).
+    console.warn("[auth/start] rate limited", { email, ip, emailGate, ipGate });
+    return NextResponse.json({ ok: true });
+  }
 
   // Look up by email. If not found, still return 200 — never reveal whether
   // the email belongs to a registered staff member.

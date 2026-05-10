@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { canBroadcast, checkOrgAccess } from "@/lib/operator-rbac";
+import { checkOrgAccess } from "@/lib/operator-rbac";
+import { isPlatformStaff } from "@/lib/auth/operator";
 import { planById } from "@/lib/plans";
 import { sendEmail } from "@/lib/email/send";
 import { orgAlertRecipients } from "@/lib/email/recipients";
@@ -33,11 +34,19 @@ const Body = z.object({
  */
 export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
   const session = await getStaffSession();
+  // Plan-flip is platform-staff only. Allowing OrgMember OWNER/ADMIN here was
+  // a privilege-escalation hole: signup auto-grants the new owner OWNER, which
+  // would let any self-serve venue immediately PATCH themselves to "pro" for
+  // free. Only TabCall internal staff (isPlatformStaff via OPERATOR_EMAILS or
+  // a PLATFORM org membership) may bump a plan via this endpoint.
+  if (!session || !isPlatformStaff(session)) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Plan changes are issued by TabCall staff only." },
+      { status: 403 },
+    );
+  }
   const access = await checkOrgAccess(session, ctx.params.orgId);
   if (!access.ok) return NextResponse.json({ error: access.reason }, { status: access.status });
-  if (!canBroadcast(access.role)) {
-    return NextResponse.json({ error: "FORBIDDEN", detail: "Promoting an org's plan requires OWNER or ADMIN." }, { status: 403 });
-  }
 
   let parsed;
   try { parsed = Body.parse(await req.json()); }
