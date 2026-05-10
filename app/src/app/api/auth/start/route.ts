@@ -46,12 +46,19 @@ export async function POST(req: Request) {
       // the link in the response so testing doesn't grind to a halt. Production
       // must never hit this path — gate strictly so a misconfigured preview
       // doesn't leak tokens in HTTP bodies.
+      const e = err as { statusCode?: number; message?: string };
+      console.error("[auth/start] email send failed", {
+        email,
+        statusCode: e.statusCode,
+        message: e.message,
+      });
       const allowDevLinks = process.env.TABSIGNAL_DEV_LINKS === "true" || process.env.NODE_ENV === "development";
       if (allowDevLinks) {
-        console.warn("[auth/start] email send failed, returning link in response", (err as Error).message);
         return NextResponse.json({ ok: true, devLink: link });
       }
-      console.warn("[auth/start] email send failed", (err as { statusCode?: number }).statusCode);
+      // Production: still return 200 to avoid email enumeration. The
+      // structured `console.error` above lights up Vercel logs so the
+      // failure is observable.
     }
   }
 
