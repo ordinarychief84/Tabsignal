@@ -2,13 +2,13 @@
  * TabCall — landing page.
  *
  * Brand palette (use ONLY these — see tailwind.config.ts):
- *   slate     #2B2539   dark surfaces, navbar, hero, footer
- *   slate.light #3A3346 cards over slate
- *   oat       #EBE9E4   light surfaces
- *   chartreuse #EEEFC8  primary action + active signals
- *   coral     #EFC8C8   alerts + delays
- *   sea       #BED3CC   secondary accents
- *   umber     #7B6767   section accent (CTA band)
+ *   slate     #0E0F1A   dark surfaces, navbar, hero, footer
+ *   slate.light #1A1C2C cards over slate
+ *   oat       #F8F6F1   light surfaces
+ *   chartreuse #C9F61C  primary action + active signals
+ *   coral     #F25C42   alerts + delays
+ *   sea       #5BD0B3   secondary accents
+ *   umber     #8B6F4E   section accent (CTA band)
  *
  * Section rule: a single section uses one accent at most. No gradients.
  */
@@ -41,7 +41,7 @@ function Logo({
   variant?: "light" | "dark";
   iconOnly?: boolean;
 }) {
-  const wordColor = variant === "light" ? "#FFFFFF" : "#2B2539";
+  const wordColor = variant === "light" ? "#FFFFFF" : "#0E0F1A";
   return (
     <span className="inline-flex items-center gap-2 leading-none">
       <span
@@ -52,11 +52,11 @@ function Logo({
           <path
             d="M 6 11 Q 12 6, 18 11"
             fill="none"
-            stroke="#EEEFC8"
+            stroke="#C9F61C"
             strokeWidth="2"
             strokeLinecap="round"
           />
-          <circle cx="12" cy="16" r="2" fill="#EEEFC8" />
+          <circle cx="12" cy="16" r="2" fill="#C9F61C" />
         </svg>
       </span>
       {iconOnly ? null : (
@@ -266,10 +266,10 @@ function StepIcon({ n }: { n: string }) {
             cy="12"
             r="9"
             fill="none"
-            stroke="#2B2539"
+            stroke="#0E0F1A"
             strokeWidth="1.5"
           />
-          <circle cx="12" cy="12" r="2.5" fill="#2B2539" />
+          <circle cx="12" cy="12" r="2.5" fill="#0E0F1A" />
         </svg>
       </span>
       <span className="font-mono text-xs tracking-wider text-umber">{n}</span>
@@ -704,7 +704,7 @@ function Faq() {
 
 function CtaBand() {
   return (
-    <section style={{ backgroundColor: "#7B6767" }}>
+    <section style={{ backgroundColor: "#8B6F4E" }}>
       <div className="mx-auto max-w-3xl px-6 py-20 text-center md:py-24">
         <h2 className="text-[32px] font-medium leading-tight text-oat md:text-[44px]">
           Be the bar that gets the email at 10:14, not the Yelp at 10:42.

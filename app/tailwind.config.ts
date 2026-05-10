@@ -5,15 +5,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // TabCall brand palette (use ONLY these)
-        slate:       { DEFAULT: "#2B2539", light: "#3A3346" }, // dark surfaces
-        oat:         "#EBE9E4",                                 // light surfaces
-        chartreuse:  "#EEEFC8",                                 // primary action / active signals
-        coral:       "#EFC8C8",                                 // alerts / delays
-        sea:         "#BED3CC",                                 // secondary accents / icons
-        umber:       "#7B6767",                                 // section accent
+        // TabCall brand palette — "Last Call" (use ONLY these — see docs/BRAND.md)
+        slate:       { DEFAULT: "#0E0F1A", light: "#1A1C2C" }, // inkwell / midnight — dark surfaces
+        oat:         "#F8F6F1",                                 // bone — light surfaces
+        chartreuse:  "#C9F61C",                                 // electric lime — primary action / live signals
+        coral:       "#F25C42",                                 // hot coral — alerts / delays
+        sea:         "#5BD0B3",                                 // sea glass — secondary accents
+        umber:       "#8B6F4E",                                 // whiskey — section accent (CTA band)
         // Legacy alias — older pages use bg-brand / text-brand / ring-brand-accent.
-        brand:       { DEFAULT: "#2B2539", accent: "#EEEFC8" },
+        brand:       { DEFAULT: "#0E0F1A", accent: "#C9F61C" },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "Arial", "sans-serif"],

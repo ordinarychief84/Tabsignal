@@ -11,6 +11,10 @@ import { z } from "zod";
  */
 
 const isProd = process.env.NODE_ENV === "production";
+// `next build` sets NODE_ENV=production, but the build itself runs in CI/local
+// without real prod secrets. Strict prod validation belongs at runtime, not at
+// bundle time — otherwise `next build` becomes a wall that blocks shipping.
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 const Required = z.object({
   // Postgres
@@ -82,7 +86,7 @@ function parseEnv() {
   }
   const optional = Optional.parse(process.env);
 
-  if (isProd) {
+  if (isProd && !isBuildPhase) {
     const prod = ProdRequired.safeParse(process.env);
     if (!prod.success) {
       const issues = prod.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join("\n  ");

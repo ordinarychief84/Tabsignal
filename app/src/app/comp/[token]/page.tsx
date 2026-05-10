@@ -47,8 +47,8 @@ export default async function CompPage({ params }: { params: { token: string } }
       <header className="border-b border-white/5 px-6 py-4">
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-oat/70 hover:text-oat">
           <svg width="20" height="20" viewBox="0 0 24 24">
-            <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#EEEFC8" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="12" cy="16" r="2" fill="#EEEFC8" />
+            <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#C9F61C" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="12" cy="16" r="2" fill="#C9F61C" />
           </svg>
           TabCall
         </Link>
