@@ -1,44 +1,37 @@
 /**
  * Per-venue role gate.
  *
- * The StaffMember model only has one role today (STAFF) — when we need to
- * gate something like "only the manager can onboard Stripe Connect" or
- * "only the manager can add staff", we lean on the org-level OrgMember row
- * the signup flow auto-creates with role=OWNER. Anyone who joined the
- * venue as plain staff has no OrgMember row, so this returns false.
+ * Phase-1 RBAC: roles live on `StaffMember.role` (StaffRole enum).
+ * Manager-tier callers are OWNER, MANAGER, or PLATFORM staff. We trust
+ * the role baked into the session JWT to avoid an extra DB roundtrip
+ * on every request — the JWT is re-issued on each magic-link sign-in,
+ * so a role downgrade takes effect on the suspended user's next login
+ * (which they can no longer achieve anyway). Role *upgrades* require
+ * a fresh login; the People page UI tells managers this.
  *
- * Platform staff (TabCall internal) is treated as a manager everywhere so
- * support can poke around without role escalation.
+ * Platform staff (TabCall internal via OPERATOR_EMAILS) is treated as
+ * a manager everywhere so support can poke around without role
+ * escalation.
+ *
+ * Legacy: rows with `role === "STAFF"` predate the RBAC migration and
+ * are venue creators by construction. The migration backfill flips
+ * them to OWNER, but this helper recognises STAFF as manager-tier
+ * during the transition window so existing managers don't lose
+ * access between deploy and migrate.
  */
 
-import { db } from "@/lib/db";
 import { isPlatformStaff } from "./operator";
+import { isManagerOrAbove } from "./permissions";
 import type { SessionClaims } from "./token";
 
-const MANAGER_ORG_ROLES = new Set(["OWNER", "ADMIN", "PLATFORM"] as const);
-
-/**
- * Returns true when `session` belongs to a manager-tier user for the venue:
- *   - Platform staff (OPERATOR_EMAILS or PLATFORM org-member) → always
- *   - OrgMember with role OWNER or ADMIN of the venue's organization
- *
- * Pass the venue id so we look up the org once and never trust the caller.
- */
 export async function isVenueManager(
   session: SessionClaims | null | undefined,
-  venueId: string,
+  _venueId: string,
 ): Promise<boolean> {
   if (!session) return false;
   if (isPlatformStaff(session)) return true;
-  const venue = await db.venue.findUnique({
-    where: { id: venueId },
-    select: { orgId: true },
-  });
-  if (!venue) return false;
-  const member = await db.orgMember.findUnique({
-    where: { orgId_email: { orgId: venue.orgId, email: session.email.toLowerCase() } },
-    select: { role: true },
-  });
-  if (!member) return false;
-  return MANAGER_ORG_ROLES.has(member.role as "OWNER" | "ADMIN" | "PLATFORM");
+  // Session JWT carries the role baked at sign-in time. Normalise the
+  // legacy STAFF value into manager-tier during the migration window.
+  const role = session.role === "STAFF" ? "OWNER" : session.role;
+  return isManagerOrAbove(role);
 }

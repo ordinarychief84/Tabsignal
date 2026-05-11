@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { StaffPanel } from "./staff-panel";
+import { assignableRoles } from "@/lib/auth/permissions";
+import { PeoplePanel } from "./people-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — staff" };
+export const metadata = { title: "TabCall — people" };
 
-export default async function StaffAdminPage({ params }: { params: { slug: string } }) {
+export default async function PeoplePage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();
   if (!session) redirect(`/staff/login?next=/admin/v/${params.slug}/staff`);
 
@@ -19,10 +20,11 @@ export default async function StaffAdminPage({ params }: { params: { slug: strin
   const [staff, tables] = await Promise.all([
     db.staffMember.findMany({
       where: { venueId: venue.id },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ status: "asc" }, { createdAt: "asc" }],
       include: {
         ackedRequests: { select: { id: true } },
         assignments: { select: { tableId: true } },
+        invitedBy: { select: { name: true, email: true } },
       },
     }),
     db.table.findMany({
@@ -36,23 +38,30 @@ export default async function StaffAdminPage({ params }: { params: { slug: strin
     <>
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Team</p>
-        <h1 className="mt-2 text-3xl font-medium tracking-tight">Staff</h1>
+        <h1 className="mt-2 text-3xl font-medium tracking-tight">People</h1>
         <p className="mt-2 text-sm text-slate/60">
-          Add a server, bartender, or manager. Assign which tables they cover —
-          requests on those tables ping their phone first.
+          Owners run the venue. Managers handle staff &amp; settings. Servers
+          and Hosts work the floor. Viewers can read reports without changing
+          anything. Suspending keeps history; removing wipes the row.
         </p>
       </header>
 
-      <StaffPanel
+      <PeoplePanel
         currentEmail={session.email}
+        currentRole={session.role}
+        currentStaffId={session.staffId}
+        assignableRoles={assignableRoles(session.role)}
         tables={tables}
         initial={staff.map(s => ({
           id: s.id,
           name: s.name,
           email: s.email,
           role: s.role,
+          status: s.status,
           ackedCount: s.ackedRequests.length,
-          createdAt: s.createdAt.toISOString(),
+          lastSeenAt: s.lastSeenAt?.toISOString() ?? null,
+          invitedAt: s.createdAt.toISOString(),
+          invitedBy: s.invitedBy ? { name: s.invitedBy.name, email: s.invitedBy.email } : null,
           tableIds: s.assignments.map(a => a.tableId),
         }))}
       />

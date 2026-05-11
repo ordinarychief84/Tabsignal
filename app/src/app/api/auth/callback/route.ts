@@ -68,6 +68,24 @@ export async function GET(req: Request) {
     throw err;
   }
 
+  // Phase-1 RBAC: any successful sign-in flips the row out of INVITED
+  // and stamps lastSeenAt. SUSPENDED rows are refused so a fired
+  // bartender can't reuse the link they got six months ago. Failures
+  // here only affect observability — never block the login.
+  if (staff.status === "SUSPENDED") {
+    return NextResponse.redirect(`${origin}/staff/login?err=suspended`);
+  }
+  await db.staffMember
+    .update({
+      where: { id: staff.id },
+      data: {
+        lastSeenAt: new Date(),
+        // Promote INVITED → ACTIVE on first successful sign-in.
+        ...(staff.status === "INVITED" ? { status: "ACTIVE" as const } : {}),
+      },
+    })
+    .catch(err => console.warn("[auth/callback] lastSeenAt update failed", err));
+
   const session = await signSessionToken({
     kind: "session",
     staffId: staff.id,

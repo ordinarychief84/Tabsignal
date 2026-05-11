@@ -45,7 +45,22 @@ enum PosType {
 }
 
 enum StaffRole {
-  STAFF
+  // Phase-1 RBAC. Roles are ordered loosely by privilege. Existing
+  // legacy STAFF rows are migrated to OWNER (they were the venue
+  // creator from /api/signup) — STAFF stays in the enum so the
+  // migration is non-destructive but is no longer assigned.
+  OWNER
+  MANAGER
+  SERVER
+  HOST
+  VIEWER
+  STAFF // legacy — do not assign new rows
+}
+
+enum StaffStatus {
+  ACTIVE
+  INVITED // sent magic link, never signed in
+  SUSPENDED // soft-disabled; row retained for audit history
 }
 
 enum RequestType {
@@ -142,6 +157,7 @@ model Venue {
   reservations           Reservation[]
   waitlist               Waitlist[]
   specials               VenueSpecial[]
+  auditLog               AuditLog[]
 
   @@index([orgId])
 }
@@ -235,14 +251,57 @@ model StaffMember {
   venueId       String
   name          String
   email         String            @unique
-  role          StaffRole         @default(STAFF)
+  role          StaffRole         @default(SERVER)
+  status        StaffStatus       @default(ACTIVE)
   fcmToken      String?
   createdAt     DateTime          @default(now())
+  // Last successful sign-in via /api/auth/callback. Surfaces on the
+  // People page so managers can spot stale accounts that should be
+  // suspended.
+  lastSeenAt    DateTime?
+  // Self-referential audit: who invited this row, who suspended it.
+  // Both nullable so the original venue OWNER (created by signup)
+  // doesn't need a phantom inviter.
+  invitedById   String?
+  invitedBy     StaffMember?      @relation("StaffInvites", fields: [invitedById], references: [id])
+  invitesSent   StaffMember[]     @relation("StaffInvites")
+  suspendedAt   DateTime?
+  suspendedById String?
+  suspendedBy   StaffMember?      @relation("StaffSuspends", fields: [suspendedById], references: [id])
+  suspended     StaffMember[]     @relation("StaffSuspends")
+
   venue         Venue             @relation(fields: [venueId], references: [id])
   ackedRequests Request[]         @relation("AcknowledgedBy")
   assignments   TableAssignment[]
 
   @@index([venueId])
+  @@index([venueId, status])
+}
+
+// Append-only audit trail for sensitive admin actions. Today we emit
+// on staff invites/role-changes/suspends/removals so a manager can
+// reconstruct who promoted which bartender to manager three weeks
+// ago. Other surfaces (menu, billing) can plug in later by calling
+// the same `audit()` helper.
+model AuditLog {
+  id         String   @id @default(cuid())
+  venueId    String
+  venue      Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  // Who did it. We store the email at action-time rather than an FK
+  // so the entry survives the actor being removed from the venue.
+  actorEmail String
+  actorRole  String
+  // Dot-namespaced action verb, e.g. "staff.invited",
+  // "staff.role_changed", "staff.suspended", "staff.removed".
+  action     String
+  targetType String?
+  targetId   String?
+  // Free-form structured context: { fromRole, toRole, email, ... }.
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([venueId, createdAt])
+  @@index([venueId, action])
 }
 
 // Many-to-many: staff cover tables. A staff member can cover multiple
