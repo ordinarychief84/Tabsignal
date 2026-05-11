@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { verifyLinkToken, signSessionToken } from "@/lib/auth/token";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
+import { isPlatformStaff } from "@/lib/auth/operator";
 
 /**
  * Resolve the public origin from the request — Next.js binds to 0.0.0.0 in
@@ -24,11 +25,19 @@ function originFromRequest(req: Request): string {
 /**
  * Only allow same-origin path redirects from the `next` param. Reject
  * absolute URLs and protocol-relative URLs to prevent open-redirect.
+ *
+ * `defaultDest` decides where someone with no `next` should land:
+ *   - Operators (OPERATOR_EMAILS) → /operator
+ *   - Everyone else → /staff (the floor app)
+ *
+ * Without this, an operator who hits /staff/login (the only sign-in
+ * surface) ends up on /staff every time and has to manually navigate
+ * to /operator — clumsy, surprising on a fresh device.
  */
-function safeNext(next: string | null | undefined): string {
-  if (!next) return "/staff";
-  if (!next.startsWith("/")) return "/staff";
-  if (next.startsWith("//")) return "/staff";
+function safeNext(next: string | null | undefined, defaultDest = "/staff"): string {
+  if (!next) return defaultDest;
+  if (!next.startsWith("/")) return defaultDest;
+  if (next.startsWith("//")) return defaultDest;
   return next;
 }
 
@@ -94,7 +103,17 @@ export async function GET(req: Request) {
     role: staff.role,
   });
 
-  const dest = safeNext(claims.next ?? url.searchParams.get("next"));
+  // Operators landing without a next= go to /operator (they almost
+  // always want the platform console). Everyone else gets /staff.
+  const operator = isPlatformStaff({
+    kind: "session",
+    staffId: staff.id,
+    venueId: staff.venueId,
+    email: staff.email,
+    role: staff.role,
+  });
+  const defaultDest = operator ? "/operator" : "/staff";
+  const dest = safeNext(claims.next ?? url.searchParams.get("next"), defaultDest);
   const res = NextResponse.redirect(`${origin}${dest}`);
   res.cookies.set(SESSION_COOKIE, session, sessionCookieOptions());
   return res;
