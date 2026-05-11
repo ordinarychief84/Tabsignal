@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { getStaffSession } from "@/lib/auth/session";
 import { planById } from "@/lib/plans";
 import { appOrigin } from "@/lib/origin";
@@ -38,33 +38,42 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   // One Stripe Customer per Organization. Create on first checkout.
   let customerId = venue.org.stripeCustomerId;
   if (!customerId) {
-    const customer = await stripe().customers.create({
-      name: venue.org.name,
-      email: session.email,
-      metadata: { tabcall_org_id: venue.org.id },
-    });
-    customerId = customer.id;
-    await db.organization.update({
-      where: { id: venue.org.id },
-      data: { stripeCustomerId: customerId },
-    });
+    try {
+      const customer = await stripe().customers.create({
+        name: venue.org.name,
+        email: session.email,
+        metadata: { tabcall_org_id: venue.org.id },
+      });
+      customerId = customer.id;
+      await db.organization.update({
+        where: { id: venue.org.id },
+        data: { stripeCustomerId: customerId },
+      });
+    } catch (err) {
+      return stripeErrorResponse(err, "[billing/checkout customers.create]");
+    }
   }
 
   const origin = appOrigin(req);
   const returnUrl = `${origin}/admin/v/${ctx.params.slug}/billing?checkout=success`;
   const cancelUrl = `${origin}/admin/v/${ctx.params.slug}/billing?checkout=canceled`;
 
-  const checkout = await stripe().checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-    success_url: returnUrl,
-    cancel_url: cancelUrl,
-    subscription_data: {
-      metadata: { tabcall_org_id: venue.org.id, tabcall_plan_id: parsed.planId },
-    },
-    allow_promotion_codes: true,
-  });
+  let checkout;
+  try {
+    checkout = await stripe().checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      success_url: returnUrl,
+      cancel_url: cancelUrl,
+      subscription_data: {
+        metadata: { tabcall_org_id: venue.org.id, tabcall_plan_id: parsed.planId },
+      },
+      allow_promotion_codes: true,
+    });
+  } catch (err) {
+    return stripeErrorResponse(err, "[billing/checkout sessions.create]");
+  }
 
   return NextResponse.json({ url: checkout.url });
 }

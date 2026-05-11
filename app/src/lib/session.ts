@@ -15,10 +15,13 @@ export type ResolvedSession = {
 /**
  * Resolves a guest landing on /v/[slug]/t/[tableId]?s=[token].
  * - Validates that the venue + table exist.
- * - Validates the token if provided (must match the table's qrToken).
+ * - REQUIRES the qrToken to match the table's qrToken — otherwise anyone who
+ *   guesses `slug` + a table id/label could resolve to the active session and
+ *   pull its sessionToken, hijacking the tab (submit requests, add line
+ *   items, post feedback, create splits, complete payment).
  * - Reuses an existing un-expired GuestSession or creates a new one.
  *
- * Throws on invalid venue, invalid table, or invalid token.
+ * Throws on invalid venue, invalid table, missing or wrong token.
  */
 export async function resolveGuestSession(
   slug: string,
@@ -34,7 +37,7 @@ export async function resolveGuestSession(
   });
   if (!table) throw new Error("TABLE_NOT_FOUND");
 
-  if (qrToken && qrToken !== table.qrToken) {
+  if (!qrToken || qrToken !== table.qrToken) {
     throw new Error("INVALID_TOKEN");
   }
 

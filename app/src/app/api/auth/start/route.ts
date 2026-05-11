@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 import { appOrigin } from "@/lib/origin";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 const Body = z.object({
   email: z.string().email(),
@@ -18,6 +19,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
   const email = parsed.email.toLowerCase().trim();
+
+  // Throttle by email and by IP. Without this an attacker can mailbomb a
+  // staff inbox or burn Resend quota by spamming /auth/start. Limits run
+  // through the shared Upstash-backed limiter so they survive Vercel cold
+  // starts; both gates fail-open if Upstash isn't configured.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const emailGate = await rateLimitAsync(`auth-start:email:${email}`, { windowMs: 60 * 60_000, max: 8 });
+  const ipGate    = await rateLimitAsync(`auth-start:ip:${ip}`,        { windowMs: 60 * 60_000, max: 30 });
+  if (!emailGate.ok || !ipGate.ok) {
+    // Same 200 shape as the success path so we don't leak which email
+    // address tripped the limiter (would otherwise enable enumeration).
+    console.warn("[auth/start] rate limited", { email, ip, emailGate, ipGate });
+    return NextResponse.json({ ok: true });
+  }
 
   // Look up by email. If not found, still return 200 — never reveal whether
   // the email belongs to a registered staff member.
@@ -46,12 +61,19 @@ export async function POST(req: Request) {
       // the link in the response so testing doesn't grind to a halt. Production
       // must never hit this path — gate strictly so a misconfigured preview
       // doesn't leak tokens in HTTP bodies.
+      const e = err as { statusCode?: number; message?: string };
+      console.error("[auth/start] email send failed", {
+        email,
+        statusCode: e.statusCode,
+        message: e.message,
+      });
       const allowDevLinks = process.env.TABSIGNAL_DEV_LINKS === "true" || process.env.NODE_ENV === "development";
       if (allowDevLinks) {
-        console.warn("[auth/start] email send failed, returning link in response", (err as Error).message);
         return NextResponse.json({ ok: true, devLink: link });
       }
-      console.warn("[auth/start] email send failed", (err as { statusCode?: number }).statusCode);
+      // Production: still return 200 to avoid email enumeration. The
+      // structured `console.error` above lights up Vercel logs so the
+      // failure is observable.
     }
   }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { getStaffSession } from "@/lib/auth/session";
+import { isVenueManager } from "@/lib/auth/venue-role";
 
 /**
  * Stripe Connect Express onboarding link generator.
@@ -39,6 +40,16 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   if (!venue) return NextResponse.json({ error: "VENUE_NOT_FOUND" }, { status: 404 });
   if (venue.id !== session.venueId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  // Manager-only: this mints an Express onboarding link that — once the
+  // session walks through Stripe's hosted form — can change the bank
+  // account that receives payouts. Bartender-tier staff must not start
+  // this flow.
+  if (!(await isVenueManager(session, venue.id))) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Only managers can start Stripe Connect onboarding." },
+      { status: 403 },
+    );
   }
 
   const origin = originFromRequest(req);

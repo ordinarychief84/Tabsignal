@@ -79,14 +79,29 @@ export async function POST(req: Request) {
       next: `/admin/v/${existing.venue.slug}`,
     });
     const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
-    await sendMagicLinkEmail({
-      to: email,
-      staffName: existing.name,
-      venueName: existing.venue.name,
-      link,
-    }).catch(err => console.warn("[signup] sign-in email send failed", err));
+    let existingEmailFailed = false;
+    try {
+      await sendMagicLinkEmail({
+        to: email,
+        staffName: existing.name,
+        venueName: existing.venue.name,
+        link,
+      });
+    } catch (err) {
+      const e = err as { statusCode?: number; message?: string };
+      console.error("[signup] sign-in email send failed", {
+        email,
+        statusCode: e.statusCode,
+        message: e.message,
+      });
+      existingEmailFailed = true;
+    }
     // Same response shape regardless so we don't enumerate emails.
-    return NextResponse.json({ ok: true, alreadyRegistered: true });
+    return NextResponse.json({
+      ok: true,
+      alreadyRegistered: true,
+      ...(existingEmailFailed ? { emailDeliveryFailed: true } : {}),
+    });
   }
 
   // Slug from venue name; collision-suffix if taken.
@@ -150,6 +165,7 @@ export async function POST(req: Request) {
   const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
 
   let devLink: string | null = null;
+  let emailDeliveryFailed = false;
   try {
     await sendMagicLinkEmail({
       to: email,
@@ -158,23 +174,32 @@ export async function POST(req: Request) {
       link,
     });
   } catch (err) {
-    // Mirror /api/auth/start: in dev, surface the link so onboarding
-    // testing doesn't require a working Resend.
+    // The org/venue/staff was committed before this point, so failing the
+    // request would orphan a venue with no way for the owner to sign in.
+    // Instead surface a structured `emailDeliveryFailed` flag so the form
+    // can tell the owner to contact support — the row is recoverable by
+    // an operator manually re-issuing a magic link.
+    const e = err as { statusCode?: number; message?: string };
+    console.error("[signup] email send failed", {
+      email,
+      slug: result.venue.slug,
+      statusCode: e.statusCode,
+      message: e.message,
+    });
+    emailDeliveryFailed = true;
+    // Dev-only: also return the raw link to keep local onboarding testable
+    // without a working Resend. Strictly gated — never set in prod.
     const allowDevLinks =
       process.env.TABSIGNAL_DEV_LINKS === "true" ||
       process.env.NODE_ENV === "development";
-    if (allowDevLinks) {
-      console.warn("[signup] email send failed, returning link", (err as Error).message);
-      devLink = link;
-    } else {
-      console.warn("[signup] email send failed", (err as { statusCode?: number }).statusCode);
-    }
+    if (allowDevLinks) devLink = link;
   }
 
   return NextResponse.json(
     {
       ok: true,
       slug: result.venue.slug,
+      ...(emailDeliveryFailed ? { emailDeliveryFailed: true } : {}),
       ...(devLink ? { devLink } : {}),
     },
     { status: 201 }

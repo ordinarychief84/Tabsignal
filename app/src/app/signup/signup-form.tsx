@@ -44,6 +44,7 @@ export function SignupForm() {
   const [devLink, setDevLink] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export function SignupForm() {
     setErrors({});
     setDevLink(null);
     setAlreadyRegistered(false);
+    setEmailDeliveryFailed(false);
 
     // Trim + lowercase the email for UX clarity (server already does this too).
     const payloadEmail = rawEmail.trim().toLowerCase();
@@ -121,6 +123,7 @@ export function SignupForm() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       if (body?.alreadyRegistered) setAlreadyRegistered(true);
+      if (body?.emailDeliveryFailed) setEmailDeliveryFailed(true);
       if (body?.devLink) setDevLink(body.devLink);
       setStatus("sent");
     } catch (err) {
@@ -153,6 +156,33 @@ export function SignupForm() {
   }
 
   if (status === "sent") {
+    if (emailDeliveryFailed) {
+      return (
+        <div
+          className="rounded-2xl border border-coral/40 bg-coral/10 p-6"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-base font-medium text-coral">Account created — but the email didn&rsquo;t go out</p>
+          <p className="mt-2 text-sm text-slate/75">
+            Your venue is set up, but our email provider couldn&rsquo;t deliver the
+            sign-in link to <span className="font-mono text-xs">{email}</span>.
+            This is on our side, not yours.
+          </p>
+          <p className="mt-3 text-sm text-slate/75">
+            Email <a className="text-umber underline-offset-4 hover:underline" href="mailto:support@tab-call.com">support@tab-call.com</a>{" "}
+            from this address and we&rsquo;ll re-issue your sign-in link within
+            an hour.
+          </p>
+          {devLink ? (
+            <p className="mt-4 break-all rounded bg-slate/5 px-3 py-2 text-[11px] text-slate/55">
+              <span className="uppercase tracking-wider">Dev:</span>{" "}
+              <a className="underline" href={devLink}>{devLink}</a>
+            </p>
+          ) : null}
+        </div>
+      );
+    }
     return (
       <div
         className="rounded-2xl border border-chartreuse/30 bg-chartreuse/15 p-6"

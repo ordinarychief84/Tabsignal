@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { getStaffSession } from "@/lib/auth/session";
 import { appOrigin } from "@/lib/origin";
 
@@ -28,10 +28,15 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   }
 
   const origin = appOrigin(req);
-  const portal = await stripe().billingPortal.sessions.create({
-    customer: venue.org.stripeCustomerId,
-    return_url: `${origin}/admin/v/${ctx.params.slug}/billing`,
-  });
+  let portal;
+  try {
+    portal = await stripe().billingPortal.sessions.create({
+      customer: venue.org.stripeCustomerId,
+      return_url: `${origin}/admin/v/${ctx.params.slug}/billing`,
+    });
+  } catch (err) {
+    return stripeErrorResponse(err, "[billing/portal]");
+  }
 
   return NextResponse.json({ url: portal.url });
 }

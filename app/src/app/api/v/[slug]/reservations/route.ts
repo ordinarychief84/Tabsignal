@@ -97,17 +97,28 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   void (async () => {
     const to = await venueAlertRecipients(gate.venueId);
     if (to.length === 0) return;
+    // Guest-controlled fields (guestName, phone, zone, notes) are escaped
+    // before being interpolated into the manager-facing email body —
+    // otherwise a hostile booking could inject phishing links / hidden
+    // tracker pixels / fake CTAs into the operator's inbox.
+    const safeVenue = escapeHtml(venueName);
+    const safeGuest = escapeHtml(parsed.guestName);
+    const safePhone = escapeHtml(phone);
+    const safeZone = parsed.zone ? escapeHtml(parsed.zone) : null;
+    const safeNotes = parsed.notes ? escapeHtml(parsed.notes) : null;
+    const safeWhen = escapeHtml(formatted);
+    const safeCode = escapeHtml(codeShort);
     const subject = `[${venueName}] New reservation · ${formatted} · ${parsed.partySize} · ${parsed.guestName}`;
     const html = `
       <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#0E0F1A;background:#F8F6F1;padding:24px;">
-        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${venueName}</p>
+        <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${safeVenue}</p>
         <h2 style="margin:0 0 12px;font-weight:500;">New reservation</h2>
-        <p style="margin:0 0 6px;"><strong>Guest:</strong> ${parsed.guestName} (${phone})</p>
+        <p style="margin:0 0 6px;"><strong>Guest:</strong> ${safeGuest} (${safePhone})</p>
         <p style="margin:0 0 6px;"><strong>Party:</strong> ${parsed.partySize}</p>
-        <p style="margin:0 0 6px;"><strong>When:</strong> ${formatted}</p>
-        ${parsed.zone ? `<p style="margin:0 0 6px;"><strong>Zone:</strong> ${parsed.zone}</p>` : ""}
-        ${parsed.notes ? `<p style="margin:0 0 6px;"><strong>Notes:</strong> ${parsed.notes}</p>` : ""}
-        <p style="margin:12px 0 0;font-size:11px;color:#8B6F4E;">Code: ${codeShort}</p>
+        <p style="margin:0 0 6px;"><strong>When:</strong> ${safeWhen}</p>
+        ${safeZone ? `<p style="margin:0 0 6px;"><strong>Zone:</strong> ${safeZone}</p>` : ""}
+        ${safeNotes ? `<p style="margin:0 0 6px;"><strong>Notes:</strong> ${safeNotes}</p>` : ""}
+        <p style="margin:12px 0 0;font-size:11px;color:#8B6F4E;">Code: ${safeCode}</p>
       </div>
     `.trim();
     const text = `${venueName} — new reservation\n\nGuest: ${parsed.guestName} (${phone})\nParty: ${parsed.partySize}\nWhen: ${formatted}\n${parsed.zone ? `Zone: ${parsed.zone}\n` : ""}${parsed.notes ? `Notes: ${parsed.notes}\n` : ""}Code: ${codeShort}`;
@@ -125,4 +136,13 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     endsAt: reservation.endsAt.toISOString(),
     status: reservation.status,
   });
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

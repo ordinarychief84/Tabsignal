@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { signSocketToken } from "@/lib/auth/socket-token";
+
+function tokensEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+}
 
 /**
  * Mint a short-lived socket-auth token. The browser includes it in the
@@ -35,7 +41,7 @@ export async function POST(req: Request) {
       where: { id: parsed.guestSessionId },
       select: { id: true, sessionToken: true, expiresAt: true },
     });
-    if (!guest || guest.sessionToken !== parsed.sessionToken) {
+    if (!guest || !tokensEqual(guest.sessionToken, parsed.sessionToken)) {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
     if (guest.expiresAt.getTime() <= Date.now()) {
