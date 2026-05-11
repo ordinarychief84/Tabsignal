@@ -5,6 +5,7 @@ import { EditableField } from "./editable-field";
 import { ToggleField } from "./toggle-field";
 import { ConnectStripeButton } from "./connect-stripe-button";
 import { LogoUpload } from "./logo-upload";
+import { SessionsCard } from "./sessions-card";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — settings" };
@@ -152,6 +153,8 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             help="Comma-separated. Bad-rating intercepts and other venue alerts go here. Leave empty to use the default routing."
           />
         </Card>
+
+        <SessionsCard email={session.email} />
 
         <Card title="Tonight">
           <p className="text-[12px] text-slate/55">

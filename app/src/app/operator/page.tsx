@@ -59,37 +59,8 @@ export default async function OperatorConsole() {
   ]);
 
   return (
-    <div className="min-h-screen bg-oat text-slate">
-      <header className="border-b border-slate/10 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#C9F61C" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="16" r="2" fill="#C9F61C" />
-              </svg>
-            </span>
-            <span className="text-lg font-medium tracking-tight text-slate">TabCall</span>
-            <span className="ml-3 rounded-full bg-sea/40 px-2 py-0.5 text-[11px] font-medium text-slate">
-              operator
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <p className="hidden font-mono text-[11px] text-slate/45 sm:block">{session.email}</p>
-            <form action="/api/auth/logout" method="post">
-              <button
-                type="submit"
-                className="rounded-lg border border-slate/15 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-6 py-10">
-        <div className="mb-2 flex items-baseline justify-between">
+    <>
+      <div className="mb-2 flex items-baseline justify-between">
           <h1 className="text-3xl font-medium tracking-tight">Operator console</h1>
           <div className="flex items-center gap-3">
             <Link
@@ -199,12 +170,11 @@ export default async function OperatorConsole() {
           )}
         </section>
 
-        <p className="mt-12 text-[11px] tracking-wide text-slate/40">
-          Operator allowlist · {operatorAllowlist().length} email
-          {operatorAllowlist().length === 1 ? "" : "s"} · set via OPERATOR_EMAILS
-        </p>
-      </main>
-    </div>
+      <p className="mt-12 text-[11px] tracking-wide text-slate/40">
+        Operator allowlist · {operatorAllowlist().length} email
+        {operatorAllowlist().length === 1 ? "" : "s"} · set via OPERATOR_EMAILS
+      </p>
+    </>
   );
 }
 
