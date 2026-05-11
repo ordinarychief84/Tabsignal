@@ -682,3 +682,31 @@ model BenchmarkSnapshot {
   @@unique([date, metric, segmentKey])
   @@index([date, metric])
 }
+
+// Platform-staff allowlist managed in-app. Two sources of truth for
+// "is this user a TabCall founder?":
+//   1. OPERATOR_EMAILS env (legacy, still respected — survives DB outage)
+//   2. This table (managed via /operator/admins UI)
+// `isPlatformStaffAsync()` checks both; `isPlatformStaff()` (sync) is
+// env-only for tight render paths.
+//
+// Suspending an admin keeps the row for audit history; removing wipes
+// it. Last-admin protection lives in the API route.
+model PlatformAdmin {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  notes         String?
+  // Self-references for invite/suspend audit attribution.
+  addedById     String?
+  addedBy       PlatformAdmin? @relation("AdminAddedBy", fields: [addedById], references: [id])
+  added         PlatformAdmin[] @relation("AdminAddedBy")
+  suspendedAt   DateTime?
+  suspendedById String?
+  suspendedBy   PlatformAdmin? @relation("AdminSuspendedBy", fields: [suspendedById], references: [id])
+  suspended     PlatformAdmin[] @relation("AdminSuspendedBy")
+  lastSeenAt    DateTime?
+  createdAt     DateTime       @default(now())
+
+  @@index([email])
+}

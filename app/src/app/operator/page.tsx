@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { isOperator, operatorAllowlist } from "@/lib/auth/operator";
+import { isPlatformStaffAsync, operatorAllowlist } from "@/lib/auth/operator";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — operator console" };
@@ -10,7 +10,7 @@ export const metadata = { title: "TabCall — operator console" };
 export default async function OperatorConsole() {
   const session = await getStaffSession();
   if (!session) redirect("/staff/login?next=/operator");
-  if (!isOperator(session)) {
+  if (!(await isPlatformStaffAsync(session))) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-oat px-6">
         <div className="max-w-sm text-center">

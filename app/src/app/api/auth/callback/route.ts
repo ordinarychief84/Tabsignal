@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { verifyLinkToken, signSessionToken } from "@/lib/auth/token";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
-import { isPlatformStaff } from "@/lib/auth/operator";
+import { isPlatformStaffAsync } from "@/lib/auth/operator";
 
 /**
  * Resolve the public origin from the request — Next.js binds to 0.0.0.0 in
@@ -105,7 +105,7 @@ export async function GET(req: Request) {
 
   // Operators landing without a next= go to /operator (they almost
   // always want the platform console). Everyone else gets /staff.
-  const operator = isPlatformStaff({
+  const operator = await isPlatformStaffAsync({
     kind: "session",
     staffId: staff.id,
     venueId: staff.venueId,

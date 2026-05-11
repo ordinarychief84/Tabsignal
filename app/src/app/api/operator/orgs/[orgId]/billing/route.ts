@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { checkOrgAccess } from "@/lib/operator-rbac";
-import { isPlatformStaff } from "@/lib/auth/operator";
+import { isPlatformStaffAsync } from "@/lib/auth/operator";
 import { planById } from "@/lib/plans";
 import { sendEmail } from "@/lib/email/send";
 import { orgAlertRecipients } from "@/lib/email/recipients";
@@ -39,7 +39,7 @@ export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
   // would let any self-serve venue immediately PATCH themselves to "pro" for
   // free. Only TabCall internal staff (isPlatformStaff via OPERATOR_EMAILS or
   // a PLATFORM org membership) may bump a plan via this endpoint.
-  if (!session || !isPlatformStaff(session)) {
+  if (!session || !(await isPlatformStaffAsync(session))) {
     return NextResponse.json(
       { error: "FORBIDDEN", detail: "Plan changes are issued by TabCall staff only." },
       { status: 403 },
