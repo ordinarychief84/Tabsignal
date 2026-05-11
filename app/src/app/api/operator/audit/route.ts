@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { isOperator } from "@/lib/auth/operator";
+import { isPlatformStaffAsync } from "@/lib/auth/operator";
 
 const PAGE_MAX = 200;
 
@@ -27,7 +27,7 @@ const Q = z.object({
 export async function GET(req: Request) {
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
-  if (!isOperator(session)) {
+  if (!(await isPlatformStaffAsync(session))) {
     return NextResponse.json({ error: "FORBIDDEN", detail: "Operator allowlist only." }, { status: 403 });
   }
 

@@ -12,7 +12,7 @@
 
 import { redirect } from "next/navigation";
 import { getStaffSession } from "@/lib/auth/session";
-import { isOperator } from "@/lib/auth/operator";
+import { isPlatformStaffAsync } from "@/lib/auth/operator";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — founder" };
@@ -22,7 +22,7 @@ export default async function FounderShortcut() {
   if (!session) {
     redirect("/staff/login?next=/operator/settings");
   }
-  if (isOperator(session)) {
+  if (await isPlatformStaffAsync(session)) {
     redirect("/operator/settings");
   }
   // Authenticated venue user — no super-admin powers. Send them to

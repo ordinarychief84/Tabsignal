@@ -40,9 +40,12 @@ export default async function OperatorLayout({ children }: { children: React.Rea
               operator
             </span>
           </div>
-          <nav className="hidden items-center gap-6 text-[13px] text-slate/70 md:flex">
-            <Link href="/operator" className="hover:text-slate">Console</Link>
-            <Link href="/operator/audit" className="hover:text-slate">Audit log</Link>
+          <nav className="hidden items-center gap-5 text-[13px] text-slate/70 md:flex">
+            <Link href="/operator"          className="hover:text-slate">Console</Link>
+            <Link href="/operator/orgs"     className="hover:text-slate">Orgs</Link>
+            <Link href="/operator/venues"   className="hover:text-slate">Venues</Link>
+            <Link href="/operator/admins"   className="hover:text-slate">Admins</Link>
+            <Link href="/operator/audit"    className="hover:text-slate">Audit</Link>
             <Link href="/operator/settings" className="hover:text-slate">Settings</Link>
           </nav>
           <div className="flex items-center gap-3 text-[12px] text-slate/55">

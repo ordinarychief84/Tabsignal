@@ -11,7 +11,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { isOperator } from "@/lib/auth/operator";
+import { isPlatformStaffAsync } from "@/lib/auth/operator";
 import { ROLE_LABELS } from "@/lib/auth/permissions";
 import type { StaffRole } from "@prisma/client";
 
@@ -77,7 +77,7 @@ function summary(action: string, metadata: unknown): string {
 export default async function GlobalAuditLogPage() {
   const session = await getStaffSession();
   if (!session) redirect("/staff/login?next=/operator/audit");
-  if (!isOperator(session)) {
+  if (!(await isPlatformStaffAsync(session))) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <div className="max-w-sm text-center">

@@ -16,7 +16,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffSession } from "@/lib/auth/session";
-import { isOperator, operatorAllowlist } from "@/lib/auth/operator";
+import { isPlatformStaffAsync, operatorAllowlist } from "@/lib/auth/operator";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ function envPresent(name: string): boolean {
 export default async function PlatformSettingsPage() {
   const session = await getStaffSession();
   if (!session) redirect("/staff/login?next=/operator/settings");
-  if (!isOperator(session)) {
+  if (!(await isPlatformStaffAsync(session))) {
     return <Denial email={session.email} />;
   }
 

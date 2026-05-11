@@ -36,6 +36,25 @@ export function isPlatformStaff(session: SessionClaims | null | undefined): bool
   return ALLOWLIST.includes(session.email.toLowerCase());
 }
 
+/**
+ * Async variant: checks the env allowlist AND the PlatformAdmin DB
+ * table (active rows only). Use this in mutating API routes so an
+ * admin added via the /operator/admins UI is recognised without an
+ * env redeploy. Sync `isPlatformStaff()` stays env-only for tight
+ * render paths where a DB hit per request would hurt.
+ */
+export async function isPlatformStaffAsync(
+  session: SessionClaims | null | undefined,
+): Promise<boolean> {
+  if (!session) return false;
+  if (ALLOWLIST.includes(session.email.toLowerCase())) return true;
+  const row = await db.platformAdmin.findUnique({
+    where: { email: session.email.toLowerCase() },
+    select: { id: true, suspendedAt: true },
+  });
+  return Boolean(row && row.suspendedAt === null);
+}
+
 export function operatorAllowlist(): readonly string[] {
   return ALLOWLIST;
 }
