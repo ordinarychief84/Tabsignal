@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { sendEmail } from "@/lib/email/send";
+import { can } from "@/lib/auth/permissions";
 
 const Body = z.object({
   plan: z.enum(["growth", "pro"]),
@@ -34,6 +35,16 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   if (venue.id !== session.venueId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  // Concierge upgrade emails commit a manager to a sales conversation —
+  // gate behind billing.view (anyone Manager-or-Owner) to filter out
+  // SERVER-curiosity clicks before they reach the founder inbox.
+  const effectiveRole = session.role === "STAFF" ? "OWNER" : session.role;
+  if (!can(effectiveRole, "billing.view")) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Your role can't request an upgrade." },
+      { status: 403 }
+    );
   }
 
   const operators = (process.env.OPERATOR_EMAILS ?? "")

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
 
 async function gateItem(slug: string, itemId: string) {
-  const gate = await gateAdminRoute(slug, "growth");
+  const gate = await gateAdminRoute(slug, "growth", "menu.edit");
   if (!gate.ok) return gate;
   const item = await db.menuItem.findUnique({ where: { id: itemId } });
   if (!item || item.venueId !== gate.venueId) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };

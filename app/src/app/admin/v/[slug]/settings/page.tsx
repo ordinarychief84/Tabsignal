@@ -103,9 +103,9 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             slug={params.slug}
             field="brandColor"
             label="Brand color (hex)"
-            placeholder="#1D9E75"
+            placeholder="#5BD0B3"
             initial={venue.brandColor ?? ""}
-            help="Six-digit hex like #1D9E75. Appears on QR tents and the guest landing header."
+            help="Six-digit hex like #5BD0B3 (brand: Sea Glass). Appears on QR tents and the guest landing header."
             pattern="^#[0-9a-fA-F]{6}$"
           />
           <LogoUpload slug={params.slug} initialUrl={venue.logoUrl} />

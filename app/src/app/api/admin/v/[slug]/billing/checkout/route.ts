@@ -5,6 +5,7 @@ import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { getStaffSession } from "@/lib/auth/session";
 import { planById } from "@/lib/plans";
 import { appOrigin } from "@/lib/origin";
+import { can } from "@/lib/auth/permissions";
 
 const Body = z.object({
   planId: z.enum(["growth", "pro"]),
@@ -25,6 +26,14 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   if (venue.id !== session.venueId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  // Plan changes commit the org to recurring charges — Owner-tier only.
+  const effectiveRole = session.role === "STAFF" ? "OWNER" : session.role;
+  if (!can(effectiveRole, "billing.change_plan")) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Your role can't change plans." },
+      { status: 403 }
+    );
   }
 
   const plan = planById(parsed.planId);

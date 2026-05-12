@@ -6,7 +6,16 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall — reviews" };
 
-export default async function ReviewsPage({ params }: { params: { slug: string } }) {
+const DEFAULT_DAYS = 7;
+const PAGE_SIZE = 50;
+
+export default async function ReviewsPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { days?: string };
+}) {
   const session = await getStaffSession();
   if (!session) redirect(`/staff/login?next=/admin/v/${params.slug}/reviews`);
 
@@ -16,24 +25,39 @@ export default async function ReviewsPage({ params }: { params: { slug: string }
   });
   if (!venue || venue.id !== session.venueId) return null;
 
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const daysParsed = Number(searchParams?.days ?? DEFAULT_DAYS);
+  const days = Number.isFinite(daysParsed)
+    ? Math.min(Math.max(Math.trunc(daysParsed), 1), 90)
+    : DEFAULT_DAYS;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
   const [bad, total5] = await Promise.all([
     db.feedbackReport.findMany({
       where: { venueId: venue.id, rating: { lte: 3 }, createdAt: { gte: since } },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: { session: { include: { table: { select: { label: true } } } } },
-      take: 200,
+      take: PAGE_SIZE + 1,
     }),
     db.feedbackReport.count({
       where: { venueId: venue.id, rating: { gte: 4 }, createdAt: { gte: since } },
     }),
   ]);
-  const unseen = bad.filter(r => !r.seenByMgr).length;
+
+  const hasMore = bad.length > PAGE_SIZE;
+  const initialItems = hasMore ? bad.slice(0, PAGE_SIZE) : bad;
+  const initialCursor = hasMore ? initialItems[initialItems.length - 1]!.id : null;
+  const unseen = initialItems.filter(r => !r.seenByMgr).length;
+
+  const rangeLabel =
+    days === 7 ? "Past 7 days" :
+    days === 30 ? "Past 30 days" :
+    days === 90 ? "Past 90 days" :
+    `Past ${days} days`;
 
   return (
     <>
       <header className="mb-8">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Past 7 days</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{rangeLabel}</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Reviews</h1>
         <p className="mt-2 text-sm text-slate/60">
           We never email guests. Notes below come from the post-payment feedback
@@ -42,19 +66,20 @@ export default async function ReviewsPage({ params }: { params: { slug: string }
       </header>
 
       <div className="mb-8 grid gap-3 sm:grid-cols-3">
-        <Stat label="1–3 stars" value={String(bad.length)} hint="Routed here" />
-        <Stat label="Unseen" value={String(unseen)} hint="Tap a card to mark seen" />
+        <Stat label="1–3 stars" value={String(initialItems.length + (hasMore ? "+" : ""))} hint="Routed here" />
+        <Stat label="Unseen (on screen)" value={String(unseen)} hint="Tap a card to mark seen" />
         <Stat label="4–5 stars" value={String(total5)} hint="Sent to Google" />
       </div>
 
-      {bad.length === 0 ? (
+      {initialItems.length === 0 ? (
         <div className="rounded-2xl border border-slate/10 bg-white px-6 py-10 text-center text-sm text-slate/55">
-          No bad reviews this week. Good service is showing up.
+          No bad reviews in this window. Good service is showing up.
         </div>
       ) : (
         <ReviewsList
           slug={params.slug}
-          initial={bad.map(r => ({
+          days={days}
+          initial={initialItems.map(r => ({
             id: r.id,
             rating: r.rating,
             note: r.note,
@@ -65,6 +90,7 @@ export default async function ReviewsPage({ params }: { params: { slug: string }
             createdAt: r.createdAt.toISOString(),
             tableLabel: r.session.table.label,
           }))}
+          initialCursor={initialCursor}
         />
       )}
     </>

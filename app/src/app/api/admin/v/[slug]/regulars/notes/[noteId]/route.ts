@@ -10,7 +10,7 @@ const PatchBody = z.object({
 });
 
 async function gateNote(slug: string, noteId: string) {
-  const gate = await gateAdminRoute(slug, "pro");
+  const gate = await gateAdminRoute(slug, "pro", "regulars.edit");
   if (!gate.ok) return gate;
   const session = await getStaffSession();
   if (!session) return { ok: false as const, status: 401, body: { error: "UNAUTHORIZED" } };

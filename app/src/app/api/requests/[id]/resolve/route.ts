@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { events } from "@/lib/realtime";
 import { getStaffSession } from "@/lib/auth/session";
+import { originGuard } from "@/lib/csrf";
 
 // Required action picker. The staff queue UI shows these as a small
 // menu after tapping "Resolve" so we always know WHAT happened, not
@@ -14,6 +15,9 @@ const Body = z.object({
 });
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+  const guard = originGuard(req);
+  if (guard) return NextResponse.json({ error: guard.error, detail: guard.detail }, { status: guard.status });
+
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 

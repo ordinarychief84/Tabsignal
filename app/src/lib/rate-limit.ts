@@ -62,12 +62,24 @@ async function getUpstash() {
  * exceeds max within the rolling window. The window resets when the
  * key TTLs out, not on each hit — same semantics as the in-memory
  * version.
+ *
+ * Production posture: Upstash must be configured (env.ts marks the
+ * vars as required in prod). If for any reason we land here in prod
+ * without Upstash, fail CLOSED — refusing the request is safer than
+ * a silent no-op limiter (the latter masks DoS and abuse). Dev still
+ * falls back to in-memory so localhost testing works without Redis.
  */
 export async function rateLimitAsync(key: string, opts: LimitOpts): Promise<LimitResult> {
   const r = await getUpstash();
   if (!r) {
-    // Fall back to in-memory — useless on serverless cold starts but
-    // correct in dev and on a long-lived Fastify process.
+    if (process.env.NODE_ENV === "production") {
+      // Hard fail-closed. The Required check in env.ts should make this
+      // unreachable; if we got here, the limiter is misconfigured and the
+      // safest move is to refuse and force an ops fix.
+      console.error("[rate-limit] Upstash unavailable in production — failing closed");
+      return { ok: false, retryAfterMs: opts.windowMs };
+    }
+    // Dev / Fastify long-lived process: in-memory is fine.
     return rateLimit(key, opts);
   }
   try {
@@ -82,8 +94,14 @@ export async function rateLimitAsync(key: string, opts: LimitOpts): Promise<Limi
     }
     return { ok: true, retryAfterMs: 0 };
   } catch (e) {
-    // Network blip — fail open rather than locking out real users.
-    console.warn("[rate-limit] Upstash error, failing open:", e);
+    // Network blip. In dev, fail open so localhost dev isn't blocked by
+    // a flaky Upstash. In prod, fail closed — better to 429 a real user
+    // briefly than to silently disable the limiter for an attack.
+    if (process.env.NODE_ENV === "production") {
+      console.error("[rate-limit] Upstash error in production, failing closed:", e);
+      return { ok: false, retryAfterMs: opts.windowMs };
+    }
+    console.warn("[rate-limit] Upstash error (dev), failing open:", e);
     return { ok: true, retryAfterMs: 0 };
   }
 }

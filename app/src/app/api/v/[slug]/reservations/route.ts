@@ -32,7 +32,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   const phone = normalizePhone(parsed.guestPhone);
   if (!phone) return NextResponse.json({ error: "INVALID_PHONE" }, { status: 400 });
 
-  if (!rateCheck(ctx.params.slug, phone)) {
+  if (!(await rateCheck(ctx.params.slug, phone))) {
     return NextResponse.json({ error: "RATE_LIMITED", detail: "Too many bookings recently. Try again in an hour." }, { status: 429 });
   }
 

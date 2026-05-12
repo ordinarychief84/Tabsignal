@@ -14,11 +14,9 @@ const PostBody = z.object({
 
 // Tables CRUD is a Starter-tier feature — every venue needs at least one
 // table to take a bill. We still gate by venue ownership, just not by plan.
-async function gateAdminAnyPlan(slug: string) {
-  const gate = await gateAdminRoute(slug, "free");
+async function gateAdminAnyPlan(slug: string, perm?: "tables.edit") {
+  const gate = await gateAdminRoute(slug, "free", perm);
   if (gate.ok) return gate;
-  // gateAdminRoute would only fail at "free" if the unauth/no-venue path
-  // tripped, not the plan path. Pass the failure through.
   return gate;
 }
 
@@ -47,7 +45,7 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
 }
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateAdminAnyPlan(ctx.params.slug);
+  const gate = await gateAdminAnyPlan(ctx.params.slug, "tables.edit");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let parsed;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { events, emit } from "@/lib/realtime";
 import { getStaffSession } from "@/lib/auth/session";
+import { originGuard } from "@/lib/csrf";
 
 /**
  * Reassign an acknowledged request to a different staff member at the same
@@ -15,6 +16,9 @@ const Body = z.object({
 });
 
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+  const guard = originGuard(req);
+  if (guard) return NextResponse.json({ error: guard.error, detail: guard.detail }, { status: guard.status });
+
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
+import { can } from "@/lib/auth/permissions";
 
 const Body = z.object({
   tableIds: z.array(z.string().min(1)),
@@ -11,6 +12,13 @@ const Body = z.object({
 export async function PUT(req: Request, ctx: { params: { id: string } }) {
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  const effectiveRole = session.role === "STAFF" ? "OWNER" : session.role;
+  if (!can(effectiveRole, "staff.assign_tables")) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Your role can't assign tables." },
+      { status: 403 }
+    );
+  }
 
   let parsed;
   try { parsed = Body.parse(await req.json()); }

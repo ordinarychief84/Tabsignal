@@ -39,7 +39,7 @@ type ParsedRow = {
 type ParseError = { line: number; reason: string; raw: string };
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "pro");
+  const gate = await gateAdminRoute(ctx.params.slug, "pro", "regulars.edit");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   const session = await getStaffSession();

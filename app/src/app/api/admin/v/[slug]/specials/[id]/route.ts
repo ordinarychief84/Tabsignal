@@ -13,7 +13,7 @@ const PatchBody = z.object({
 });
 
 async function gateSpecial(slug: string, id: string) {
-  const gate = await gateAdminRoute(slug, "free");
+  const gate = await gateAdminRoute(slug, "free", "specials.edit");
   if (!gate.ok) return gate;
   const special = await db.venueSpecial.findUnique({ where: { id } });
   if (!special || special.venueId !== gate.venueId) {

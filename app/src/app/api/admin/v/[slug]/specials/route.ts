@@ -38,7 +38,7 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
 }
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "free");
+  const gate = await gateAdminRoute(ctx.params.slug, "free", "specials.edit");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let parsed;

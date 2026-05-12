@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth/session";
+import { originGuard } from "@/lib/csrf";
 
 function originFromRequest(req: Request): string {
   const fwdProto = req.headers.get("x-forwarded-proto");
@@ -13,11 +14,18 @@ function originFromRequest(req: Request): string {
 }
 
 export async function POST(req: Request) {
+  // Block CSRF: SameSite=Strict already prevents most cross-origin POSTs,
+  // but the logout form is a plain HTML form submit (no Origin in some
+  // WebViews). Belt + braces — refuse the request if the Origin header
+  // doesn't look like us.
+  const guard = originGuard(req);
+  if (guard) return NextResponse.json({ error: guard.error, detail: guard.detail }, { status: guard.status });
+
   const origin = originFromRequest(req);
   const res = NextResponse.redirect(`${origin}/staff/login`, { status: 303 });
   res.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 0,

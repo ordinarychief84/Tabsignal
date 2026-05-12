@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { signSocketToken } from "@/lib/auth/socket-token";
+import { originGuard } from "@/lib/csrf";
 
 function tokensEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -28,6 +29,14 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  // Refuse cross-origin token mints. A malicious site that links a
+  // visitor to staff app would otherwise be able to mint a venue-room
+  // socket token via the visitor's cookie. SameSite=Strict already
+  // catches this, but the staff path uses cookie auth so we add the
+  // belt-and-braces Origin check.
+  const guard = originGuard(req);
+  if (guard) return NextResponse.json({ error: guard.error, detail: guard.detail }, { status: guard.status });
+
   let parsed;
   try { parsed = Body.parse(await req.json().catch(() => ({}))); }
   catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }

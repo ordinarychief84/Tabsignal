@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { getStaffSession } from "@/lib/auth/session";
 import { appOrigin } from "@/lib/origin";
+import { can } from "@/lib/auth/permissions";
 
 // Stripe Customer Portal: cancel, update card, view invoices. Tied to
 // the org's stripeCustomerId. Returns a hosted URL the manager opens
@@ -18,6 +19,16 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   if (venue.id !== session.venueId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  // The Customer Portal lets the caller cancel the subscription and view
+  // every invoice — Manager-or-Owner permission only. A SERVER opening the
+  // portal could brick the venue's subscription on a whim.
+  const effectiveRole = session.role === "STAFF" ? "OWNER" : session.role;
+  if (!can(effectiveRole, "billing.change_plan")) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Your role can't manage billing." },
+      { status: 403 }
+    );
   }
 
   if (!venue.org.stripeCustomerId) {

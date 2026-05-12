@@ -124,3 +124,33 @@ describe("requirePermission()", () => {
     expect(() => requirePermission("OWNER", "staff.invite")).not.toThrow();
   });
 });
+
+// Regression for the signup role bug: when /api/signup is patched to set
+// role='OWNER', a fresh venue creator must be able to drive the entire
+// onboarding flow. Legacy 'STAFF' rows would silently fail these checks.
+describe("Owner can drive onboarding (signup regression)", () => {
+  const onboardingPerms = [
+    "staff.invite",
+    "staff.role.assign_manager",
+    "staff.role.assign_below_manager",
+    "venue.edit_settings",
+    "venue.upload_logo",
+    "venue.kill_switch",
+    "stripe.connect_onboarding",
+    "billing.view",
+    "billing.change_plan",
+    "menu.edit",
+    "tables.edit",
+    "specials.edit",
+    "tip_pools.manage",
+  ] as const;
+
+  for (const perm of onboardingPerms) {
+    test(`OWNER has ${perm}`, () => {
+      expect(can("OWNER", perm)).toBe(true);
+    });
+    test(`legacy STAFF lacks ${perm} (this is why the signup bug bit us)`, () => {
+      expect(can("STAFF", perm)).toBe(false);
+    });
+  }
+});

@@ -24,7 +24,7 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
  * if you ever need to roll back, but the row only tracks the latest).
  */
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "free");
+  const gate = await gateAdminRoute(ctx.params.slug, "free", "venue.upload_logo");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let form: FormData;

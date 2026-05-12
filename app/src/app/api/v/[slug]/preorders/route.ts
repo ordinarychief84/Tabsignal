@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { taxRateForZip } from "@/lib/tax";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 const Body = z.object({
   items: z
@@ -33,6 +34,28 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     return NextResponse.json(
       { error: "INVALID_BODY", detail: e instanceof Error ? e.message : "bad body" },
       { status: 400 }
+    );
+  }
+
+  // Rate limit BEFORE hitting the DB / Stripe. Pre-orders are anonymous
+  // and each successful POST mints a Stripe PaymentIntent — without this,
+  // a spammer can burn Stripe API budget and pollute the DB with abandoned
+  // orders. Per-IP + per-slug gives reasonable headroom for a legitimate
+  // table while blocking burst abuse.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const slug = ctx.params.slug;
+  const ipGate = await rateLimitAsync(`preorder:ip:${ip}:${slug}`, { windowMs: 60_000, max: 5 });
+  if (!ipGate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED", retryAfterMs: ipGate.retryAfterMs },
+      { status: 429 }
+    );
+  }
+  const slugGate = await rateLimitAsync(`preorder:slug:${slug}`, { windowMs: 60_000, max: 60 });
+  if (!slugGate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED", retryAfterMs: slugGate.retryAfterMs },
+      { status: 429 }
     );
   }
 

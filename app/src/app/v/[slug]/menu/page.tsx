@@ -1,15 +1,27 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { dollars } from "@/lib/bill";
+import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
 export default async function PublicMenuPage({ params }: { params: { slug: string } }) {
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
-    select: { id: true, name: true, brandColor: true },
+    select: {
+      id: true,
+      name: true,
+      brandColor: true,
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+    },
   });
   if (!venue) notFound();
+  // Menu browse is a Growth-tier feature. The API at /api/v/[slug]/menu
+  // also 404s for sub-Growth — make the SSR page match so guests on a
+  // Starter venue don't see a rendered menu that subsequently goes
+  // blank on client refresh. 404 (not 402) so we don't leak which
+  // features the venue pays for.
+  if (!meetsAtLeast(planFromOrg(venue.org), "growth")) notFound();
 
   const [categories, uncategorized] = await Promise.all([
     db.menuCategory.findMany({
