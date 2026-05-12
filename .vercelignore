@@ -1,0 +1,36 @@
+# Files Vercel CLI must NOT upload. Without this, `vercel deploy` from
+# the repo root tries to push the whole monorepo plus every git worktree
+# under .claude/worktrees/ (>4 GB), which aborts mid-upload.
+#
+# The Vercel project's Root Directory setting is `app/`, so we only need
+# to upload that subtree. Everything else here is excluded.
+
+# Sibling services + tooling not used by the Next.js app build.
+api
+docs
+tools
+skills
+Tabsignal
+
+# Claude Code harness directory — includes worktrees with their own
+# copies of node_modules. Huge and never needed for a build.
+.claude
+
+# Build / install artifacts (defensive — should already be in .gitignore
+# but Vercel reads its own ignore independently).
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/.cache
+**/.DS_Store
+**/*.tsbuildinfo
+
+# Local env files. Vercel injects env from project settings at build time.
+**/.env
+**/.env.local
+**/.env*.local
+
+# Backup / editor cruft
+**/*.swp
+**/*~
