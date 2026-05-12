@@ -197,7 +197,7 @@ export function GuestRequestPanel({
               Send another request
             </button>
             <Link
-              href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill`}
+              href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill?s=${encodeURIComponent(sessionToken)}`}
               className="text-sm text-slate/60 hover:text-slate"
             >
               View running tab →
@@ -292,7 +292,7 @@ export function GuestRequestPanel({
 
       <div className="mt-8 text-center">
         <Link
-          href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill`}
+          href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill?s=${encodeURIComponent(sessionToken)}`}
           className="text-sm text-slate/60 underline-offset-4 hover:text-slate hover:underline"
         >
           View running tab →

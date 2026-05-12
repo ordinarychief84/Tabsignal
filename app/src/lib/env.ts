@@ -64,6 +64,24 @@ const Optional = z.object({
   // upload endpoint surfaces a clear "not configured" error if missing.
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+
+  // Firebase Cloud Messaging — server credentials. Required to push to
+  // backgrounded staff PWAs; optional everywhere (lib/fcm.ts warns and
+  // no-ops when absent). The private key is stored with literal "\n"
+  // sequences in Vercel and converted to real newlines at read time.
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+
+  // Firebase web config — public by design (the web SDK publishes these
+  // values). The browser registers the SW with these as URL params and
+  // mints a token via getToken(). All optional in dev.
+  NEXT_PUBLIC_FIREBASE_API_KEY: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_APP_ID: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_VAPID_KEY: z.string().optional(),
 });
 
 const ProdRequired = z.object({
@@ -76,12 +94,41 @@ const ProdRequired = z.object({
     s => !s.endsWith("@resend.dev"),
     "RESEND_FROM in production must be a verified domain — onboarding@resend.dev only delivers to verified test addresses",
   ),
+  // Required in prod because the rate limiter falls back to an in-memory
+  // Map that resets on every Vercel cold start — i.e. effectively no
+  // rate-limiting at all. The fallback is fine for dev; production must
+  // hit shared Redis. The limiter at lib/rate-limit.ts checks for these
+  // env vars and crashes the request when they're absent in prod.
+  UPSTASH_REDIS_REST_URL: z.string().url(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(20),
 });
 
 function parseEnv() {
   const required = Required.safeParse(process.env);
   if (!required.success) {
     const issues = required.error.errors.map(e => `${e.path.join(".")}: ${e.message}`).join("\n  ");
+    // Next.js evaluates every route module during "collect page data" at
+    // build time, including modules that import this file. CI / Vercel
+    // builds run without runtime secrets — crashing here would block any
+    // build that doesn't ship .env.local. Warn instead and let the actual
+    // runtime call sites fail loudly if a var is genuinely missing.
+    if (isBuildPhase) {
+      console.warn(
+        `[env] Missing required env at build phase (this is OK for static type-checking — values are read at runtime):\n  ${issues}`,
+      );
+      // Return a permissive shape so downstream imports don't throw. The
+      // values here are never sent to production — Vercel/runtime env wins.
+      return {
+        DATABASE_URL: process.env.DATABASE_URL ?? "",
+        DIRECT_URL: process.env.DIRECT_URL ?? "",
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? "",
+        APP_URL: process.env.APP_URL ?? "",
+        FASTIFY_INTERNAL_URL: process.env.FASTIFY_INTERNAL_URL ?? "",
+        INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET ?? "",
+        NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL ?? "",
+        ...Optional.parse(process.env),
+      };
+    }
     throw new Error(`Missing required env:\n  ${issues}`);
   }
   const optional = Optional.parse(process.env);

@@ -3,9 +3,10 @@ import type Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
-import { events } from "@/lib/realtime";
+import { events, emit } from "@/lib/realtime";
 import { parseLineItems, totalsFor, dollars } from "@/lib/bill";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
+import { subscriptionStatusFor } from "@/lib/stripe-helpers";
 
 export const runtime = "nodejs"; // raw body required for signature verification
 
@@ -219,6 +220,116 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       return;
     }
 
+    case "charge.refunded": {
+      // A refund landed (manager issued from Stripe Dashboard or
+      // Customer Portal). Reflect it on the guest session / pre-order /
+      // split so the manager UI shows the refunded state instead of a
+      // stale "paid". We DON'T flip paidAt back to null — the tab was
+      // settled, it's just been refunded. We add a metadata flag so
+      // the manager dashboard can render "Refunded" badges.
+      const charge = event.data.object as Stripe.Charge;
+      const intentId = typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : charge.payment_intent?.id;
+      if (!intentId) return;
+
+      const refundedCents = charge.amount_refunded ?? 0;
+      const refundedAt = new Date();
+
+      // Sessions: match by stripePaymentIntentId.
+      const sessionMatch = await tx.guestSession.findFirst({
+        where: { stripePaymentIntentId: intentId },
+        include: { venue: { select: { id: true } }, table: { select: { label: true } } },
+      });
+      if (sessionMatch) {
+        await tx.guestSession.update({
+          where: { id: sessionMatch.id },
+          data: {
+            // Record refund in lineItems metadata. We append a synthetic
+            // negative line item so downstream readers see the net total
+            // change without us needing a dedicated refunds table.
+            lineItems: [
+              ...parseLineItems(sessionMatch.lineItems),
+              {
+                name: charge.amount_refunded === charge.amount
+                  ? "Refunded (full)"
+                  : `Refunded ($${(refundedCents / 100).toFixed(2)})`,
+                quantity: 1,
+                unitCents: -Math.abs(refundedCents),
+                isRefund: true,
+              } as unknown as Prisma.InputJsonValue,
+            ] as unknown as Prisma.InputJsonValue,
+          },
+        });
+        void emit({
+          kind: "venue",
+          id: sessionMatch.venue.id,
+          event: "payment_refunded",
+          payload: {
+            sessionId: sessionMatch.id,
+            tableLabel: sessionMatch.table.label,
+            refundedCents,
+            refundedAt: refundedAt.toISOString(),
+            chargeId: charge.id,
+          },
+        });
+        return;
+      }
+
+      // Splits: match by stripePaymentIntentId on BillSplit.
+      const splitMatch = await tx.billSplit.findFirst({
+        where: { stripePaymentIntentId: intentId },
+        include: { session: { select: { venueId: true, table: { select: { label: true } } } } },
+      });
+      if (splitMatch) {
+        await tx.billSplit.update({
+          where: { id: splitMatch.id },
+          // Mark paidAt=null only on a full refund; partial refunds keep
+          // the split paid (the guest is just getting some money back).
+          data: refundedCents >= splitMatch.amountCents ? { paidAt: null } : {},
+        });
+        void emit({
+          kind: "venue",
+          id: splitMatch.session.venueId,
+          event: "payment_refunded",
+          payload: {
+            sessionId: splitMatch.sessionId,
+            splitId: splitMatch.id,
+            tableLabel: splitMatch.session.table.label,
+            refundedCents,
+            refundedAt: refundedAt.toISOString(),
+            chargeId: charge.id,
+          },
+        });
+        return;
+      }
+
+      // Pre-orders: match by stripePaymentIntentId on PreOrder.
+      const preMatch = await tx.preOrder.findFirst({
+        where: { stripePaymentIntentId: intentId },
+      });
+      if (preMatch) {
+        await tx.preOrder.update({
+          where: { id: preMatch.id },
+          data: refundedCents >= preMatch.totalCents
+            ? { status: "CANCELED" }
+            : {},
+        });
+        void emit({
+          kind: "venue",
+          id: preMatch.venueId,
+          event: "preorder_refunded",
+          payload: {
+            preOrderId: preMatch.id,
+            refundedCents,
+            refundedAt: refundedAt.toISOString(),
+            chargeId: charge.id,
+          },
+        });
+      }
+      return;
+    }
+
     case "account.updated": {
       // Stripe Connect onboarding state. Persist the onboarding flags so
       // the manager dashboard / settings page can show real status, and
@@ -306,16 +417,3 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
   }
 }
 
-function subscriptionStatusFor(s: Stripe.Subscription.Status): "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "NONE" {
-  switch (s) {
-    case "trialing": return "TRIALING";
-    case "active":   return "ACTIVE";
-    case "past_due": return "PAST_DUE";
-    case "unpaid":   return "PAST_DUE";
-    case "incomplete": return "PAST_DUE";
-    case "canceled": return "CANCELED";
-    case "incomplete_expired": return "CANCELED";
-    case "paused":   return "CANCELED";
-    default:         return "NONE";
-  }
-}

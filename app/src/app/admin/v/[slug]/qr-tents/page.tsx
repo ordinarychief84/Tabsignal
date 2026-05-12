@@ -52,7 +52,7 @@ export default async function QrTentsPage({ params }: { params: { slug: string }
         type: "svg",
         margin: 1,
         errorCorrectionLevel: "M",
-        color: { dark: "#0f172a", light: "#ffffff" },
+        color: { dark: "#0E0F1A", light: "#ffffff" }, // brand: slate (Inkwell)
       });
       return { label: t.label, zone: t.zone, url, svg };
     })
@@ -61,7 +61,7 @@ export default async function QrTentsPage({ params }: { params: { slug: string }
   return (
     <TentSheet
       venueName={venue.name}
-      brandColor={venue.brandColor ?? "#1D9E75"}
+      brandColor={venue.brandColor ?? "#5BD0B3"}
       tents={tents}
     />
   );

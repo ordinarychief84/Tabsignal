@@ -5,7 +5,7 @@ import { gateAdminRoute } from "@/lib/plan-gate";
 import { parseLineItems, totalsFor } from "@/lib/bill";
 
 async function gatePool(slug: string, poolId: string) {
-  const gate = await gateAdminRoute(slug, "growth");
+  const gate = await gateAdminRoute(slug, "growth", "tip_pools.manage");
   if (!gate.ok) return gate;
   const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { id: true, zipCode: true } });
   if (!venue) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };

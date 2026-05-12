@@ -10,7 +10,7 @@ const Body = z.object({
 });
 
 export async function POST(req: Request, ctx: { params: { slug: string; profileId: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "pro");
+  const gate = await gateAdminRoute(ctx.params.slug, "pro", "regulars.edit");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   // Already gated, but we need the staff identity for authorship.

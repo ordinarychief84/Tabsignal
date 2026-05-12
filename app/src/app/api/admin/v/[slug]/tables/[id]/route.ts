@@ -9,7 +9,7 @@ const PatchBody = z.object({
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string; id: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "free");
+  const gate = await gateAdminRoute(ctx.params.slug, "free", "tables.edit");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let parsed;
@@ -38,7 +38,7 @@ export async function PATCH(req: Request, ctx: { params: { slug: string; id: str
 }
 
 export async function DELETE(_req: Request, ctx: { params: { slug: string; id: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "free");
+  const gate = await gateAdminRoute(ctx.params.slug, "free", "tables.edit");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   const table = await db.table.findUnique({

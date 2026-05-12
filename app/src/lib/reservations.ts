@@ -7,6 +7,7 @@
  */
 
 import { db } from "@/lib/db";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 export type ConflictReason =
   | { ok: true }
@@ -17,20 +18,19 @@ export type ConflictReason =
 
 const RATE_LIMIT_PER_PHONE_PER_HOUR = 3;
 
-// In-memory rate limiter. Single-process — adequate for dev / single
-// Vercel function instance. A future iteration moves this to Redis so
-// rate limits hold across cold starts.
-const recentBookings: Map<string, number[]> = new Map();
-
-export function rateCheck(slug: string, phone: string): boolean {
-  const key = `${slug}:${phone}`;
-  const now = Date.now();
-  const cutoff = now - 60 * 60 * 1000;
-  const list = (recentBookings.get(key) ?? []).filter(ts => ts >= cutoff);
-  if (list.length >= RATE_LIMIT_PER_PHONE_PER_HOUR) return false;
-  list.push(now);
-  recentBookings.set(key, list);
-  return true;
+/**
+ * Reservation rate limiter. Backed by Upstash via rateLimitAsync so the
+ * 3-per-hour window holds across Vercel cold starts. The previous
+ * in-memory Map was per-lambda — useless under serverless. Falls
+ * back to in-memory in dev / fails closed in prod when Upstash is
+ * absent (see lib/rate-limit.ts).
+ */
+export async function rateCheck(slug: string, phone: string): Promise<boolean> {
+  const result = await rateLimitAsync(`reservation:${slug}:${phone}`, {
+    windowMs: 60 * 60 * 1000,
+    max: RATE_LIMIT_PER_PHONE_PER_HOUR,
+  });
+  return result.ok;
 }
 
 // Check if a proposed reservation conflicts with existing ones.

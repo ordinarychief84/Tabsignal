@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { getStaffSession } from "@/lib/auth/session";
 import { isVenueManager } from "@/lib/auth/venue-role";
+import { can } from "@/lib/auth/permissions";
 
 /**
  * Stripe Connect Express onboarding link generator.
@@ -49,6 +50,32 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     return NextResponse.json(
       { error: "FORBIDDEN", detail: "Only managers can start Stripe Connect onboarding." },
       { status: 403 },
+    );
+  }
+  const effectiveRole = session.role === "STAFF" ? "OWNER" : session.role;
+  if (!can(effectiveRole, "stripe.connect_onboarding")) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Your role can't start Stripe onboarding." },
+      { status: 403 }
+    );
+  }
+  // Refuse impersonated sessions. The operator impersonation route copies
+  // the operator's email into session.email while keeping session.staffId
+  // pointing at the venue's actual staff member. If the two don't match,
+  // someone is impersonating — and creating a Stripe Express account from
+  // that session would attach the operator's email to the venue's payout
+  // account. Force the real owner to start onboarding themselves.
+  const sessionStaff = await db.staffMember.findUnique({
+    where: { id: session.staffId },
+    select: { email: true },
+  });
+  if (!sessionStaff || sessionStaff.email.toLowerCase() !== session.email.toLowerCase()) {
+    return NextResponse.json(
+      {
+        error: "IMPERSONATION_BLOCKED",
+        detail: "Stripe Connect onboarding must be completed by the venue's owner, not an impersonated session.",
+      },
+      { status: 403 }
     );
   }
 

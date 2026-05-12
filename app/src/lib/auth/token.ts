@@ -1,13 +1,16 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { randomUUID } from "node:crypto";
 
-const SECRET = process.env.NEXTAUTH_SECRET ?? "";
-
+// Resolved lazily so tests can inject NEXTAUTH_SECRET via beforeAll AND
+// Next.js's build-time "collect page data" phase doesn't crash when the
+// secret hasn't been wired into the build environment. Production reads
+// it at first sign / verify call.
 function key(): Uint8Array {
-  if (!SECRET) {
+  const secret = process.env.NEXTAUTH_SECRET ?? "";
+  if (!secret) {
     throw new Error("NEXTAUTH_SECRET is not set");
   }
-  return new TextEncoder().encode(SECRET);
+  return new TextEncoder().encode(secret);
 }
 
 export type LinkClaims = {
@@ -63,6 +66,21 @@ export async function verifySessionToken(token: string): Promise<SessionClaims |
     const { payload } = await jwtVerify(token, key());
     if (payload.kind !== "session") return null;
     return payload as unknown as SessionClaims;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Raw payload (including `iat`) for the session-validity check that
+ * happens layered on top in lib/auth/session.ts. Splits the responsibility
+ * cleanly: JWT signature validity here; sessionsValidAfter comparison there.
+ */
+export async function verifySessionTokenWithIat(token: string): Promise<(SessionClaims & { iat?: number }) | null> {
+  try {
+    const { payload } = await jwtVerify(token, key());
+    if (payload.kind !== "session") return null;
+    return payload as JWTPayload as SessionClaims & { iat?: number };
   } catch {
     return null;
   }

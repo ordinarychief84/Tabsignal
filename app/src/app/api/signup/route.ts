@@ -6,6 +6,7 @@ import { newQrToken } from "@/lib/qr";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 import { appOrigin } from "@/lib/origin";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 /**
  * Self-serve signup at the Starter tier.
@@ -31,20 +32,11 @@ const Body = z.object({
   timezone: z.string().min(1).default("America/Chicago"),
 });
 
-// Spam guard: limit signups by IP address. In-memory single-instance guard
-// is adequate at our scale; replace with Redis when a second region appears.
-const recentByIp: Map<string, number[]> = new Map();
+// Spam guard: limit signups per IP. Upstash-backed via rateLimitAsync so
+// the cap holds across Vercel cold starts (the previous in-memory Map was
+// per-lambda — effectively no limiter on serverless). Falls back to
+// in-memory in dev; fails closed in prod when Upstash is absent.
 const SIGNUPS_PER_HOUR = 5;
-
-function rateLimit(ip: string | null): boolean {
-  if (!ip) return true;
-  const cutoff = Date.now() - 60 * 60_000;
-  const list = (recentByIp.get(ip) ?? []).filter(ts => ts >= cutoff);
-  if (list.length >= SIGNUPS_PER_HOUR) return false;
-  list.push(Date.now());
-  recentByIp.set(ip, list);
-  return true;
-}
 
 export async function POST(req: Request) {
   let parsed;
@@ -57,9 +49,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "INVALID_BODY", detail }, { status: 400 });
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  if (!rateLimit(ip)) {
-    return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ipGate = await rateLimitAsync(`signup:ip:${ip}`, {
+    windowMs: 60 * 60_000,
+    max: SIGNUPS_PER_HOUR,
+  });
+  if (!ipGate.ok) {
+    return NextResponse.json({ error: "RATE_LIMITED", retryAfterMs: ipGate.retryAfterMs }, { status: 429 });
   }
 
   const email = parsed.email.toLowerCase().trim();
@@ -137,11 +133,18 @@ export async function POST(req: Request) {
 
     // Owner StaffMember + an OrgMember row so the operator console is
     // accessible to them on day one.
+    //
+    // Explicit role='OWNER': the column default was 'STAFF' (legacy) until
+    // the 20260511 migration flipped it to 'SERVER'. Either default is wrong
+    // for the venue creator — they need manager permissions to invite staff,
+    // configure Stripe, and edit settings. Pass OWNER directly so the
+    // semantics are independent of whichever default the DB is currently on.
     const staff = await tx.staffMember.create({
       data: {
         venueId: venue.id,
         email,
         name: parsed.ownerName,
+        role: "OWNER",
       },
     });
     await tx.orgMember.create({

@@ -1,13 +1,25 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateGuestVenuePlan } from "@/lib/plan-gate";
 import { verifyProfileToken, PROFILE_COOKIE } from "@/lib/profile-cookie";
 import { redeemPoints } from "@/lib/loyalty";
 
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
 const Body = z.object({
   sessionId: z.string().min(1),
+  // Required: prevents a logged-in regular from applying their discount to
+  // a stranger's open tab at the same venue. Session token proves
+  // ownership the same way it does for every other guest mutation.
+  sessionToken: z.string().min(1),
   points: z.number().int().min(1).max(100_000),
 });
 
@@ -34,10 +46,13 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
 
   const session = await db.guestSession.findUnique({
     where: { id: parsed.sessionId },
-    select: { id: true, venueId: true, paidAt: true, lineItems: true },
+    select: { id: true, venueId: true, paidAt: true, lineItems: true, sessionToken: true },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (session.venueId !== gate.venueId) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
   if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
+import { can } from "@/lib/auth/permissions";
 
 /**
  * Partial venue settings update. Only fields the manager can self-serve
@@ -17,7 +18,31 @@ const Body = z.object({
   // Reviews + branding
   googlePlaceId: z.string().max(120).nullable().optional(),
   brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
-  logoUrl: z.string().url().max(2048).nullable().optional(),
+  // Restrict to our Supabase Storage origin so a manager can't point logoUrl
+  // at an arbitrary host (tracking pixel, NSFW image, expired CDN). The logo
+  // upload endpoint writes through Supabase and returns a URL from this
+  // origin; this PATCH is for clearing (null) or re-pointing within the
+  // bucket. Allow null unconditionally.
+  logoUrl: z
+    .string()
+    .url()
+    .max(2048)
+    .refine(
+      url => {
+        const allowed = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (!allowed) return false;
+        try {
+          const u = new URL(url);
+          const a = new URL(allowed);
+          return u.origin === a.origin && u.pathname.startsWith("/storage/v1/object/public/");
+        } catch {
+          return false;
+        }
+      },
+      { message: "logoUrl must be a Supabase Storage public object URL" }
+    )
+    .nullable()
+    .optional(),
   requireIdOnFirstDrink: z.boolean().optional(),
   // Notification routing — comma-separated emails or null to clear.
   alertEmails: z.string().max(500).nullable().optional(),
@@ -38,6 +63,15 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   if (venue.id !== session.venueId) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  // Normalise legacy STAFF (venue creator pre-RBAC backfill) into OWNER for
+  // the permission check — see lib/auth/venue-role.ts for the full rationale.
+  const effectiveRole = session.role === "STAFF" ? "OWNER" : session.role;
+  if (!can(effectiveRole, "venue.edit_settings")) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", detail: "Your role can't edit venue settings." },
+      { status: 403 }
+    );
   }
 
   let parsed;

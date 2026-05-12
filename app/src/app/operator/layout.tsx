@@ -15,12 +15,21 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getStaffSession } from "@/lib/auth/session";
+import { isOperatorAsync } from "@/lib/auth/operator";
 
 export default async function OperatorLayout({ children }: { children: React.ReactNode }) {
   const session = await getStaffSession();
   if (!session) {
     const reachedPath = headers().get("x-pathname") ?? "/operator";
     redirect(`/staff/login?next=${encodeURIComponent(reachedPath)}`);
+  }
+  // Gate the chrome itself, not just the child pages. A non-operator who
+  // bookmarked /operator was getting the operator nav rendered before the
+  // child page denied them — confusing UX + tiny info leak about the
+  // existence of operator sub-routes. Send them to their own admin
+  // dashboard if they have a venue, else /staff.
+  if (!(await isOperatorAsync(session))) {
+    redirect("/staff");
   }
   return (
     <div className="min-h-screen bg-oat text-slate">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { classifyFeedback } from "@/lib/ai/classify-feedback";
 import { badRatingHtml, badRatingSubject, badRatingText } from "@/lib/email/bad-rating-email";
 import { sendEmail } from "@/lib/email/send";
@@ -43,6 +44,17 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+
+  // Rate-limit AFTER the token check so an attacker who knows the session
+  // id can't burn the bucket on a stranger. Caps repeat hits per session
+  // (5/min) — the user-facing rule is still "one feedback per session"
+  // enforced by the existing check, but the limiter also chokes off the
+  // race window where two concurrent POSTs could each pass the existence
+  // check before either inserts.
+  const fbGate = await rateLimitAsync(`feedback:${session.id}`, { windowMs: 60_000, max: 5 });
+  if (!fbGate.ok) {
+    return NextResponse.json({ error: "RATE_LIMITED", retryAfterMs: fbGate.retryAfterMs }, { status: 429 });
   }
 
   // PRD F4: only one feedback per session.

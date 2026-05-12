@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { isOperator, isPlatformStaff } from "@/lib/auth/operator";
 import { signSessionToken } from "@/lib/auth/token";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
+import { IMPERSONATION_STASH_COOKIE } from "@/lib/auth/impersonation";
 
 const Body = z.object({
   // Either a venue slug or venue id is accepted.
@@ -78,6 +80,25 @@ export async function POST(req: Request) {
     `slug=${venue.slug} asStaffId=${targetStaff.id} (${targetStaff.email})` +
     (parsed.reason ? ` reason="${parsed.reason}"` : "")
   );
+  // Persist for SOC2-grade forensic trail. Don't block the response on a
+  // logging hiccup — the console.warn above is the safety net.
+  void db.operatorAuditLog
+    .create({
+      data: {
+        actorEmail: session.email.toLowerCase(),
+        action: "operator.impersonate.start",
+        targetType: "Venue",
+        targetId: venue.id,
+        metadata: {
+          venueSlug: venue.slug,
+          asStaffId: targetStaff.id,
+          asStaffEmail: targetStaff.email,
+          asStaffRole: targetStaff.role,
+          reason: parsed.reason ?? null,
+        },
+      },
+    })
+    .catch(err => console.error("[operator:impersonate] audit insert failed", err));
 
   const res = NextResponse.json({
     ok: true,
@@ -86,6 +107,14 @@ export async function POST(req: Request) {
     asStaff: { id: targetStaff.id, email: targetStaff.email, name: targetStaff.name },
     redirectTo: `/admin/v/${venue.slug}`,
   });
+  // Stash the operator's current session BEFORE we overwrite it so a
+  // single "Stop impersonation" click can restore it. Bounded to one
+  // day so a stale stash can't be used to resurrect an old operator
+  // session after a long gap.
+  const priorSession = cookies().get(SESSION_COOKIE)?.value;
+  if (priorSession) {
+    res.cookies.set(IMPERSONATION_STASH_COOKIE, priorSession, sessionCookieOptions(1));
+  }
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(1)); // short-lived: 1 day
   return res;
 }

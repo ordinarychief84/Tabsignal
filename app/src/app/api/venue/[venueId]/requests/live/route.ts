@@ -11,14 +11,24 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
+  // Include recently-RESOLVED requests so the "Completed" tab on the
+  // staff queue has data. Cap recently-resolved to the last hour — older
+  // history is for the manager dashboard, not the floor app.
+  const oneHourAgo = new Date(Date.now() - 60 * 60_000);
   const requests = await db.request.findMany({
-    where: { venueId: ctx.params.venueId, status: { in: ["PENDING", "ACKNOWLEDGED"] } },
+    where: {
+      venueId: ctx.params.venueId,
+      OR: [
+        { status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] } },
+        { status: "RESOLVED", resolvedAt: { gte: oneHourAgo } },
+      ],
+    },
     orderBy: [{ status: "asc" }, { createdAt: "asc" }],
     include: {
       table: { select: { label: true } },
       acknowledgedBy: { select: { id: true, name: true } },
     },
-    take: 100,
+    take: 200,
   });
 
   return NextResponse.json({
@@ -32,6 +42,9 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
       idCheckRequired: r.idCheckRequired,
       createdAt: r.createdAt.toISOString(),
       acknowledgedAt: r.acknowledgedAt?.toISOString() ?? null,
+      resolvedAt: r.resolvedAt?.toISOString() ?? null,
+      escalatedAt: r.escalatedAt?.toISOString() ?? null,
+      resolutionAction: r.resolutionAction,
       acknowledgedBy: r.acknowledgedBy ? { id: r.acknowledgedBy.id, name: r.acknowledgedBy.name } : null,
     })),
   });

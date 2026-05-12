@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { StaffQueue } from "./queue";
 import { LiveClock } from "./live-clock";
+import { FcmRegister } from "./fcm-register";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export default async function StaffPage() {
           </form>
         </div>
       </header>
+
+      <FcmRegister />
 
       <section className="mx-auto max-w-md px-4 py-5">
         <StaffQueue

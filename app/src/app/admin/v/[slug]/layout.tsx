@@ -3,9 +3,10 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { isOperator } from "@/lib/auth/operator";
+import { isOperator, isPlatformStaff } from "@/lib/auth/operator";
 import { meetsAtLeast, planFromOrg } from "@/lib/plans";
 import { AdminNav } from "./admin-nav";
+import { StopImpersonationBanner } from "./stop-impersonation-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,22 @@ export default async function AdminVenueLayout({
   const isPaidPlan = meetsAtLeast(orgPlan, "growth");
   const isProPlan = meetsAtLeast(orgPlan, "pro");
 
+  // Impersonation = platform-staff session attached to a staff row whose
+  // email doesn't match the caller's. The session JWT carries the
+  // operator's email by design (see /api/operator/impersonate); the
+  // staffMember row carries the impersonated persona's email. When those
+  // diverge we surface the "Return to operator session" CTA.
+  let impersonating = false;
+  if (isPlatformStaff(session)) {
+    const staffRow = await db.staffMember.findUnique({
+      where: { id: session.staffId },
+      select: { email: true },
+    });
+    if (staffRow && staffRow.email.toLowerCase() !== session.email.toLowerCase()) {
+      impersonating = true;
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-oat text-slate md:flex-row">
       <aside className="border-b border-slate/10 bg-white md:w-64 md:border-b-0 md:border-r">
@@ -95,7 +112,10 @@ export default async function AdminVenueLayout({
         </div>
       </aside>
 
-      <main className="flex-1 px-6 py-8 md:px-10 md:py-10">{children}</main>
+      <main className="flex-1 px-6 py-8 md:px-10 md:py-10">
+        {impersonating ? <StopImpersonationBanner operatorEmail={session.email} /> : null}
+        {children}
+      </main>
     </div>
   );
 }

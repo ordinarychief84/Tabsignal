@@ -14,7 +14,14 @@ type Item = {
   createdAt: string;
   acknowledgedAt: string | null;
   acknowledgedBy: { id: string; name: string } | null;
+  resolvedAt?: string | null;
+  escalatedAt?: string | null;
+  resolutionAction?: string | null;
 };
+
+type Tab = "pending" | "active" | "completed" | "delayed";
+
+const DELAYED_THRESHOLD_MS = 90_000;
 
 const REQUEST_LABEL: Record<Item["type"], string> = {
   DRINK: "Drink",
@@ -44,6 +51,14 @@ export function StaffQueue({
   const [filter, setFilter] = useState<"yours" | "all">(
     assignedTableIds.length > 0 ? "yours" : "all"
   );
+  const [tab, setTab] = useState<Tab>("pending");
+  // Force a re-render every 15s so the "delayed" bucket bumps when
+  // requests cross the 90s threshold without waiting for the next event.
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(n => n + 1), 15_000);
+    return () => clearInterval(id);
+  }, []);
   const [staffMates, setStaffMates] = useState<StaffMate[]>([]);
   const [handoffToast, setHandoffToast] = useState<string | null>(null);
   // Tier 3e: regular at one of your tables. Buzzes once, persists for 90s.
@@ -103,9 +118,34 @@ export function StaffQueue({
       );
     }
 
-    function onResolved({ request }: { request: { id: string } }) {
+    function onResolved({ request }: { request: { id: string; resolvedAt?: string; resolutionAction?: string | null } }) {
       if (!request) return;
-      setItems(prev => prev.filter(i => i.id !== request.id));
+      // Keep RESOLVED items in state for the Completed tab — drop only
+      // after an hour client-side to bound memory. Server is the source
+      // of truth via the next /requests/live refresh.
+      setItems(prev =>
+        prev.map(i =>
+          i.id === request.id
+            ? {
+                ...i,
+                status: "RESOLVED",
+                resolvedAt: request.resolvedAt ?? new Date().toISOString(),
+                resolutionAction: request.resolutionAction ?? i.resolutionAction ?? null,
+              }
+            : i
+        )
+      );
+    }
+
+    function onEscalated({ id, escalatedAt }: { id: string; escalatedAt?: string }) {
+      if (!id) return;
+      setItems(prev =>
+        prev.map(i =>
+          i.id === id
+            ? { ...i, status: "ESCALATED", escalatedAt: escalatedAt ?? new Date().toISOString() }
+            : i
+        )
+      );
     }
 
     function onDisconnect() { setReconnecting(true); }
@@ -146,6 +186,7 @@ export function StaffQueue({
     socket.on("new_request", onNew);
     socket.on("request_acknowledged", onAck);
     socket.on("request_resolved", onResolved);
+    socket.on("request_escalated", onEscalated);
     socket.on("request_handed_off_to_you", onHandedOffToYou);
     socket.on("regular_arrived_for_you", onRegularArrivedForYou);
     socket.on("connect", onConnect);
@@ -157,6 +198,7 @@ export function StaffQueue({
       socket.off("new_request", onNew);
       socket.off("request_acknowledged", onAck);
       socket.off("request_resolved", onResolved);
+      socket.off("request_escalated", onEscalated);
       socket.off("request_handed_off_to_you", onHandedOffToYou);
       socket.off("regular_arrived_for_you", onRegularArrivedForYou);
       socket.off("connect", onConnect);
@@ -165,21 +207,41 @@ export function StaffQueue({
     };
   }, [venueId, staffId, refresh]);
 
-  // Lazy-load the staff list once for the handoff popover.
+  // Lazy-load the slim staff list once for the handoff popover. Uses
+  // /api/staff/mates (id + name only) instead of /api/admin/staff so we
+  // don't ship the full roster's email / lastSeenAt to every floor user.
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/admin/staff")
+    fetch("/api/staff/mates")
       .then(r => r.ok ? r.json() : { items: [] })
       .then(d => { if (!cancelled) setStaffMates((d.items ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name }))); })
       .catch(() => { /* swallow */ });
     return () => { cancelled = true; };
   }, []);
 
-  const visibleItems =
+  // Pre-filter by Yours/All before bucketing into tabs.
+  const yoursOrAll =
     filter === "yours"
       ? items.filter(i => !i.tableId || assignedSet.has(i.tableId))
       : items;
   const yourCount = items.filter(i => i.tableId && assignedSet.has(i.tableId)).length;
+
+  const now = Date.now();
+  function bucketFor(it: Item): Tab {
+    if (it.status === "RESOLVED") return "completed";
+    if (it.status === "ESCALATED") return "delayed";
+    if (it.status === "ACKNOWLEDGED") return "active";
+    // PENDING — promote to "delayed" tab visually if it's older than 90s
+    // (the server-side cron flips status=ESCALATED at 3min; between 90s
+    // and 3min the row stays PENDING but appears under Delayed too).
+    const age = now - new Date(it.createdAt).getTime();
+    return age >= DELAYED_THRESHOLD_MS ? "delayed" : "pending";
+  }
+
+  const bucketCounts = { pending: 0, active: 0, completed: 0, delayed: 0 } as Record<Tab, number>;
+  for (const it of yoursOrAll) bucketCounts[bucketFor(it)] += 1;
+
+  const visibleItems = yoursOrAll.filter(it => bucketFor(it) === tab);
 
   async function ack(id: string) {
     setPendingId(id);
@@ -297,6 +359,39 @@ export function StaffQueue({
           </button>
         </div>
       ) : null}
+
+      {/* Status tabs — Pending / Active / Delayed / Completed.
+        * "Delayed" lights coral when populated (escalated server-side or
+        * PENDING > 90s). "Completed" shows resolved requests for the last
+        * hour so staff can audit what just happened.
+        */}
+      <div className="mb-3 flex flex-wrap gap-1.5 text-[11px]">
+        {([
+          { id: "pending",   label: "Pending"   },
+          { id: "active",    label: "Active"    },
+          { id: "delayed",   label: "Delayed"   },
+          { id: "completed", label: "Completed" },
+        ] as { id: Tab; label: string }[]).map(t => {
+          const count = bucketCounts[t.id];
+          const isDelayed = t.id === "delayed" && count > 0;
+          const isActive = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={[
+                "rounded-lg border px-3 py-1.5 font-medium transition-colors",
+                isActive
+                  ? (isDelayed ? "border-coral bg-coral text-slate" : "border-chartreuse bg-chartreuse text-slate")
+                  : (isDelayed ? "border-coral/40 text-coral hover:border-coral" : "border-white/10 text-oat/60 hover:text-oat"),
+              ].join(" ")}
+            >
+              {t.label} · {count}
+            </button>
+          );
+        })}
+      </div>
 
       {visibleItems.length === 0 ? (
         <div className="rounded-2xl border border-white/5 bg-slate-light/40 px-6 py-10 text-center">

@@ -56,7 +56,7 @@ const PostBody = z.object({
 });
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
-  const gate = await gateAdminRoute(ctx.params.slug, "growth");
+  const gate = await gateAdminRoute(ctx.params.slug, "growth", "tip_pools.manage");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
 
   let parsed;

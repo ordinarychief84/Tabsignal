@@ -259,6 +259,11 @@ model StaffMember {
   // People page so managers can spot stale accounts that should be
   // suspended.
   lastSeenAt    DateTime?
+  // Lower bound on JWT iat that's considered valid. "Sign out everywhere"
+  // bumps this to NOW(); any cached session JWT issued before this
+  // timestamp gets rejected at verifySessionToken. Nullable: rows
+  // pre-dating the feature retain unrestricted token TTL.
+  sessionsValidAfter DateTime?
   // Self-referential audit: who invited this row, who suspended it.
   // Both nullable so the original venue OWNER (created by signup)
   // doesn't need a phantom inviter.
@@ -509,7 +514,10 @@ model WebhookEvent {
 model FeedbackReport {
   id           String       @id @default(cuid())
   venueId      String
-  sessionId    String
+  // One feedback per session. The route already enforces this via a
+  // findFirst+throw, but the unique constraint is the source of truth
+  // and closes the concurrent-submit race window.
+  sessionId    String       @unique
   rating       Int
   note         String?
   // AI classification (PRD v2.0 F4 — bad-review intercept)
@@ -681,6 +689,27 @@ model BenchmarkSnapshot {
 
   @@unique([date, metric, segmentKey])
   @@index([date, metric])
+}
+
+// Cross-venue, platform-scoped audit log. Existing AuditLog requires a
+// venueId; this table records actions that aren't bound to one venue
+// (operator impersonation, org-level edits, broadcast emails, plan
+// flips). Append-only. Backfill TODO: wire org-level operator routes
+// to also emit here.
+model OperatorAuditLog {
+  id          String   @id @default(cuid())
+  // Who did it — operator email at action time. Lookups by email
+  // survive PlatformAdmin row deletion.
+  actorEmail  String
+  action      String   // dot-namespaced, e.g. "operator.impersonate.start"
+  targetType  String?  // "Venue", "Organization", "StaffMember", ...
+  targetId    String?
+  // Free-form structured context: { venueSlug, asStaffEmail, reason, … }.
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([actorEmail, createdAt])
+  @@index([action, createdAt])
 }
 
 // Platform-staff allowlist managed in-app. Two sources of truth for

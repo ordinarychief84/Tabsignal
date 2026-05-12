@@ -71,7 +71,15 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
         body: JSON.stringify({ tipPercent, sessionToken: data.sessionToken }),
       });
       const body = await res.json();
-      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
+      if (!res.ok) {
+        // Venue's Stripe Connect onboarding isn't done — Stripe would
+        // reject the PaymentIntent. Surface a friendly "ask staff" panel
+        // instead of the raw API error code.
+        if (res.status === 503 && body?.error === "VENUE_NOT_READY") {
+          throw new Error("VENUE_NOT_READY");
+        }
+        throw new Error(body?.error ?? `HTTP ${res.status}`);
+      }
       if (!body.clientSecret) throw new Error("Stripe did not return a client secret");
       setClientSecret(body.clientSecret);
       setStage("pay");
@@ -80,6 +88,15 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
     } finally {
       setCreating(false);
     }
+  }
+
+  if (error === "VENUE_NOT_READY") {
+    return (
+      <ErrorPanel
+        title="Pay your tab in person tonight"
+        body="This venue is still setting up card payments. Flag your server — they'll close out your tab with the usual reader or POS. Sorry for the bump."
+      />
+    );
   }
 
   if (stage === "pay" && clientSecret) {
