@@ -4,20 +4,27 @@
 #
 # The Vercel project's Root Directory setting is `app/`, so we only need
 # to upload that subtree. Everything else here is excluded.
+#
+# CRITICAL: leading slashes anchor each pattern to the repo root.
+# Without them, `api` would (via gitignore semantics) also match
+# `app/src/app/api/` and silently strip every Next.js API route from
+# the upload — which is exactly the bug this comment exists to prevent.
 
 # Sibling services + tooling not used by the Next.js app build.
-api
-docs
-tools
-skills
-Tabsignal
+/api
+/docs
+/tools
+/skills
+/Tabsignal
 
 # Claude Code harness directory — includes worktrees with their own
 # copies of node_modules. Huge and never needed for a build.
-.claude
+/.claude
 
 # Build / install artifacts (defensive — should already be in .gitignore
-# but Vercel reads its own ignore independently).
+# but Vercel reads its own ignore independently). These ARE safe to
+# leave unanchored because Vercel doesn't have a legitimate
+# `node_modules/` / `.next/` inside the upload tree.
 **/node_modules
 **/.next
 **/.turbo
