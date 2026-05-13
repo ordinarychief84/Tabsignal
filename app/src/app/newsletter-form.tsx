@@ -8,7 +8,7 @@ export function NewsletterForm() {
 
   return (
     <form
-      className="mt-4 flex gap-2"
+      className="flex gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         setSubmitted(true);
@@ -22,17 +22,17 @@ export function NewsletterForm() {
         id="newsletter"
         type="email"
         required
-        placeholder="Enter your email"
+        placeholder="Email address"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="min-w-0 flex-1 rounded-full border border-umber-soft/40 bg-white px-4 py-2.5 text-sm text-slate placeholder-slate/40 outline-none focus:border-slate/40"
+        className="min-w-0 flex-1 rounded-lg border border-outline-variant/60 bg-white px-4 py-2.5 text-sm text-primary-deep placeholder-on-surface-variant/60 outline-none focus:border-brand-lime focus:ring-2 focus:ring-brand-lime"
       />
       <button
         type="submit"
         disabled={submitted}
-        className="shrink-0 rounded-full bg-chartreuse px-4 py-2.5 text-sm font-semibold text-slate hover:bg-chartreuse/85 disabled:opacity-70"
+        className="shrink-0 rounded-lg bg-primary-deep px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
       >
-        {submitted ? "Thanks" : "Subscribe"}
+        {submitted ? "Thanks" : "Join"}
       </button>
     </form>
   );

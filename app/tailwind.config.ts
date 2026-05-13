@@ -48,6 +48,32 @@ const config: Config = {
 
         // Legacy alias — older pages still reference bg-brand / text-brand.
         brand: { DEFAULT: "#232130", accent: "#F2E7B7" },
+
+        // ----- Landing redesign palette (Material 3 token names) -----
+        // Adopted from the design mockup. Layered on top of the legacy
+        // tokens so admin / staff / operator pages keep working untouched.
+        // Used by the landing page and the marketing chrome.
+        "brand-lime":            "#D9E392", // primary accent, replacing Warm Butter on the landing
+        "primary-deep":          "#0d0b19", // very dark navy used by the landing nav/primary buttons
+        "primary-container":     "#232130", // dark surface for the "How it works" block on landing
+        "on-primary-container":  "#8b889a", // muted lavender — secondary copy on dark
+        "on-primary-fixed":      "#1c1a28",
+        "on-primary-fixed-variant": "#474555",
+        "primary-fixed":         "#e5e0f5",
+        "secondary-container-warm": "#eee3b3", // warm beige — metrics strip bg
+        "on-secondary-container":   "#6c653e",
+        "on-secondary-fixed-variant": "#4e4724",
+        "surface-warm":          "#fff8f6", // very light cream surface
+        "surface-container-low": "#fff1eb",
+        "surface-container":     "#ffeae0",
+        "surface-container-high":    "#fae4da",
+        "surface-container-highest": "#f5ded4",
+        "surface-variant":       "#f5ded4",
+        "tertiary-sage":         "#d7e6df", // soft sage — "request resolved" tile
+        "deep-wood":             "#7B5C46",
+        "on-surface-variant":    "#48464c",
+        "outline-variant":       "#c9c5cc",
+        "alert-accent":          "#E8B8B8",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "Arial", "sans-serif"],
