@@ -18,18 +18,32 @@ import { NewsletterForm } from "./newsletter-form";
 /* Logo                                                                   */
 /* ---------------------------------------------------------------------- */
 
+/**
+ * TabCall brand mark. The icon is the signal arc + dot enclosed in a
+ * rounded Deep Ink tile — the same mark used across admin, staff,
+ * /comp, /signup, /terms and the magic-link emails. Restored here after
+ * a short detour using a Material `restaurant` glyph.
+ */
 export function Logo({ variant = "dark" }: { variant?: "dark" | "light" }) {
-  const color = variant === "light" ? "#FFFFFF" : "#0d0b19";
+  const wordColor = variant === "light" ? "#FFFFFF" : "#0d0b19";
   return (
     <Link href="/" aria-label="TabCall home" className="inline-flex items-center gap-2 leading-none">
       <span
         aria-hidden
-        className="material-symbols-outlined text-3xl"
-        style={{ color }}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate"
       >
-        restaurant
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path
+            d="M 6 11 Q 12 6, 18 11"
+            fill="none"
+            stroke="#F2E7B7"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+        </svg>
       </span>
-      <span className="text-2xl font-bold tracking-tight" style={{ color }}>
+      <span className="text-2xl font-bold tracking-tight" style={{ color: wordColor }}>
         TabCall
       </span>
     </Link>
