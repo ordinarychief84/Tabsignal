@@ -25,7 +25,7 @@ export function CompAction({
       <div className="mt-8 rounded-2xl border border-coral/40 bg-coral/15 p-5">
         <p className="text-sm font-medium text-coral">Tab already paid</p>
         <p className="mt-1 text-sm text-oat/70">
-          Issue this comp as a Stripe refund instead — open the Stripe
+          Issue this comp as a Stripe refund instead. Open the Stripe
           dashboard, find the payment, refund ${(amountCents / 100).toFixed(0)}.
         </p>
       </div>
@@ -38,7 +38,7 @@ export function CompAction({
         <p className="text-sm font-medium text-chartreuse">Comp applied</p>
         <p className="mt-1 text-sm text-oat/80">
           ${(amountCents / 100).toFixed(0)} credited to {tableLabel}. Your
-          server&rsquo;s phone just lit up — they&rsquo;ll deliver the next
+          server&rsquo;s phone just lit up. They&rsquo;ll deliver the next
           round on the house.
         </p>
       </div>

@@ -4,7 +4,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { SpecialsPanel } from "./specials-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — specials" };
+export const metadata = { title: "TabCall · specials" };
 
 export default async function SpecialsPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();

@@ -81,7 +81,7 @@ export function DossierNotes({
     <section className="rounded-2xl border border-slate/10 bg-white p-5">
       <h2 className="text-[11px] uppercase tracking-[0.16em] text-umber">Staff notes</h2>
       <p className="mt-1 text-xs text-slate/55">
-        Anything the next bartender should know — drink preferences, allergies, who they came in with.
+        Anything the next bartender should know: drink preferences, allergies, who they came in with.
       </p>
 
       <div className="mt-4 space-y-2">

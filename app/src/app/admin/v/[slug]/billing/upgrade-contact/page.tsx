@@ -5,7 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { ContactPanel } from "./contact-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — book a setup call" };
+export const metadata = { title: "TabCall · book a setup call" };
 
 const VALID_PLANS = new Set(["growth", "pro"]);
 
@@ -46,7 +46,7 @@ export default async function UpgradeContactPage({
           We onboard every <strong>{planLabel}</strong> venue ourselves to make
           sure your menu, staff, and Stripe Connect are dialed in before your
           first paid tab. After the call we&rsquo;ll switch you to {planLabel}{" "}
-          immediately — no extra steps.
+          immediately. No extra steps.
         </p>
       </header>
 

@@ -15,7 +15,11 @@ const ALLOWED_MIME = new Set([
 ]);
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-const SCRIPT_SCAN_BYTES = 4 * 1024; // first 4 KB of body
+const SCRIPT_SCAN_BYTES = 8 * 1024; // first 8 KB of body
+
+// Match `<script` with optional whitespace between `<` and `script` so a
+// crafted payload like `< script>` doesn't slip past. Case-insensitive.
+const SCRIPT_TAG_RE = /<\s*script\b/i;
 
 /**
  * Accepts a multipart/form-data upload with field name "file", uploads
@@ -60,12 +64,13 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     );
   }
 
-  // Anti-XSS sniff: read first 4 KB and refuse if the upload looks like
-  // a script-bearing SVG. Cheaper than parsing the XML, catches the
-  // common <script>...</script> payload.
+  // Anti-XSS sniff: read first 8 KB and refuse if the upload looks like a
+  // script-bearing SVG. Cheaper than parsing the XML, catches the common
+  // `<script>...</script>` payload (whitespace-tolerant so `< script>` is
+  // rejected too).
   const headBuf = await file.slice(0, SCRIPT_SCAN_BYTES).arrayBuffer();
   const head = new TextDecoder("utf-8", { fatal: false }).decode(headBuf);
-  if (/<script/i.test(head)) {
+  if (SCRIPT_TAG_RE.test(head)) {
     return NextResponse.json(
       { error: "UNSAFE_SVG", detail: "Upload contains <script>; refused." },
       { status: 422 },

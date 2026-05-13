@@ -15,7 +15,11 @@ const ALLOWED_MIME = new Set([
 ]);
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-const SCRIPT_SCAN_BYTES = 4 * 1024;
+const SCRIPT_SCAN_BYTES = 8 * 1024;
+
+// Match `<script` with optional whitespace between `<` and `script` so a
+// crafted payload like `< script>` doesn't slip past. Case-insensitive.
+const SCRIPT_TAG_RE = /<\s*script\b/i;
 
 /**
  * Banner image upload — same shape as /branding/logo. Separate route so
@@ -58,10 +62,10 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     );
   }
 
-  // Anti-XSS sniff — see /branding/logo for rationale.
+  // Anti-XSS sniff. See /branding/logo for rationale.
   const headBuf = await file.slice(0, SCRIPT_SCAN_BYTES).arrayBuffer();
   const head = new TextDecoder("utf-8", { fatal: false }).decode(headBuf);
-  if (/<script/i.test(head)) {
+  if (SCRIPT_TAG_RE.test(head)) {
     return NextResponse.json(
       { error: "UNSAFE_SVG", detail: "Upload contains <script>; refused." },
       { status: 422 },

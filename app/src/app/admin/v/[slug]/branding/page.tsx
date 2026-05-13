@@ -5,7 +5,7 @@ import { getVenueBranding } from "@/lib/branding";
 import { BrandingEditor } from "./branding-editor";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — branding" };
+export const metadata = { title: "TabCall · branding" };
 
 export default async function BrandingPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();

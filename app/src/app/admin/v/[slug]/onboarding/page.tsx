@@ -5,7 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { OnboardingPanel } from "./onboarding-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — onboarding" };
+export const metadata = { title: "TabCall · onboarding" };
 
 export default async function OnboardingPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();

@@ -5,7 +5,7 @@ import { can } from "@/lib/auth/permissions";
 import { OrdersPanel } from "./orders-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — orders" };
+export const metadata = { title: "TabCall · orders" };
 
 // V2 Guest Commerce Module orders queue. Distinct from the older PreOrder
 // flow (which lives behind plan-gate at `growth`); these are the Order rows
@@ -80,7 +80,7 @@ export default async function OrdersPage({ params }: { params: { slug: string } 
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Orders</h1>
         <p className="mt-2 text-sm text-slate/60">
           Every tab a guest has opened from the QR. Walk an order through the
-          line — accept, prep, ready, served — without leaving the console.
+          line (accept, prep, ready, served) without leaving the console.
         </p>
       </header>
 

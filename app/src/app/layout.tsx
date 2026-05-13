@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TabCall — fix slow table service",
+  title: "TabCall · fix slow table service",
   description:
     "TabCall sits on top of any POS. Guests scan, staff get alerted, service moves.",
 };

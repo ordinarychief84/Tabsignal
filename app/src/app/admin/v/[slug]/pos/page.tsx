@@ -15,7 +15,7 @@ import { PosForm } from "./pos-form";
 import type { PosIntegrationStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — POS" };
+export const metadata = { title: "TabCall · POS" };
 
 const STATUS_TONE: Record<PosIntegrationStatus, { dot: string; pill: string; label: string }> = {
   CONNECTED: {
@@ -127,13 +127,13 @@ export default async function PosPage({ params }: { params: { slug: string } }) 
         <p className="mt-2 max-w-2xl text-sm text-slate/60">
           Connect TabCall to your point-of-sale so menu changes sync, orders
           flow to the kitchen, and bills close in both systems at once.
-          Today this is a scaffold — vendor adapters land next.
+          Today this is a scaffold. Vendor adapters land next.
         </p>
       </header>
 
       {currentStatus !== "CONNECTED" ? (
         <div className="mb-6 rounded-2xl border border-umber/30 bg-umber/10 px-5 py-4 text-sm text-slate">
-          POS connection pending — orders and bills live inside TabCall.
+          POS connection pending. Orders and bills live inside TabCall.
         </div>
       ) : null}
 

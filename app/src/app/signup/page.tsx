@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SignupForm } from "./signup-form";
 
-export const metadata = { title: "TabCall — start free" };
+export const metadata = { title: "TabCall · start free" };
 
 export default function SignupPage() {
   return (
@@ -30,16 +30,16 @@ export default function SignupPage() {
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Start free</p>
         <h1 className="mt-2 text-4xl font-medium tracking-tight">Live on your bar tonight.</h1>
         <p className="mt-3 max-w-md text-base leading-relaxed text-slate/65">
-          One email, one venue, one sign-in link. We&rsquo;ll walk you through
-          Stripe Connect, tables, and printable QR tents on the next screen.
-          About three minutes — less if your phone&rsquo;s already in your hand.
+          One email, one venue, one magic-link sign-in. On the next screen
+          you&rsquo;ll bulk-create tables, generate printable QR sheets, and
+          finish Stripe Connect onboarding. About three minutes total.
         </p>
 
         <ul className="mt-6 space-y-1.5 text-sm text-slate/65">
-          <li>· Starter is free — 0.5% per transaction, no monthly fee, no contract.</li>
-          <li>· Realtime request queue + AI bad-rating intercept from minute one.</li>
-          <li>· Want Growth or Pro? You&rsquo;ll book a 15-min setup call after signup.</li>
-          <li>· If TabCall isn&rsquo;t earning its keep, cancel by text. We mean it.</li>
+          <li>· Starter is free for up to 5 tables. No card needed to start.</li>
+          <li>· Live request queue + AI review intercept from minute one.</li>
+          <li>· Growth or Pro? Start the 14-day free trial after signup, pay nothing for 14 days, cancel anytime.</li>
+          <li>· If TabCall isn&rsquo;t earning its keep, cancel by text.</li>
         </ul>
 
         <div className="mt-10">

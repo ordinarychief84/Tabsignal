@@ -98,7 +98,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   // Plan-aware nudge: large fleets imply Pro.
   const plan = gate.plan;
   const note = (created.length >= 10 && !meetsAtLeast(plan, "growth"))
-    ? "Many tables — consider upgrading to Growth for analytics + tip pooling."
+    ? "Many tables. Consider upgrading to Growth for analytics + tip pooling."
     : null;
   return NextResponse.json({ created, note });
 }

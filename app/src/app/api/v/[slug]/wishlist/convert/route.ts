@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -27,6 +28,19 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   let parsed;
   try { parsed = Body.parse(await req.json()); }
   catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }
+
+  // 10/min per session. Caps abuse of a runaway client flipping wishlist
+  // status back and forth.
+  const gate = await rateLimitAsync(`wishlist:convert:${parsed.sessionId}`, {
+    windowMs: 60_000,
+    max: 10,
+  });
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED", retryAfterMs: gate.retryAfterMs },
+      { status: 429 }
+    );
+  }
 
   const venue = await db.venue.findUnique({
     where: { slug: ctx.params.slug },

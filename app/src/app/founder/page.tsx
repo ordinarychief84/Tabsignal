@@ -15,7 +15,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { isPlatformStaffAsync } from "@/lib/auth/operator";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — founder" };
+export const metadata = { title: "TabCall · founder" };
 
 export default async function FounderShortcut() {
   const session = await getStaffSession();

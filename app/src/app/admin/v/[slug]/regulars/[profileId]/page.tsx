@@ -9,7 +9,7 @@ import { dollars } from "@/lib/bill";
 import { DossierNotes } from "./dossier-notes";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — regular dossier" };
+export const metadata = { title: "TabCall · regular dossier" };
 
 export default async function RegularDossierPage({
   params,
@@ -111,7 +111,7 @@ export default async function RegularDossierPage({
                       "mt-0.5 text-[11px]",
                       v.rating <= 3 ? "text-coral" : "text-slate/55",
                     ].join(" ")}>
-                      {v.rating}★{v.feedback ? ` — “${v.feedback.slice(0, 80)}”` : ""}
+                      {v.rating}★{v.feedback ? ` · “${v.feedback.slice(0, 80)}”` : ""}
                     </p>
                   ) : null}
                 </li>

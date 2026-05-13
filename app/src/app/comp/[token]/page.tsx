@@ -4,7 +4,7 @@ import { verifyCompToken } from "@/lib/auth/comp-token";
 import { CompAction } from "./comp-action";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — comp this round" };
+export const metadata = { title: "TabCall · comp this round" };
 
 export default async function CompPage({ params }: { params: { token: string } }) {
   const claims = await verifyCompToken(params.token);

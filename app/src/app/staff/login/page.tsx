@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "TabCall — staff sign-in" };
+export const metadata = { title: "TabCall · staff sign-in" };
 
 const MESSAGES: Record<string, string> = {
   missing: "That link is missing its token. Request a new one below.",
   expired: "That sign-in link has expired. Request a new one.",
   invalid: "That sign-in link is invalid. Request a new one.",
-  already_used: "That sign-in link was already used. Request a fresh one — they're single-use for security.",
+  already_used: "That sign-in link was already used. Request a fresh one. They're single-use for security.",
 };
 
 export default function StaffLogin({

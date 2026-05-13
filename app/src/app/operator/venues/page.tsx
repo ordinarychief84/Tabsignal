@@ -4,7 +4,7 @@ import { isPlatformStaffAsync } from "@/lib/auth/operator";
 import { VenuesPanel } from "./venues-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — venues" };
+export const metadata = { title: "TabCall · venues" };
 
 export default async function VenuesPage() {
   const session = await getStaffSession();

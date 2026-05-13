@@ -111,7 +111,7 @@ export function FeedbackScreen({
         </button>
         <p className="mt-6 text-base text-slate">Sorry to hear that.</p>
         <p className="mt-1 text-sm text-slate/60">
-          What could we have done better? The manager sees this — guests don&rsquo;t.
+          What could we have done better? The manager sees this. Guests don&rsquo;t.
         </p>
         <textarea
           value={note}
@@ -245,7 +245,7 @@ function IdentifyCta({ slug }: { slug: string }) {
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Become a regular</p>
         <p className="mt-1 text-sm text-slate">
           Save your preferences and the bartender will know your usual next time.
-          Just a phone number — no app, no spam.
+          Just a phone number. No app, no spam.
         </p>
         <div className="mt-3 flex gap-2">
           <button

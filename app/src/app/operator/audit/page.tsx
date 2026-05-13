@@ -16,7 +16,7 @@ import { ROLE_LABELS } from "@/lib/auth/permissions";
 import type { StaffRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — global audit log" };
+export const metadata = { title: "TabCall · global audit log" };
 
 const PAGE = 100;
 

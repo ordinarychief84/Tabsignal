@@ -5,7 +5,7 @@ import { can } from "@/lib/auth/permissions";
 import { BillsPanel } from "./bills-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — bills" };
+export const metadata = { title: "TabCall · bills" };
 
 // V2 Bills queue. Read-only browsing view: total / paid / due, click a row
 // to drill into the split details. Mutating actions (refunds, manual mark-

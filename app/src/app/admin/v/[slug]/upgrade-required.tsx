@@ -17,7 +17,7 @@ export function UpgradeRequired({ slug, feature, current, required }: Props) {
       <h2 className="mt-2 text-2xl font-medium tracking-tight">{feature} is on {requiredPlan?.name ?? required}</h2>
       <p className="mt-3 text-sm text-slate/60">
         You&rsquo;re on the <strong>{currentPlan?.name ?? current}</strong> plan.
-        Upgrade to unlock {feature.toLowerCase()} and the rest of the {requiredPlan?.name ?? required} feature set.
+        Upgrade to turn on {feature.toLowerCase()} and the rest of the {requiredPlan?.name ?? required} feature set.
       </p>
       <Link
         href={`/admin/v/${slug}/billing`}

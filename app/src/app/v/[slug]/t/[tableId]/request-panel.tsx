@@ -124,7 +124,7 @@ export function GuestRequestPanel({
       });
       if (res.status === 429) {
         setStatus("rate_limited");
-        setErrorMsg("Just a moment — wait 30 seconds before sending another.");
+        setErrorMsg("Just a moment. Wait 30 seconds before sending another.");
         return;
       }
       if (!res.ok) {
@@ -221,7 +221,7 @@ export function GuestRequestPanel({
           <p className="text-sm text-slate">
             Welcome back{welcomeBack.name ? `, ${welcomeBack.name}` : ""}.{" "}
             <span className="text-slate/60">
-              Visit #{welcomeBack.visits + 1} — your bartender knows.
+              Visit #{welcomeBack.visits + 1}. Your bartender knows.
             </span>
           </p>
         </div>
@@ -237,7 +237,7 @@ export function GuestRequestPanel({
             {prev.lastRequestMinAgo !== null
               ? ` · last activity ${prev.lastRequestMinAgo}m ago`
               : ""}
-            . Pick up where you left off, or start a fresh tab — the old
+            . Pick up where you left off, or start a fresh tab. The old
             items stay with the previous guest.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">

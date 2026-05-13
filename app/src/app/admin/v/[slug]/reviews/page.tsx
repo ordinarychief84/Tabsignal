@@ -4,7 +4,7 @@ import { ReviewsList } from "./reviews-list";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — reviews" };
+export const metadata = { title: "TabCall · reviews" };
 
 const DEFAULT_DAYS = 7;
 const PAGE_SIZE = 50;

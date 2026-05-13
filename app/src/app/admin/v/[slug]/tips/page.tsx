@@ -7,7 +7,7 @@ import { UpgradeRequired } from "../upgrade-required";
 import { TipsPanel } from "./tips-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — tips" };
+export const metadata = { title: "TabCall · tips" };
 
 export default async function TipsPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();
@@ -42,7 +42,7 @@ export default async function TipsPage({ params }: { params: { slug: string } })
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Tip pool</h1>
         <p className="mt-2 text-sm text-slate/60">
           Open a pool for the shift, set who&rsquo;s working and their weight, then close
-          to compute payouts. Cash settles outside this app — we just do the math.
+          to compute payouts. Cash settles outside this app. We just do the math.
         </p>
       </header>
 

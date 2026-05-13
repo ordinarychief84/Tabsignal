@@ -163,7 +163,7 @@ export function StaffQueue({
     function onHandedOffToYou(payload: { request?: { tableLabel: string; type: string; fromStaffId: string | null } } | null) {
       const r = payload?.request;
       if (!r) return;
-      setHandoffToast(`${r.tableLabel} · ${r.type.toLowerCase()} — handed off to you`);
+      setHandoffToast(`${r.tableLabel} · ${r.type.toLowerCase()} handed off to you`);
       // Auto-clear after 4s.
       setTimeout(() => setHandoffToast(null), 4000);
       refresh();

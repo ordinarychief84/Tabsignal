@@ -6,7 +6,7 @@ import { canBroadcast, checkOrgAccess } from "@/lib/operator-rbac";
 import { MembersPanel } from "./members-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — org members" };
+export const metadata = { title: "TabCall · org members" };
 
 export default async function OrgMembersPage({ params }: { params: { orgId: string } }) {
   const session = await getStaffSession();
@@ -35,7 +35,7 @@ export default async function OrgMembersPage({ params }: { params: { orgId: stri
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Members of {org.name}</h1>
         <p className="mt-2 max-w-md text-sm text-slate/60">
           Org members have access to this operator console for this org. They
-          authenticate with their email — the magic link goes to their staff
+          authenticate with their email. The magic link goes to their staff
           login flow as usual.
         </p>
       </header>

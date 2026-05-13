@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ManagerFloor } from "./manager-floor";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — manager dashboard" };
+export const metadata = { title: "TabCall · manager dashboard" };
 
 export default async function ManagerDashboard({ params }: { params: { slug: string } }) {
   const venue = await db.venue.findUnique({
@@ -96,7 +96,7 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.18em] text-coral">Action needed</p>
             <p className="mt-1 text-sm font-medium text-slate">
-              Stripe isn&rsquo;t connected — guest bills can&rsquo;t close yet.
+              Stripe isn&rsquo;t connected. Guest bills can&rsquo;t close yet.
             </p>
             <p className="mt-1 text-xs text-slate/65">
               Tour the dashboard freely. When you&rsquo;re ready (3–5 min, ID + bank

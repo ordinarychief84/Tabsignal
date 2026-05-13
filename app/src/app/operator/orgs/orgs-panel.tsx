@@ -72,7 +72,7 @@ export function OrgsPanel() {
   useEffect(() => { void load(); }, []);
 
   async function flipPlan(o: Org, newTier: string) {
-    if (!window.confirm(`Flip ${o.name} → ${FLIP_LABEL[newTier]}? Doesn't charge via Stripe — just updates DB state.`)) return;
+    if (!window.confirm(`Flip ${o.name} → ${FLIP_LABEL[newTier]}? Doesn't charge via Stripe. Just updates DB state.`)) return;
     setBusy(o.id);
     setError(null);
     try {

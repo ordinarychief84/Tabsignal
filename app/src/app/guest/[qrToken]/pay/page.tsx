@@ -35,7 +35,7 @@ export default async function GuestQrPayPage({
             <p className="text-3xl">·</p>
             <h1 className="mt-3 text-base font-medium">No payment in progress</h1>
             <p className="mt-2 text-sm text-slate/60">
-              Open this from your bill — &ldquo;Pay selected&rdquo; will bring
+              Open this from your bill. &ldquo;Pay selected&rdquo; will bring
               you here with the secure payment session attached.
             </p>
             <div className="mt-5 flex flex-col items-center gap-2">

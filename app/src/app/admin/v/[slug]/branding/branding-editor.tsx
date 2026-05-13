@@ -116,7 +116,7 @@ export function BrandingEditor({ slug, venueName, initial, legacy }: Props) {
           />
           <ColorRow
             label="Secondary"
-            help="Supporting color — body sections, secondary buttons."
+            help="Supporting color for body sections and secondary buttons."
             value={state.secondaryColor}
             placeholder="#0B1722"
             onSave={v => patch({ secondaryColor: v })}
@@ -158,7 +158,7 @@ export function BrandingEditor({ slug, venueName, initial, legacy }: Props) {
         <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-umber">Guest preview</p>
         <GuestPreview venueName={venueName} effective={effective} />
         <p className="mt-2 text-[10px] text-slate/45">
-          Approximation — guest screens may vary. Falls back to Settings values
+          Approximation. Guest screens may vary. Falls back to Settings values
           where Branding is empty.
         </p>
       </aside>

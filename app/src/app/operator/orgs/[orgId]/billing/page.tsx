@@ -7,7 +7,7 @@ import { PLANS, planByPriceId } from "@/lib/plans";
 import { BillingFlipPanel } from "./billing-flip-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — flip plan" };
+export const metadata = { title: "TabCall · flip plan" };
 
 export default async function OrgBillingPage({ params }: { params: { orgId: string } }) {
   const session = await getStaffSession();
@@ -45,7 +45,7 @@ export default async function OrgBillingPage({ params }: { params: { orgId: stri
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Flip {org.name}&rsquo;s plan</h1>
         <p className="mt-2 max-w-md text-sm text-slate/60">
           Promote or demote this org&rsquo;s subscription tier after a setup call.
-          This records intent in our DB only — pair with a Stripe Subscription on
+          This records intent in our DB only. Pair with a Stripe Subscription on
           their Customer record so the next cycle actually charges.
         </p>
       </header>

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
   if (!isOperator(session)) {
     return NextResponse.json(
-      { error: "OPERATOR_ONLY", detail: "New venues are onboarded by TabCall — email hello@tabcall.app." },
+      { error: "OPERATOR_ONLY", detail: "New venues are onboarded by TabCall. Email hello@tabcall.app." },
       { status: 403 }
     );
   }

@@ -75,7 +75,7 @@ export function SetupForm() {
         />
       </FormSection>
 
-      <FormSection title="Optional" hint="Skip for now — you can wire these later from Settings.">
+      <FormSection title="Optional" hint="Skip for now. You can wire these later from Settings.">
         <SelectField
           label="POS system"
           name="posType"

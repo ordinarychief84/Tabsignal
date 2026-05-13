@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { NewVenueForm } from "./new-venue-form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — new venue" };
+export const metadata = { title: "TabCall · new venue" };
 
 export default async function OperatorNewVenuePage() {
   const session = await getStaffSession();

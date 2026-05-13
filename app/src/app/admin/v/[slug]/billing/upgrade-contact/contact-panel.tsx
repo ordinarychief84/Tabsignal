@@ -81,7 +81,7 @@ export function ContactPanel({
         <p className="mt-2 text-sm text-slate/70">
           A TabCall founder will email <strong>{venueName}</strong>&rsquo;s primary
           contact to schedule the {planTitle} setup call. We&rsquo;ll have your
-          account flipped to {planTitle} the moment we hang up — that&rsquo;s when{" "}
+          account flipped to {planTitle} the moment we hang up. That&rsquo;s when{" "}
           {perks} go live.
         </p>
         {CALENDLY_URL ? (
@@ -184,7 +184,7 @@ function EmailForm({
       <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Or send a note</p>
       <p className="text-sm text-slate/60">
         Tell us when you&rsquo;re free and we&rsquo;ll book a 15-min {planTitle} setup
-        call. Phone is optional — useful if email gets buried.
+        call. Phone is optional, useful if email gets buried.
       </p>
 
       <Field
@@ -210,7 +210,7 @@ function EmailForm({
         label="Anything we should know?"
         name="notes"
         rows={3}
-        placeholder="POS system, urgency, edge cases — anything useful for the call"
+        placeholder="POS system, urgency, edge cases, anything useful for the call"
         disabled={submitting}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}

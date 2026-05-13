@@ -65,7 +65,7 @@ export async function DELETE(_req: Request, ctx: { params: { slug: string; id: s
   // trail. Manager rarely needs delete; rename is the common path.
   if (table._count.sessions > 0 || table._count.requests > 0 || table._count.preOrders > 0) {
     return NextResponse.json(
-      { error: "TABLE_HAS_HISTORY", detail: "Table has past activity. Rename instead — deleting would orphan historical records." },
+      { error: "TABLE_HAS_HISTORY", detail: "Table has past activity. Rename instead. Deleting would orphan historical records." },
       { status: 409 }
     );
   }

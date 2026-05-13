@@ -14,13 +14,20 @@ const ALLOWED_MIME = new Set([
 ]);
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const SCRIPT_SCAN_BYTES = 8 * 1024; // first 8 KB of body
+
+// Match `<script` with optional whitespace between `<` and `script` so a
+// crafted payload like `< script>` doesn't slip past. Case-insensitive.
+const SCRIPT_TAG_RE = /<\s*script\b/i;
 
 /**
  * Multipart upload for promotion banner images. Mirrors the /logo route's
- * MIME allowlist + 5 MB cap. SVG payloads get a cheap "no <script>" sniff
- * across the first 4 KB to reject the cheapest XSS class without standing
- * up a proper SVG sanitizer. Returns the public URL — the caller writes
- * it onto the promotion row via PATCH (or includes it in the POST body).
+ * MIME allowlist + 5 MB cap. The first 8 KB of every upload is scanned for
+ * a `<script` tag (case-insensitive, whitespace-tolerant) and the upload is
+ * refused on match. Applies to all MIME types, not just SVG, since the
+ * client-declared Content-Type isn't trustworthy. Returns the public URL,
+ * the caller writes it onto the promotion row via PATCH (or includes it in
+ * the POST body).
  */
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateAdminRoute(ctx.params.slug, "free", "promotions.manage");
@@ -55,18 +62,16 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     );
   }
 
-  // Cheap SVG defense: reject payloads with "<script" in the first 4 KB.
-  // Doesn't cover every SVG-XSS vector but blocks the obvious one before
-  // we'd need a full sanitizer.
-  if (contentType === "image/svg+xml") {
-    const slice = file.slice(0, 4096);
-    const head = await slice.text();
-    if (/<script/i.test(head)) {
-      return NextResponse.json(
-        { error: "UNSAFE_SVG", detail: "SVG must not contain <script>." },
-        { status: 400 }
-      );
-    }
+  // Anti-XSS sniff. Read first 8 KB and refuse if the upload contains a
+  // `<script` tag. Runs for every MIME type because a caller can lie about
+  // Content-Type. Whitespace-tolerant so `< script>` is rejected too.
+  const headBuf = await file.slice(0, SCRIPT_SCAN_BYTES).arrayBuffer();
+  const head = new TextDecoder("utf-8", { fatal: false }).decode(headBuf);
+  if (SCRIPT_TAG_RE.test(head)) {
+    return NextResponse.json(
+      { error: "UNSAFE_SVG", detail: "Upload contains <script>; refused." },
+      { status: 422 }
+    );
   }
 
   const ext = extFromMime(contentType);

@@ -6,7 +6,7 @@ import { canBroadcast, checkOrgAccess } from "@/lib/operator-rbac";
 import { BroadcastPanel } from "./broadcast-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — broadcast" };
+export const metadata = { title: "TabCall · broadcast" };
 
 export default async function OrgBroadcastPage({ params }: { params: { orgId: string } }) {
   const session = await getStaffSession();
@@ -42,7 +42,7 @@ export default async function OrgBroadcastPage({ params }: { params: { orgId: st
         <section className="rounded-2xl border border-slate/15 bg-white p-5">
           <p className="text-sm text-slate/65">
             Broadcasting requires <strong>OWNER</strong> or <strong>ADMIN</strong> role on this org.
-            You&rsquo;re a <span className="font-mono text-[12px]">{access.role}</span> here — read-only.
+            You&rsquo;re a <span className="font-mono text-[12px]">{access.role}</span> here. Read-only.
           </p>
         </section>
       )}

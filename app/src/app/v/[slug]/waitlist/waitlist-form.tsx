@@ -59,7 +59,7 @@ export function WaitlistForm({ slug }: { slug: string }) {
           Position: <span className="font-mono">#{confirmation.position}</span>
         </p>
         <p className="mt-3 text-[11px] leading-relaxed text-slate/60">
-          We&rsquo;ll text you when your table is ready. Stay nearby — wait times
+          We&rsquo;ll text you when your table is ready. Stay nearby. Wait times
           are estimates and tables can free up faster than expected.
         </p>
       </div>

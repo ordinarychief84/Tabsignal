@@ -91,7 +91,7 @@ export default async function BillPage({ params, searchParams }: PageProps) {
             <p className="text-3xl">·</p>
             <h1 className="mt-3 text-2xl font-medium tracking-tight">Tab expired</h1>
             <p className="mt-3 text-sm leading-relaxed text-slate/60">
-              Ask your server for a fresh QR — this one timed out.
+              Ask your server for a fresh QR. This one timed out.
             </p>
           </div>
         </div>

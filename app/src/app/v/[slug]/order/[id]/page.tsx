@@ -26,7 +26,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pa
 
   const statusLabel = (() => {
     if (order.pickedUpAt) return "Picked up. Thanks!";
-    if (order.readyAt) return "Ready at the bar — show this code.";
+    if (order.readyAt) return "Ready at the bar. Show this code.";
     if (order.paidAt) return "Paid. We're making it.";
     return "Waiting for payment confirmation…";
   })();

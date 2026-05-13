@@ -94,7 +94,7 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
     return (
       <ErrorPanel
         title="Pay your tab in person tonight"
-        body="This venue is still setting up card payments. Flag your server — they'll close out your tab with the usual reader or POS. Sorry for the bump."
+        body="This venue is still setting up card payments. Flag your server. They'll close out your tab with the usual reader or POS. Sorry for the bump."
       />
     );
   }

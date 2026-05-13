@@ -5,7 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { PromotionsList } from "./promotions-list";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — promotions" };
+export const metadata = { title: "TabCall · promotions" };
 
 export default async function PromotionsPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();
@@ -36,7 +36,7 @@ export default async function PromotionsPage({ params }: { params: { slug: strin
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Promotions</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">Promotions</h1>
           <p className="mt-2 text-sm text-slate/60">
-            Typed promos that show up across the guest UI — happy hour pills,
+            Typed promos that show up across the guest UI: happy hour pills,
             full-width banners on the QR landing, or a &ldquo;new&rdquo; badge
             next to a menu item. Surfaces appropriately based on type.
           </p>

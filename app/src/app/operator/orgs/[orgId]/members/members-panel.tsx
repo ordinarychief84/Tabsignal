@@ -144,7 +144,7 @@ export function MembersPanel({
 
       {!canManage ? (
         <p className="text-[11px] text-slate/45">
-          You&rsquo;re a viewer here — adding/removing members requires OWNER or ADMIN.
+          You&rsquo;re a viewer here. Adding/removing members requires OWNER or ADMIN.
         </p>
       ) : null}
     </div>

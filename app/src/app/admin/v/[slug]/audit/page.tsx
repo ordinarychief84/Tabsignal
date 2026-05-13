@@ -13,7 +13,7 @@ import { can, ROLE_LABELS } from "@/lib/auth/permissions";
 import type { StaffRole } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — audit log" };
+export const metadata = { title: "TabCall · audit log" };
 
 const PAGE = 100;
 
@@ -110,8 +110,8 @@ export default async function AuditLogPage({ params }: { params: { slug: string 
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Compliance</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Audit log</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate/60">
-          Every sensitive admin action — staff invites, role changes,
-          suspensions, removals — is recorded here, append-only. Use this
+          Every sensitive admin action (staff invites, role changes,
+          suspensions, removals) is recorded here, append-only. Use this
           when you need to know who promoted Marcus to Manager three weeks
           ago.
         </p>

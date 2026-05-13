@@ -75,7 +75,7 @@ export async function POST(
 
   const session = await db.guestSession.findUnique({
     where: { id: parsed.sessionId },
-    select: { id: true, venueId: true, sessionToken: true, expiresAt: true },
+    select: { id: true, venueId: true, tableId: true, sessionToken: true, expiresAt: true },
   });
   if (!session || session.venueId !== venue.id) {
     return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
@@ -101,8 +101,8 @@ export async function POST(
     // concurrent split-POST for the same bill will block here until we
     // commit / rollback. By the time the loser proceeds past this line,
     // our paidBySplitId stamps are visible.
-    const billRows = await tx.$queryRaw<Array<{ id: string; venueId: string; status: string }>>`
-      SELECT "id", "venueId", "status"
+    const billRows = await tx.$queryRaw<Array<{ id: string; venueId: string; tableId: string | null; status: string }>>`
+      SELECT "id", "venueId", "tableId", "status"
       FROM "Bill"
       WHERE "id" = ${ctx.params.billId}
       FOR UPDATE
@@ -112,6 +112,11 @@ export async function POST(
       return { ok: false as const, status: 404, body: { error: "BILL_NOT_FOUND" } };
     }
     if (billRow.venueId !== venue.id) {
+      return { ok: false as const, status: 404, body: { error: "BILL_NOT_FOUND" } };
+    }
+    // Tenant scoping at the table level. A guest seated at table A must not
+    // be able to claim items off table B's bill even within the same venue.
+    if (billRow.tableId !== session.tableId) {
       return { ok: false as const, status: 404, body: { error: "BILL_NOT_FOUND" } };
     }
     if (billRow.status === "PAID" || billRow.status === "REFUNDED" || billRow.status === "CANCELLED") {

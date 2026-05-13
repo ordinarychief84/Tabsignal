@@ -25,7 +25,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { isPlatformStaffAsync } from "@/lib/auth/operator";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — platform security" };
+export const metadata = { title: "TabCall · platform security" };
 
 function fmtRelative(d: Date): string {
   const ms = Date.now() - d.getTime();
@@ -475,7 +475,7 @@ export default async function PlatformSecurityPage() {
         </div>
         <p className="mb-4 max-w-2xl text-[12px] text-slate/55">
           Surfaced from the security audit. These cards are intentionally
-          honest — we don&rsquo;t fake numbers. Each note describes what would
+          honest. We don&rsquo;t fake numbers. Each note describes what would
           be needed to start tracking.
         </p>
         <div className="grid gap-3 md:grid-cols-3">

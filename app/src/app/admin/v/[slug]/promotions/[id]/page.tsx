@@ -4,7 +4,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { PromotionForm } from "../promotion-form";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — edit promotion" };
+export const metadata = { title: "TabCall · edit promotion" };
 
 export default async function EditPromotionPage({
   params,
