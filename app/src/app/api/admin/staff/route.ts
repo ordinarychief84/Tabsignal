@@ -17,6 +17,9 @@ const InviteBody = z.object({
   // the floor is the safe fallback if the picker is omitted by an
   // older client.
   role: z.enum(["OWNER", "MANAGER", "SERVER", "HOST", "VIEWER"]).default("SERVER"),
+  // Free-text section assignment (e.g. "Patio", "Bar"). Optional;
+  // metadata only — doesn't affect TableAssignment-based request routing.
+  section: z.string().max(40).nullable().optional(),
   send: z.boolean().default(true),
 });
 
@@ -83,6 +86,7 @@ export async function POST(req: Request) {
       role: parsed.role as StaffRole,
       status: "INVITED",
       invitedById: actorRow?.id ?? null,
+      ...(parsed.section !== undefined ? { section: parsed.section } : {}),
     },
   });
 
@@ -125,6 +129,7 @@ export async function POST(req: Request) {
     email: staff.email,
     name: staff.name,
     role: staff.role,
+    section: staff.section,
     status: staff.status,
     lastSeenAt: staff.lastSeenAt?.toISOString() ?? null,
     invitedById: staff.invitedById,
@@ -154,6 +159,7 @@ export async function GET() {
       name: s.name,
       email: s.email,
       role: s.role,
+      section: s.section,
       status: s.status,
       lastSeenAt: s.lastSeenAt?.toISOString() ?? null,
       invitedAt: s.createdAt.toISOString(),

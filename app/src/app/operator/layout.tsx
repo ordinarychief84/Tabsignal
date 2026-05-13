@@ -55,6 +55,7 @@ export default async function OperatorLayout({ children }: { children: React.Rea
             <Link href="/operator/venues"   className="hover:text-slate">Venues</Link>
             <Link href="/operator/admins"   className="hover:text-slate">Admins</Link>
             <Link href="/operator/audit"    className="hover:text-slate">Audit</Link>
+            <Link href="/operator/security" className="hover:text-slate">Security</Link>
             <Link href="/operator/settings" className="hover:text-slate">Settings</Link>
           </nav>
           <div className="flex items-center gap-3 text-[12px] text-slate/55">

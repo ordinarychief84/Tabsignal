@@ -57,6 +57,7 @@ export default async function PeoplePage({ params }: { params: { slug: string } 
           name: s.name,
           email: s.email,
           role: s.role,
+          section: s.section,
           status: s.status,
           ackedCount: s.ackedRequests.length,
           lastSeenAt: s.lastSeenAt?.toISOString() ?? null,

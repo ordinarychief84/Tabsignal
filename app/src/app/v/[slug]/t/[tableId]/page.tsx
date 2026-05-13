@@ -29,10 +29,19 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
   // Detect a "stale tab" — the resolved session has line items AND no
   // recent request. Likely a previous party who didn't pay before leaving.
   // Show a "Continue / Start fresh" prompt to the new guest.
+  // Bundled in the same call: venue's guest-facing copy overrides. Each
+  // override is short manager-curated text that replaces a default
+  // string in the guest UI.
   const session = await db.guestSession.findUnique({
     where: { id: resolved.sessionId },
     select: {
       lineItems: true,
+      venue: {
+        select: {
+          guestWelcomeMessage: true,
+          guestConfirmationMessage: true,
+        },
+      },
       requests: {
         select: { createdAt: true },
         orderBy: { createdAt: "desc" },
@@ -48,6 +57,8 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
   const isStale =
     items.length > 0 &&
     (lastRequestAt === null || (minutesSinceLast ?? 0) > STALE_AFTER_MIN);
+  const welcomeMessage = session?.venue?.guestWelcomeMessage ?? "Tap once. Your server will see it instantly.";
+  const confirmationMessage = session?.venue?.guestConfirmationMessage ?? null;
 
   return (
     <main className="flex min-h-screen flex-col bg-oat text-slate">
@@ -59,7 +70,7 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
           {resolved.tableLabel}
         </h1>
         <p className="mt-2 text-sm text-slate/60">
-          Tap once. Your server will see it instantly.
+          {welcomeMessage}
         </p>
       </header>
 
@@ -68,6 +79,7 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
         sessionToken={resolved.sessionToken}
         slug={params.slug}
         tableLabel={resolved.tableLabel}
+        confirmationMessage={confirmationMessage}
         prevTab={isStale ? {
           itemCount: items.length,
           lastRequestMinAgo: minutesSinceLast === null ? null : Math.round(minutesSinceLast),
