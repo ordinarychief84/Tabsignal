@@ -137,11 +137,11 @@ export function FcmRegister() {
         type="button"
         onClick={() => void register()}
         disabled={busy}
-        className="flex w-full items-center justify-between rounded-2xl border border-chartreuse/40 bg-chartreuse/10 px-4 py-2.5 text-left text-sm text-oat transition hover:bg-chartreuse/15 disabled:opacity-60"
+        className="flex w-full items-center justify-between rounded-2xl border border-chartreuse/40 bg-chartreuse/10 px-4 py-2.5 text-left text-sm text-slate transition hover:bg-chartreuse/15 disabled:opacity-60"
       >
         <span>
           <span className="block text-[11px] uppercase tracking-[0.18em] text-umber">Stay reachable</span>
-          <span className="block text-oat">Enable alerts when the app is closed</span>
+          <span className="block text-slate">Enable alerts when the app is closed</span>
         </span>
         <span className="rounded-full bg-chartreuse px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate">
           {busy ? "Enabling…" : "Enable"}

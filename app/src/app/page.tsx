@@ -9,12 +9,12 @@
  *  - massive bold sentence as a lead-in to CTA bands
  *
  * Brand palette (use ONLY these, see tailwind.config.ts):
- *   slate     #0E0F1A   dark surfaces, navbar, hero, footer
- *   slate.light #1A1C2C cards over slate
- *   oat       #F8F6F1   light surfaces
- *   chartreuse #C9F61C  primary action + active signals
- *   coral     #F25C42   alerts + delays
- *   sea       #5BD0B3   secondary accents
+ *   slate     #232130   dark surfaces, navbar, hero, footer
+ *   slate.light #2F2D3E cards over slate
+ *   oat       #F7F5F2   light surfaces
+ *   chartreuse #F2E7B7  primary action + active signals
+ *   coral     #C8634F   alerts + delays
+ *   sea       #6F9586   secondary accents
  *   umber     #8B6F4E   warm CTA / divider accent
  *
  * Section rule: a single section uses one accent at most. No gradients.
@@ -52,7 +52,7 @@ function Logo({
   variant?: "light" | "dark";
   iconOnly?: boolean;
 }) {
-  const wordColor = variant === "light" ? "#FFFFFF" : "#0E0F1A";
+  const wordColor = variant === "light" ? "#FFFFFF" : "#232130";
   return (
     <span className="inline-flex items-center gap-2 leading-none">
       <span
@@ -63,11 +63,11 @@ function Logo({
           <path
             d="M 6 11 Q 12 6, 18 11"
             fill="none"
-            stroke="#C9F61C"
+            stroke="#F2E7B7"
             strokeWidth="2"
             strokeLinecap="round"
           />
-          <circle cx="12" cy="16" r="2" fill="#C9F61C" />
+          <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
         </svg>
       </span>
       {iconOnly ? null : (
@@ -205,23 +205,23 @@ function ProductDropdown() {
 
 function Navbar() {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-light/40 bg-slate/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-umber-soft/40 bg-oat/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Logo variant="light" />
-        <nav className="hidden items-center gap-8 text-sm text-oat/80 md:flex">
+        <Logo variant="dark" />
+        <nav className="hidden items-center gap-8 text-sm text-slate/70 md:flex">
           <ProductDropdown />
-          <a href="#how" className="hover:text-oat">How it works</a>
-          <a href="#pricing" className="hover:text-oat">Pricing</a>
-          <Link href="/staff/login" className="hover:text-oat">Login</Link>
+          <a href="#how" className="hover:text-slate">How it works</a>
+          <a href="#pricing" className="hover:text-slate">Pricing</a>
+          <Link href="/staff/login" className="hover:text-slate">Login</Link>
         </nav>
         {/* Mobile: dropdown collapses to a plain anchor that scrolls to #product. */}
-        <nav className="flex items-center gap-5 text-sm text-oat/80 md:hidden">
-          <a href="#product" className="hover:text-oat">Product</a>
-          <a href="#pricing" className="hover:text-oat">Pricing</a>
+        <nav className="flex items-center gap-5 text-sm text-slate/70 md:hidden">
+          <a href="#product" className="hover:text-slate">Product</a>
+          <a href="#pricing" className="hover:text-slate">Pricing</a>
         </nav>
         <Link
           href="/signup"
-          className="rounded-full bg-oat px-5 py-2 text-sm font-medium text-slate transition-colors hover:bg-oat/90"
+          className="rounded-full bg-chartreuse px-5 py-2 text-sm font-medium text-slate transition-colors hover:bg-chartreuse/85"
         >
           Start free
         </Link>
@@ -234,23 +234,33 @@ function Navbar() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-slate">
+    <section className="relative overflow-hidden bg-oat">
+      {/* Soft sage wash, evokes daylight hospitality without overwhelming
+          the typography. Two slow gradients only — no parallax, no motion. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+        style={{
+          background:
+            "radial-gradient(60% 60% at 80% 20%, rgba(199, 214, 207, 0.55) 0%, rgba(247, 245, 242, 0) 60%), radial-gradient(50% 50% at 10% 80%, rgba(242, 231, 183, 0.35) 0%, rgba(247, 245, 242, 0) 65%)",
+        }}
+      />
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:grid-cols-[1.05fr_1fr] md:py-28 lg:py-32">
         {/* LEFT, headline column */}
-        <div className="text-oat">
-          <span className="inline-flex items-center gap-2 rounded-full border border-oat/15 bg-slate-light/60 px-3.5 py-1.5 text-[12px] text-oat/80">
+        <div className="text-slate">
+          <span className="inline-flex items-center gap-2 rounded-full border border-umber-soft/40 bg-white/70 px-3.5 py-1.5 text-[12px] text-slate/75 backdrop-blur">
             <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-[10px] font-bold text-slate">
               ★
             </span>
             4.8 from Houston operators. No ad budget, just word of mouth.
           </span>
 
-          <h1 className="mt-6 text-[52px] font-semibold leading-[0.95] tracking-[-0.025em] text-oat md:text-[72px] lg:text-[88px]">
+          <h1 className="mt-6 text-[52px] font-semibold leading-[0.98] tracking-[-0.025em] text-slate md:text-[68px] lg:text-[80px]">
             <span className="block">The 1-star review</span>
-            <span className="block text-chartreuse">that never went public.</span>
+            <span className="block text-umber">that never went public.</span>
           </h1>
 
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-oat/70">
+          <p className="mt-7 max-w-xl text-lg leading-relaxed text-slate/65">
             TabCall sits on top of your POS. Guests scan a QR. The closest
             server&rsquo;s phone buzzes. And the second a bad rating is
             brewing, our AI routes it to your inbox instead of Google.
@@ -259,27 +269,27 @@ function Hero() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center rounded-full bg-chartreuse px-6 py-3.5 text-[15px] font-semibold text-slate transition-colors hover:bg-chartreuse/90"
+              className="inline-flex items-center justify-center rounded-full bg-chartreuse px-6 py-3.5 text-[15px] font-semibold text-slate shadow-soft transition-colors hover:bg-chartreuse/85"
             >
               Start free
             </Link>
             <a
               href="#how"
-              className="inline-flex items-center gap-2 rounded-full border border-oat/15 bg-transparent px-6 py-3.5 text-[15px] font-medium text-oat transition-colors hover:bg-oat/5"
+              className="inline-flex items-center gap-2 rounded-full border border-umber-soft/50 bg-white px-6 py-3.5 text-[15px] font-medium text-slate transition-colors hover:border-slate/30"
             >
               <span
                 aria-hidden
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-oat/10"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sea-soft"
               >
                 <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                  <path d="M2 1l5 3.5L2 8V1z" fill="#F8F6F1" />
+                  <path d="M2 1l5 3.5L2 8V1z" fill="#232130" />
                 </svg>
               </span>
               See how it works
             </a>
           </div>
 
-          <p className="mt-5 text-[12px] text-oat/45">
+          <p className="mt-5 text-[12px] text-slate/50">
             Free Starter plan. No card to start. Cancel by text.
           </p>
         </div>
@@ -295,25 +305,25 @@ function HeroMockup() {
   return (
     <div className="relative mx-auto w-full max-w-md">
       {/* Floating tag, top-left */}
-      <div className="absolute -left-2 top-3 z-20 inline-flex items-center gap-2 rounded-full bg-slate-light/95 px-3 py-1.5 text-[11px] text-oat/85 ring-1 ring-white/10 backdrop-blur md:-left-8">
-        <span className="h-1.5 w-1.5 rounded-full bg-sea" />
+      <div className="absolute -left-2 top-3 z-20 inline-flex items-center gap-2 rounded-full bg-slate px-3 py-1.5 text-[11px] text-oat/90 ring-1 ring-slate/10 shadow-soft md:-left-8">
+        <span className="h-1.5 w-1.5 rounded-full bg-sea-soft" />
         Live floor, Otto&rsquo;s Lounge
       </div>
 
       {/* Email card, main */}
-      <div className="rounded-3xl bg-slate-light p-6 shadow-2xl ring-1 ring-white/5">
+      <div className="rounded-3xl bg-white p-6 shadow-lift ring-1 ring-umber-soft/30">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-oat/50">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
             From: alerts@tab-call.com
           </p>
-          <span className="font-mono text-[11px] text-oat/40">10:14 PM</span>
+          <span className="font-mono text-[11px] text-slate/45">10:14 PM</span>
         </div>
 
-        <p className="mt-4 text-[15px] font-medium text-oat">
+        <p className="mt-4 text-[15px] font-medium text-slate">
           Table 7 · 2 stars
         </p>
 
-        <p className="mt-3 border-l-2 border-coral/50 pl-4 text-sm italic leading-relaxed text-oat/70">
+        <p className="mt-3 border-l-2 border-coral/60 pl-4 text-sm italic leading-relaxed text-slate/70">
           &ldquo;Waited 8 min for second drink, server seemed annoyed when I
           asked again.&rdquo;
         </p>
@@ -324,19 +334,19 @@ function HeroMockup() {
           <Row k="Suggested" v="Comp the next round. Talk to Marcus before close." last />
         </div>
 
-        <p className="mt-5 inline-flex items-center gap-2 text-[11px] tracking-wide text-oat/45">
-          <span className="h-1.5 w-1.5 rounded-full bg-chartreuse" />
+        <p className="mt-5 inline-flex items-center gap-2 text-[11px] tracking-wide text-slate/50">
+          <span className="h-1.5 w-1.5 rounded-full bg-sea" />
           Routed privately. We never email the guest.
         </p>
       </div>
 
       {/* Floating "0% public" badge, bottom-right */}
-      <div className="absolute -bottom-5 right-2 z-20 flex items-center gap-3 rounded-2xl bg-oat px-4 py-3 text-slate shadow-xl ring-1 ring-slate/5 md:-right-8">
+      <div className="absolute -bottom-5 right-2 z-20 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-slate shadow-lift ring-1 ring-umber-soft/30 md:-right-8">
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-chartreuse">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path
               d="M5 12l5 5L20 7"
-              stroke="#0E0F1A"
+              stroke="#232130"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -344,7 +354,7 @@ function HeroMockup() {
           </svg>
         </span>
         <div className="leading-tight">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-slate/55">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-umber">
             1★ this week
           </p>
           <p className="text-base font-semibold">3 caught · 0 public</p>
@@ -352,8 +362,8 @@ function HeroMockup() {
       </div>
 
       {/* Floating "live request" pill, top-right */}
-      <div className="absolute -right-3 top-20 z-20 hidden rounded-2xl bg-oat px-4 py-3 text-slate shadow-xl ring-1 ring-slate/5 md:-right-12 md:block">
-        <p className="text-[10px] uppercase tracking-[0.16em] text-slate/55">
+      <div className="absolute -right-3 top-20 z-20 hidden rounded-2xl bg-white px-4 py-3 text-slate shadow-lift ring-1 ring-umber-soft/30 md:-right-12 md:block">
+        <p className="text-[10px] uppercase tracking-[0.16em] text-umber">
           Avg bill close
         </p>
         <p className="mt-0.5 text-2xl font-semibold leading-none">
@@ -371,11 +381,11 @@ function Row({ k, v, last = false }: { k: string; v: string; last?: boolean }) {
     <div
       className={[
         "flex items-baseline justify-between gap-4",
-        last ? "" : "border-b border-white/5 pb-2",
+        last ? "" : "border-b border-slate/8 pb-2",
       ].join(" ")}
     >
-      <span className="text-[11px] uppercase tracking-[0.16em] text-oat/40">{k}</span>
-      <span className="text-right text-sm text-oat">{v}</span>
+      <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{k}</span>
+      <span className="text-right text-sm text-slate">{v}</span>
     </div>
   );
 }
@@ -573,10 +583,10 @@ function VenuePanelMock() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
               d="M12 2C8 2 5 5 5 9c0 5.5 7 13 7 13s7-7.5 7-13c0-4-3-7-7-7z"
-              stroke="#0E0F1A"
+              stroke="#232130"
               strokeWidth="1.6"
             />
-            <circle cx="12" cy="9" r="2.2" fill="#0E0F1A" />
+            <circle cx="12" cy="9" r="2.2" fill="#232130" />
           </svg>
           Otto&rsquo;s Lounge, Houston
         </div>
@@ -589,7 +599,7 @@ function VenuePanelMock() {
             </span>
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-chartreuse">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M7 17L17 7M17 7H9M17 7v8" stroke="#0E0F1A" strokeWidth="2" strokeLinecap="round" />
+                <path d="M7 17L17 7M17 7H9M17 7v8" stroke="#232130" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </span>
           </div>
@@ -687,7 +697,7 @@ function NotificationStack() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path
             d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"
-            fill="#0E0F1A"
+            fill="#232130"
           />
         </svg>
       ),
@@ -697,8 +707,8 @@ function NotificationStack() {
     {
       icon: (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <circle cx="12" cy="12" r="9" stroke="#0E0F1A" strokeWidth="1.8" />
-          <path d="M12 7v5l3 2" stroke="#0E0F1A" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="12" cy="12" r="9" stroke="#232130" strokeWidth="1.8" />
+          <path d="M12 7v5l3 2" stroke="#232130" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       ),
       bg: "bg-sea/30",
@@ -707,7 +717,7 @@ function NotificationStack() {
     {
       icon: (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M3 12h18M12 3v18" stroke="#0E0F1A" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M3 12h18M12 3v18" stroke="#232130" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
       ),
       bg: "bg-chartreuse/40",
@@ -811,13 +821,13 @@ function HowItWorks() {
     },
   ];
   return (
-    <section id="how" className="bg-slate">
+    <section id="how" className="bg-linen">
       <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-chartreuse/80">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
             How it works
           </p>
-          <h2 className="mt-4 text-[40px] font-semibold leading-[1.02] tracking-tight text-oat md:text-[60px]">
+          <h2 className="mt-4 text-[40px] font-semibold leading-[1.05] tracking-tight text-slate md:text-[56px]">
             Three steps, scan to served.
           </h2>
         </div>
@@ -826,7 +836,7 @@ function HowItWorks() {
           {steps.map((s) => (
             <article
               key={s.n}
-              className="rounded-3xl bg-slate-light p-8 ring-1 ring-white/5"
+              className="rounded-3xl bg-white p-8 ring-1 ring-umber-soft/30 shadow-card"
             >
               <div className="flex items-center gap-3">
                 <span
@@ -834,14 +844,14 @@ function HowItWorks() {
                 >
                   {s.n}
                 </span>
-                <span className="text-[11px] uppercase tracking-[0.18em] text-oat/40">
+                <span className="text-[11px] uppercase tracking-[0.18em] text-umber">
                   Step {Number(s.n)}
                 </span>
               </div>
-              <h3 className="mt-7 text-[22px] font-semibold leading-snug text-oat">
+              <h3 className="mt-7 text-[22px] font-semibold leading-snug text-slate">
                 {s.title}
               </h3>
-              <p className="mt-3 text-[15px] leading-relaxed text-oat/70">
+              <p className="mt-3 text-[15px] leading-relaxed text-slate/65">
                 {s.body}
               </p>
             </article>
@@ -1030,7 +1040,7 @@ function CheckIcon() {
       viewBox="0 0 14 14"
       className="text-slate"
     >
-      <circle cx="7" cy="7" r="7" fill="#C9F61C" />
+      <circle cx="7" cy="7" r="7" fill="#F2E7B7" />
       <path
         d="M3.8 7.2l2.2 2.2 4.2-4.4"
         fill="none"
@@ -1287,26 +1297,26 @@ function Faq() {
 
 function CtaBand() {
   return (
-    <section className="bg-slate">
+    <section className="bg-oat">
       <div className="mx-auto max-w-5xl px-6 py-24 text-center md:py-32">
-        <h2 className="text-[44px] font-semibold leading-[0.98] tracking-[-0.02em] text-oat md:text-[80px]">
-          Be the bar that gets the email at <span className="text-chartreuse">10:14</span>,
+        <h2 className="text-[44px] font-semibold leading-[1.02] tracking-[-0.02em] text-slate md:text-[72px]">
+          Be the bar that gets the email at <span className="text-sea">10:14</span>,
           <br className="hidden md:inline" /> not the public 1-star at <span className="text-coral">10:42</span>.
         </h2>
-        <p className="mx-auto mt-6 max-w-xl text-base text-oat/70">
+        <p className="mx-auto mt-6 max-w-xl text-base text-slate/65">
           Free Starter plan. Growth $99/mo, Pro $299/mo. Both include a 14-day
           free trial. No card needed to start. Cancel by text.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/signup"
-            className="inline-flex items-center justify-center rounded-full bg-chartreuse px-7 py-3.5 text-[15px] font-semibold text-slate transition-colors hover:bg-chartreuse/90"
+            className="inline-flex items-center justify-center rounded-full bg-chartreuse px-7 py-3.5 text-[15px] font-semibold text-slate shadow-soft transition-colors hover:bg-chartreuse/85"
           >
             Start free
           </Link>
           <Link
             href="/signup"
-            className="inline-flex items-center justify-center rounded-full border border-oat/15 px-7 py-3.5 text-[15px] font-medium text-oat transition-colors hover:bg-oat/5"
+            className="inline-flex items-center justify-center rounded-full border border-umber-soft/50 bg-white px-7 py-3.5 text-[15px] font-medium text-slate transition-colors hover:border-slate/30"
           >
             Talk to us first
           </Link>

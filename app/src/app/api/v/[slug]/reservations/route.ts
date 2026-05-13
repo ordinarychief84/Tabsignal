@@ -110,7 +110,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     const safeCode = escapeHtml(codeShort);
     const subject = `[${venueName}] New reservation · ${formatted} · ${parsed.partySize} · ${parsed.guestName}`;
     const html = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#0E0F1A;background:#F8F6F1;padding:24px;">
+      <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#232130;background:#F7F5F2;padding:24px;">
         <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${safeVenue}</p>
         <h2 style="margin:0 0 12px;font-weight:500;">New reservation</h2>
         <p style="margin:0 0 6px;"><strong>Guest:</strong> ${safeGuest} (${safePhone})</p>

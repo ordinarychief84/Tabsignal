@@ -19,7 +19,7 @@ export function badRatingSubject(args: BadRatingArgs): string {
 export function badRatingHtml(args: BadRatingArgs): string {
   const time = args.occurredAt.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", weekday: "short" });
   const noteLine = args.note?.trim()
-    ? `<p style="margin:16px 0;padding:12px 16px;background:#F8F6F1;border-left:3px solid #F25C42;font-style:italic;color:#0E0F1A;">"${escapeHtml(args.note.trim())}"</p>`
+    ? `<p style="margin:16px 0;padding:12px 16px;background:#F7F5F2;border-left:3px solid #C8634F;font-style:italic;color:#232130;">"${escapeHtml(args.note.trim())}"</p>`
     : `<p style="margin:16px 0;color:#8B6F4E;">No note provided.</p>`;
 
   const serverLine = args.classification.serverName
@@ -27,28 +27,28 @@ export function badRatingHtml(args: BadRatingArgs): string {
     : "";
 
   const compCta = args.compCta
-    ? `<a href="${escapeHtml(args.compCta.url)}" style="display:inline-block;background:#C9F61C;color:#0E0F1A;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;margin-right:8px;">Comp $${(args.compCta.amountCents / 100).toFixed(0)} to ${escapeHtml(args.tableLabel)}</a>`
+    ? `<a href="${escapeHtml(args.compCta.url)}" style="display:inline-block;background:#F2E7B7;color:#232130;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;margin-right:8px;">Comp $${(args.compCta.amountCents / 100).toFixed(0)} to ${escapeHtml(args.tableLabel)}</a>`
     : "";
 
   return `<!doctype html>
 <html>
-  <body style="margin:0;padding:0;background:#F8F6F1;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#0E0F1A;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8F6F1;padding:24px 0;">
+  <body style="margin:0;padding:0;background:#F7F5F2;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#232130;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F5F2;padding:24px 0;">
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E2E8F0;">
           <tr><td style="padding:24px 28px;border-bottom:1px solid #E2E8F0;">
             <p style="margin:0;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${escapeHtml(args.venueName)} · ${escapeHtml(time)}</p>
-            <h1 style="margin:6px 0 0;font-size:20px;font-weight:500;color:#0E0F1A;">${escapeHtml(args.tableLabel)} · ${args.rating}★</h1>
+            <h1 style="margin:6px 0 0;font-size:20px;font-weight:500;color:#232130;">${escapeHtml(args.tableLabel)} · ${args.rating}★</h1>
           </td></tr>
           <tr><td style="padding:20px 28px;">
             ${noteLine}
             <p style="margin:0;color:#8B6F4E;"><strong>Likely cause:</strong> ${labelFor(args.classification.category)} <span style="color:#94A3B8;font-size:12px;">· ${args.classification.confidence} confidence</span></p>
             ${serverLine}
-            <p style="margin:14px 0 0;color:#0E0F1A;"><strong>Suggested action:</strong> ${escapeHtml(args.classification.suggestion)}</p>
+            <p style="margin:14px 0 0;color:#232130;"><strong>Suggested action:</strong> ${escapeHtml(args.classification.suggestion)}</p>
           </td></tr>
-          <tr><td style="padding:18px 28px 24px;border-top:1px solid #E2E8F0;background:#F8F6F1;">
+          <tr><td style="padding:18px 28px 24px;border-top:1px solid #E2E8F0;background:#F7F5F2;">
             ${compCta}
-            <a href="${escapeHtml(args.staffQueueUrl)}" style="display:inline-block;background:#0E0F1A;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;">Open live queue</a>
+            <a href="${escapeHtml(args.staffQueueUrl)}" style="display:inline-block;background:#232130;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;">Open live queue</a>
             <p style="margin:14px 0 0;font-size:11px;color:#8B6F4E;line-height:1.5;">
               ${args.compCta ? "Comp link is single-use and expires in 24h. " : ""}AI-generated suggestion, verify before acting. The guest&rsquo;s words matter more than the category.
             </p>

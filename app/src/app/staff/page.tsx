@@ -23,21 +23,21 @@ export default async function StaffPage() {
   const assignedTableLabels = staff.assignments.map(a => a.table.label);
 
   return (
-    <main className="min-h-screen bg-slate text-oat">
-      <header className="sticky top-0 z-10 border-b border-white/5 bg-slate/95 backdrop-blur">
+    <main className="min-h-screen bg-oat text-slate">
+      <header className="sticky top-0 z-10 border-b border-umber-soft/30 bg-oat/85 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <p className="truncate text-[10px] uppercase tracking-[0.18em] text-oat/40">
+            <p className="truncate text-[10px] uppercase tracking-[0.18em] text-umber">
               {staff.venue.name}
             </p>
-            <p className="text-sm font-medium text-oat">Live queue</p>
+            <p className="text-sm font-medium text-slate">Live queue</p>
           </div>
           <LiveClock />
           <form action="/api/auth/logout" method="post">
             <button
               type="submit"
               aria-label="Sign out"
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-medium text-oat/70 hover:text-oat"
+              className="rounded-lg border border-umber-soft/40 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
             >
               Sign out
             </button>
@@ -54,7 +54,7 @@ export default async function StaffPage() {
           staffId={staff.id}
           assignedTableIds={assignedTableIds}
         />
-        <p className="mt-8 text-center text-[10px] tracking-[0.16em] text-oat/30">
+        <p className="mt-8 text-center text-[10px] tracking-[0.16em] text-slate/40">
           {staff.name}
           {assignedTableLabels.length > 0
             ? ` · covers ${assignedTableLabels.join(", ")}`

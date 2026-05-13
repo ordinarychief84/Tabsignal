@@ -369,12 +369,12 @@ export function StaffQueue({
               <p className="text-[11px] uppercase tracking-[0.18em] text-coral">
                 Wishlist shared
               </p>
-              <p className="mt-1 text-sm text-oat">
+              <p className="mt-1 text-sm text-slate">
                 <span className="font-medium">{wishlistToast.tableLabel ?? "A guest"}</span>
                 {" "}shared a wishlist of {wishlistToast.itemCount} item{wishlistToast.itemCount === 1 ? "" : "s"}
               </p>
               {wishlistToast.items.length > 0 ? (
-                <p className="mt-1 truncate text-[11px] text-oat/60">
+                <p className="mt-1 truncate text-[11px] text-slate/60">
                   {wishlistToast.items.map(i => `${i.quantity > 1 ? `${i.quantity}× ` : ""}${i.name}`).join(", ")}
                 </p>
               ) : null}
@@ -402,19 +402,19 @@ export function StaffQueue({
       ) : null}
 
       {reconnecting ? (
-        <div className="mb-3 rounded-lg bg-sea/20 px-3 py-2 text-center text-xs text-oat/70">
+        <div className="mb-3 rounded-lg bg-sea/20 px-3 py-2 text-center text-xs text-slate/70">
           Reconnecting…
         </div>
       ) : null}
 
       {showFilter ? (
-        <div className="mb-3 inline-flex rounded-xl border border-white/10 p-1 text-[11px]">
+        <div className="mb-3 inline-flex rounded-xl border border-umber-soft/40 p-1 text-[11px]">
           <button
             type="button"
             onClick={() => setFilter("yours")}
             className={[
               "rounded-lg px-3 py-1.5 font-medium transition-colors",
-              filter === "yours" ? "bg-chartreuse text-slate" : "text-oat/60 hover:text-oat",
+              filter === "yours" ? "bg-chartreuse text-slate" : "text-slate/60 hover:text-slate",
             ].join(" ")}
           >
             Your tables · {yourCount}
@@ -424,7 +424,7 @@ export function StaffQueue({
             onClick={() => setFilter("all")}
             className={[
               "rounded-lg px-3 py-1.5 font-medium transition-colors",
-              filter === "all" ? "bg-chartreuse text-slate" : "text-oat/60 hover:text-oat",
+              filter === "all" ? "bg-chartreuse text-slate" : "text-slate/60 hover:text-slate",
             ].join(" ")}
           >
             All · {items.length}
@@ -456,7 +456,7 @@ export function StaffQueue({
                 "rounded-lg border px-3 py-1.5 font-medium transition-colors",
                 isActive
                   ? (isDelayed ? "border-coral bg-coral text-slate" : "border-chartreuse bg-chartreuse text-slate")
-                  : (isDelayed ? "border-coral/40 text-coral hover:border-coral" : "border-white/10 text-oat/60 hover:text-oat"),
+                  : (isDelayed ? "border-coral/40 text-coral hover:border-coral" : "border-umber-soft/40 text-slate/60 hover:text-slate"),
               ].join(" ")}
             >
               {t.label} · {count}
@@ -466,11 +466,11 @@ export function StaffQueue({
       </div>
 
       {visibleItems.length === 0 ? (
-        <div className="rounded-2xl border border-white/5 bg-slate-light/40 px-6 py-10 text-center">
-          <p className="text-sm text-oat/60">
+        <div className="rounded-2xl border border-umber-soft/30 bg-white px-6 py-10 text-center">
+          <p className="text-sm text-slate/60">
             {showFilter && filter === "yours" ? "Nothing on your tables right now." : "Floor is quiet."}
           </p>
-          <p className="mt-1 text-[11px] tracking-wide text-oat/30">
+          <p className="mt-1 text-[11px] tracking-wide text-slate/40">
             New requests appear here within 1 second.
           </p>
         </div>
@@ -561,16 +561,16 @@ function RequestCard({
   return (
     <li
       className={[
-        "rounded-2xl border bg-slate-light p-4 transition-colors",
-        delayed ? "border-coral ring-1 ring-coral/30" : warning ? "border-sea/40" : isYours ? "border-chartreuse/40" : "border-white/5",
+        "rounded-2xl border bg-white shadow-card p-4 transition-colors",
+        delayed ? "border-coral ring-1 ring-coral/30" : warning ? "border-sea/40" : isYours ? "border-chartreuse/40" : "border-umber-soft/30",
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xl font-medium text-oat">{item.tableLabel}</p>
+            <p className="text-xl font-medium text-slate">{item.tableLabel}</p>
             {isYours ? (
-              <span className="rounded-full bg-chartreuse/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-chartreuse">
+              <span className="rounded-full bg-chartreuse px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate">
                 yours
               </span>
             ) : null}
@@ -580,9 +580,9 @@ function RequestCard({
               </span>
             ) : null}
           </div>
-          <p className="text-sm text-oat/60">{REQUEST_LABEL[item.type]}</p>
+          <p className="text-sm text-slate/60">{REQUEST_LABEL[item.type]}</p>
           {item.note ? (
-            <p className="mt-2 text-sm italic leading-snug text-oat/50">
+            <p className="mt-2 text-sm italic leading-snug text-slate/55">
               &ldquo;{item.note}&rdquo;
             </p>
           ) : null}
@@ -590,7 +590,7 @@ function RequestCard({
         <span
           className={[
             "shrink-0 font-mono text-base tabular-nums",
-            delayed ? "text-coral" : warning ? "text-oat" : "text-oat/60",
+            delayed ? "text-coral" : warning ? "text-slate" : "text-slate/60",
           ].join(" ")}
         >
           {formatAge(seconds)}
@@ -599,8 +599,8 @@ function RequestCard({
 
       <div className="mt-4 flex gap-2">
         {acked ? (
-          <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-chartreuse/10 py-3 text-sm font-medium text-chartreuse">
-            <span className="h-1.5 w-1.5 rounded-full bg-chartreuse" />
+          <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-sea-soft/50 py-3 text-sm font-medium text-sea">
+            <span className="h-1.5 w-1.5 rounded-full bg-sea" />
             {item.acknowledgedBy?.name ? `${item.acknowledgedBy.name} on it` : "Acknowledged"}
           </span>
         ) : (
@@ -616,7 +616,7 @@ function RequestCard({
           <button
             disabled={busy}
             onClick={() => setShowHandoff(s => !s)}
-            className="rounded-lg border border-white/10 px-3 py-3 text-sm font-medium text-oat/70 hover:text-oat disabled:opacity-60"
+            className="rounded-lg border border-umber-soft/40 px-3 py-3 text-sm font-medium text-slate/70 hover:text-slate disabled:opacity-60"
           >
             Hand off
           </button>
@@ -624,15 +624,15 @@ function RequestCard({
         <button
           disabled={busy}
           onClick={() => setShowResolveActions(s => !s)}
-          className="rounded-lg border border-white/10 px-4 py-3 text-sm font-medium text-oat/70 hover:text-oat disabled:opacity-60"
+          className="rounded-lg border border-umber-soft/40 px-4 py-3 text-sm font-medium text-slate/70 hover:text-slate disabled:opacity-60"
         >
           Done
         </button>
       </div>
 
       {showResolveActions ? (
-        <div className="mt-3 rounded-xl border border-white/5 bg-slate p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-oat/50">What did you do?</p>
+        <div className="mt-3 rounded-xl border border-umber-soft/30 bg-white p-3 ring-1 ring-umber-soft/30">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate/55">What did you do?</p>
           <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {[
               { id: "SERVED", label: "Served" },
@@ -646,7 +646,7 @@ function RequestCard({
                 <button
                   disabled={busy}
                   onClick={() => { setShowResolveActions(false); onResolve(a.id); }}
-                  className="w-full rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-oat/80 hover:bg-white/5 disabled:opacity-60"
+                  className="w-full rounded-lg border border-umber-soft/40 px-3 py-2 text-xs font-medium text-slate/80 hover:bg-slate/5 disabled:opacity-60"
                 >
                   {a.label}
                 </button>
@@ -655,7 +655,7 @@ function RequestCard({
           </ul>
           <button
             onClick={() => setShowResolveActions(false)}
-            className="mt-2 text-[11px] text-oat/45 underline-offset-4 hover:text-oat hover:underline"
+            className="mt-2 text-[11px] text-slate/50 underline-offset-4 hover:text-slate hover:underline"
           >
             cancel
           </button>
@@ -663,8 +663,8 @@ function RequestCard({
       ) : null}
 
       {showHandoff && ackedByMe ? (
-        <div className="mt-3 rounded-xl border border-white/5 bg-slate p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-oat/50">
+        <div className="mt-3 rounded-xl border border-umber-soft/30 bg-white p-3 ring-1 ring-umber-soft/30">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate/55">
             Hand off to
           </p>
           <ul className="mt-2 grid grid-cols-2 gap-2">
@@ -674,7 +674,7 @@ function RequestCard({
                   type="button"
                   disabled={busy}
                   onClick={() => { onHandoff(s.id); setShowHandoff(false); }}
-                  className="w-full rounded-lg border border-white/10 px-3 py-2 text-sm text-oat hover:bg-slate-light disabled:opacity-60"
+                  className="w-full rounded-lg border border-umber-soft/40 px-3 py-2 text-sm text-slate hover:bg-slate/5 disabled:opacity-60"
                 >
                   {s.name}
                 </button>

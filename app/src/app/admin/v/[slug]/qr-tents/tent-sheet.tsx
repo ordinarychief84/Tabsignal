@@ -57,7 +57,7 @@ export function TentSheet({
           <article
             key={t.label}
             className="tent tent-page mx-auto flex flex-col items-center justify-center rounded-2xl border border-slate/10 bg-white p-8 print:rounded-none print:border-0"
-            style={{ borderTopColor: "#C9F61C", borderTopWidth: 6 }}
+            style={{ borderTopColor: "#F2E7B7", borderTopWidth: 6 }}
           >
             <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
               {venueName}
