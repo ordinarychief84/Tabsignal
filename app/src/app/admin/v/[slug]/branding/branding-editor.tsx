@@ -44,7 +44,7 @@ export function BrandingEditor({ slug, venueName, initial, legacy }: Props) {
   const effective = {
     logoUrl: state.logoUrl ?? legacy.logoUrl,
     bannerImageUrl: state.bannerImageUrl,
-    primaryColor: state.primaryColor ?? legacy.brandColor ?? "#5BD0B3",
+    primaryColor: state.primaryColor ?? legacy.brandColor ?? "#6F9586",
     secondaryColor: state.secondaryColor ?? "#0B1722",
     accentColor: state.accentColor ?? "#D7FF3C",
     fontFamily: state.fontFamily ?? "Inter",
@@ -111,7 +111,7 @@ export function BrandingEditor({ slug, venueName, initial, legacy }: Props) {
             label="Primary"
             help="Main brand color. Used for headers + primary buttons in the guest UI."
             value={state.primaryColor}
-            placeholder={legacy.brandColor ?? "#5BD0B3"}
+            placeholder={legacy.brandColor ?? "#6F9586"}
             onSave={v => patch({ primaryColor: v })}
           />
           <ColorRow

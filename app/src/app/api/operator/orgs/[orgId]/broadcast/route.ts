@@ -42,11 +42,11 @@ export async function POST(req: Request, ctx: { params: { orgId: string } }) {
   const subject = parsed.subject.startsWith("[") ? parsed.subject : subjectPrefix + parsed.subject;
 
   const html = `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;color:#0E0F1A;background:#F8F6F1;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;color:#232130;background:#F7F5F2;">
       <tr><td style="padding:24px;">
         <p style="margin:0 0 4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8B6F4E;">${escapeHtml(org.name)} · ${venues.length} venue${venues.length === 1 ? "" : "s"}</p>
         <h2 style="margin:0 0 16px;font-weight:500;">${escapeHtml(parsed.subject)}</h2>
-        <div style="font-size:14px;color:#0E0F1A;white-space:pre-wrap;">${escapeHtml(parsed.body).replace(/\n/g, "<br>")}</div>
+        <div style="font-size:14px;color:#232130;white-space:pre-wrap;">${escapeHtml(parsed.body).replace(/\n/g, "<br>")}</div>
         <p style="margin:24px 0 0;font-size:12px;color:#8B6F4E;">
           Sent by ${escapeHtml(session?.email ?? "operator")} via the TabCall operator console.
         </p>

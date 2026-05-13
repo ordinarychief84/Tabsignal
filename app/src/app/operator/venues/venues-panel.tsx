@@ -218,7 +218,7 @@ function KillToggle({ label, on, onChange }: { label: string; on: boolean; onCha
     <label className="inline-flex items-center gap-2 cursor-pointer">
       <input type="checkbox" checked={on} onChange={e => onChange(e.target.checked)} className="accent-chartreuse" />
       <span>{label}</span>
-      <span className={on ? "text-chartreuse" : "text-coral"}>{on ? "on" : "off"}</span>
+      <span className={on ? "text-sea" : "text-coral"}>{on ? "on" : "off"}</span>
     </label>
   );
 }
