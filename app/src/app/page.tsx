@@ -1085,7 +1085,7 @@ function Stars() {
 /* Pricing                                                                */
 /* ---------------------------------------------------------------------- */
 
-const PRICING_TIERS: {
+type PricingTier = {
   key: "starter" | "growth" | "pro" | "founding";
   name: string;
   price: string;
@@ -1095,53 +1095,96 @@ const PRICING_TIERS: {
   cta: string;
   ctaHref: string;
   highlight: boolean;
-}[] = [
+  /** Header above the feature list — e.g. "Everything in Growth, plus:". */
+  inheritsFrom?: string;
+  /** Feature bullets shown on the card. Keep tight — 6–8 per tier reads
+   *  cleanest at 4-up. Longer lists belong on a dedicated /pricing route. */
+  features: string[];
+};
+
+const PRICING_TIERS: PricingTier[] = [
   {
     key: "starter",
     name: "Starter",
     price: "Free",
     sub: "Up to 5 tables. No card.",
-    tagline: "Call waiter, request bill, reviews. Live tonight.",
+    tagline: "Live tonight. The essentials, free forever.",
     trial: false,
     cta: "Start free",
     ctaHref: "/signup",
     highlight: false,
+    features: [
+      "Call waiter, request bill, ask for help, refill",
+      "Live request queue (staff PWA)",
+      "Push notifications when backgrounded",
+      "Reviews and ratings, 1–5 stars",
+      "Stripe Connect payments (Apple Pay, Google Pay, cards)",
+      "Email support",
+    ],
   },
   {
     key: "growth",
     name: "Growth",
     price: "$99",
     sub: "per month, up to 25 tables",
-    tagline:
-      "Full menu, pre-orders, splits, tip pool, reservations, waitlist, analytics.",
+    tagline: "For restaurants that want the floor moving faster.",
     trial: true,
     cta: "Start free trial",
     ctaHref: "/signup?plan=growth",
     highlight: true,
+    inheritsFrom: "Starter",
+    features: [
+      "Full digital menu with photos and modifiers",
+      "QR ordering from the table",
+      "Bill splitting (by item or share) and tipping",
+      "Pre-orders from QR before seated",
+      "Wishlist guests can share with the server",
+      "Reservations and waitlist",
+      "Tip pool",
+      "Manager analytics: response time, completion, peak hours",
+      "Auto-escalation and request hand-off",
+    ],
   },
   {
     key: "pro",
     name: "Pro",
     price: "$299",
     sub: "per month, unlimited tables",
-    tagline:
-      "Loyalty, promotions, branding, benchmarks, multi-location, POS layer.",
+    tagline: "For groups and multi-location operators.",
     trial: true,
     cta: "Start free trial",
     ctaHref: "/signup?plan=pro",
     highlight: false,
+    inheritsFrom: "Growth",
+    features: [
+      "Loyalty: returning-guest identify, points, visit history",
+      "Promotions and banners (happy hour, lunch, new dish)",
+      "Branding: logo, banner, brand colors, welcome message",
+      "POS integration: Toast, Square, Clover (preview)",
+      "Multi-location operator console",
+      "Cross-venue benchmarks (k≥5)",
+      "Security dashboard and audit log",
+      "Priority support",
+    ],
   },
   {
     key: "founding",
     name: "Founding",
     price: "On request",
     sub: "Concierge onboarding only",
-    tagline:
-      "Everything in Pro, plus a TabCall-managed setup and a dedicated Slack channel.",
+    tagline: "We set it up, you run service.",
     trial: false,
     cta: "Talk to us",
     ctaHref: "mailto:hello@tab-call.com",
     highlight: false,
+    inheritsFrom: "Pro",
+    features: [
+      "TabCall-managed setup (QR print, menu import, staff invite)",
+      "Dedicated Slack channel with the team",
+      "Custom integrations on request",
+      "Direct line into the product roadmap",
+      "Quarterly business review",
+    ],
   },
 ];
 
@@ -1167,27 +1210,33 @@ function Pricing() {
                   : "border border-umber-soft/30 bg-white shadow-card",
               ].join(" ")}
             >
-              {t.trial ? (
-                <span className="inline-flex w-fit items-center rounded-full bg-chartreuse px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate">
-                  14-day free trial
-                </span>
-              ) : (
-                <span className="inline-block h-[22px]" aria-hidden />
-              )}
+              {/* Reserve a fixed height for the trial pill row so all four
+                  cards align on the price below, with or without a pill. */}
+              <div className="flex h-[26px] items-center">
+                {t.trial ? (
+                  <span className="inline-flex items-center rounded-full bg-chartreuse px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate">
+                    14-day free trial
+                  </span>
+                ) : t.highlight ? (
+                  <span className="inline-flex items-center rounded-full bg-sea-soft/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate/75">
+                    Most popular
+                  </span>
+                ) : null}
+              </div>
 
-              <h3 className="mt-4 text-lg font-semibold text-slate">{t.name}</h3>
+              <h3 className="mt-3 text-lg font-semibold text-slate">{t.name}</h3>
 
-              <p className="mt-3 text-[34px] font-semibold leading-none tracking-tight text-slate">
+              <p className="mt-2 text-[34px] font-semibold leading-none tracking-tight text-slate">
                 {t.price}
               </p>
               <p className="mt-1 text-xs text-slate/55">{t.sub}</p>
 
-              <p className="mt-4 text-sm leading-relaxed text-slate/70">{t.tagline}</p>
+              <p className="mt-4 text-[13px] leading-relaxed text-slate/70">{t.tagline}</p>
 
               <Link
                 href={t.ctaHref}
                 className={[
-                  "mt-6 inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
+                  "mt-5 inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
                   t.highlight
                     ? "bg-chartreuse text-slate hover:bg-chartreuse/85"
                     : "border border-slate/15 bg-white text-slate hover:border-slate/30",
@@ -1195,6 +1244,29 @@ function Pricing() {
               >
                 {t.cta}
               </Link>
+
+              {/* Feature list — what's included with this tier. For tier
+                  2-4 we lead with "Everything in {previous}, plus:" so the
+                  inheritance is explicit and the list stays scannable. */}
+              <div className="mt-6 border-t border-umber-soft/30 pt-5">
+                {t.inheritsFrom ? (
+                  <p className="text-[11px] font-semibold text-slate">
+                    Everything in {t.inheritsFrom}, plus:
+                  </p>
+                ) : (
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-umber">
+                    What&rsquo;s included
+                  </p>
+                )}
+                <ul className="mt-3 space-y-2.5">
+                  {t.features.map((f) => (
+                    <li key={f} className="flex gap-2.5 text-[12px] leading-snug text-slate/75">
+                      <PricingCheck />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </article>
           ))}
         </div>
@@ -1287,6 +1359,19 @@ function DiningVignette() {
 function CheckDot() {
   return (
     <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-slate">
+      <svg width="9" height="9" viewBox="0 0 12 12">
+        <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+function PricingCheck() {
+  return (
+    <span
+      aria-hidden
+      className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sea-soft/70 text-slate"
+    >
       <svg width="9" height="9" viewBox="0 0 12 12">
         <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
