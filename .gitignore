@@ -30,3 +30,8 @@ venv/
 .vscode/
 .idea/
 .vercel
+
+# Claude Code harness — per-session worktrees + runtime state. These
+# accumulate fast (multi-GB across worktrees) and should never be
+# tracked. Each Claude session writes its own subdirectory here.
+.claude/
