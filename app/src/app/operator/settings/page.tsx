@@ -20,7 +20,7 @@ import { isPlatformStaffAsync, operatorAllowlist } from "@/lib/auth/operator";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — platform settings" };
+export const metadata = { title: "TabCall · platform settings" };
 
 function envPresent(name: string): boolean {
   const v = process.env[name];
@@ -71,7 +71,7 @@ export default async function PlatformSettingsPage() {
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Platform settings</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate/60">
           Read-mostly view of TabCall&rsquo;s plumbing. Add-an-operator
-          and key rotation live in Vercel env — surfaced here so you
+          and key rotation live in Vercel env, surfaced here so you
           know exactly what&rsquo;s set without dumping secrets into the
           page.
         </p>

@@ -7,7 +7,7 @@ import { checkOrgAccess } from "@/lib/operator-rbac";
 import { ImpersonateButton } from "./impersonate-button";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — org venues" };
+export const metadata = { title: "TabCall · org venues" };
 
 export default async function OrgVenuesPage({ params }: { params: { orgId: string } }) {
   const session = await getStaffSession();

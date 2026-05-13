@@ -3,7 +3,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { isOperator } from "@/lib/auth/operator";
 import { SetupForm } from "./setup-form";
 
-export const metadata = { title: "TabCall — venue setup" };
+export const metadata = { title: "TabCall · venue setup" };
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
@@ -32,7 +32,7 @@ export default async function SetupPage() {
           <h1 className="mt-2 text-4xl font-medium tracking-tight">We onboard every venue ourselves.</h1>
           <p className="mt-3 text-base leading-relaxed text-slate/65">
             For the first hundred venues, we do setup with you on a 15-minute
-            call — pick the right plan, configure Stripe Connect, print your
+            call: pick the right plan, configure Stripe Connect, print your
             tents, hand you a phone for the bar. No self-serve form yet.
           </p>
           <div className="mt-8 flex flex-col items-start gap-3">

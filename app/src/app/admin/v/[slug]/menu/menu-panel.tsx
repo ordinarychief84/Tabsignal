@@ -239,7 +239,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
 
       {categories.length === 0 && items.length === 0 ? (
         <p className="rounded-lg border border-slate/10 bg-white px-5 py-8 text-center text-sm text-slate/60">
-          No menu yet. Add a category to get started — try &ldquo;Cocktails&rdquo; or &ldquo;Beer&rdquo;.
+          No menu yet. Add a category to get started. Try &ldquo;Cocktails&rdquo; or &ldquo;Beer&rdquo;.
         </p>
       ) : null}
     </section>

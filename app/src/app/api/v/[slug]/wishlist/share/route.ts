@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { emit } from "@/lib/realtime";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -27,6 +28,20 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   let parsed;
   try { parsed = Body.parse(await req.json()); }
   catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }
+
+  // Cap "share with staff" at 5/min per session. The endpoint fires a
+  // realtime event into the venue staff channel; without a limit a single
+  // misbehaving tab could spam staff toasts.
+  const gate = await rateLimitAsync(`wishlist:share:${parsed.sessionId}`, {
+    windowMs: 60_000,
+    max: 5,
+  });
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED", retryAfterMs: gate.retryAfterMs },
+      { status: 429 }
+    );
+  }
 
   const venue = await db.venue.findUnique({
     where: { slug: ctx.params.slug },

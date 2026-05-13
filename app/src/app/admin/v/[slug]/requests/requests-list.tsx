@@ -442,7 +442,7 @@ function EmptyState({ tab, hasFilters }: { tab: Tab; hasFilters: boolean }) {
       : tab === "active"
       ? "No active requests right now."
       : tab === "delayed"
-      ? "Nothing delayed — staff is on top of things."
+      ? "Nothing delayed. Staff is on top of things."
       : tab === "completed"
       ? "Nothing wrapped in the last hour yet."
       : "Floor is quiet.";

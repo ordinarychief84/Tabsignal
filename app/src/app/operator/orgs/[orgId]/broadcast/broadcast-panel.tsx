@@ -38,7 +38,7 @@ export function BroadcastPanel({ orgId, venueCount }: { orgId: string; venueCoun
         <h2 className="mt-2 text-xl font-medium">Reached {sent.reachedVenueCount} venue{sent.reachedVenueCount === 1 ? "" : "s"}.</h2>
         <p className="mt-2 text-sm text-slate/70">
           Currently logs server-side. Push / email fan-out is on the
-          roadmap — track delivery in the deployment logs.
+          roadmap. Track delivery in the deployment logs.
         </p>
         <button
           onClick={() => setSent(null)}
@@ -72,7 +72,7 @@ export function BroadcastPanel({ orgId, venueCount }: { orgId: string; venueCoun
           required
           rows={6}
           maxLength={2000}
-          placeholder="Write the full notice here. Plain text. Keep it short — managers read these on their phone between covers."
+          placeholder="Write the full notice here. Plain text. Keep it short. Managers read these on their phone between covers."
           className="mt-2 block w-full rounded border border-slate/15 bg-white px-3 py-2 text-sm"
         />
       </label>

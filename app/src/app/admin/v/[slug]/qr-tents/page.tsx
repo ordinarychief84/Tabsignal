@@ -6,7 +6,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { TentSheet } from "./tent-sheet";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — QR tents" };
+export const metadata = { title: "TabCall · QR tents" };
 
 /**
  * Derive the base URL from the request's Host header so the QR codes

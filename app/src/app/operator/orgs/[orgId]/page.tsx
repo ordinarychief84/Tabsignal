@@ -7,7 +7,7 @@ import { venueAnalytics, type AnalyticsRange } from "@/lib/analytics";
 import { dollars } from "@/lib/bill";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — org overview" };
+export const metadata = { title: "TabCall · org overview" };
 
 const RANGES: { id: AnalyticsRange; label: string }[] = [
   { id: "today", label: "Today" },

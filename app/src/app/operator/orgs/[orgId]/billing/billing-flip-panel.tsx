@@ -117,7 +117,7 @@ export function BillingFlipPanel({
         <input
           value={reason}
           onChange={e => setReason(e.target.value)}
-          placeholder="e.g. Setup call 2026-05-09 — Otto&rsquo;s Lounge agreed to Pro"
+          placeholder="e.g. Setup call 2026-05-09 · Otto&rsquo;s Lounge agreed to Pro"
           className="mt-2 block w-full rounded border border-slate/15 bg-white px-3 py-2 text-sm"
         />
       </label>

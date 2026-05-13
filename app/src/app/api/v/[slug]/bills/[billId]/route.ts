@@ -28,37 +28,23 @@ export async function GET(req: Request, ctx: { params: { slug: string; billId: s
   });
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-  // Find the session bound to this token at this venue. We don't include
-  // the bill in the same query — we need the bill regardless of who's
-  // looking — but we do need to confirm SOME valid session at this venue
-  // holds this token before returning bill data.
-  const session = await db.guestSession.findFirst({
-    where: { venueId: venue.id },
-    select: { id: true, sessionToken: true, tableId: true, expiresAt: true },
-    // Cheaper than findUnique by token because we need the venueId scope.
-    // Token has a unique index, but the WHERE on venueId narrows first.
-    // Practically there's exactly one row matching any given token; the
-    // tokensEqual constant-time check below protects against timing leaks.
-    orderBy: { createdAt: "desc" },
-    take: 50,
+  // Direct token lookup. The sessionToken column is UNIQUE, so this is the
+  // canonical way to find the requesting session. We then verify it belongs
+  // to the requested venue and that the token matches in constant time
+  // (Prisma's WHERE-by-unique-key already filtered, but the constant-time
+  // compare keeps the check uniform across the route).
+  const session = await db.guestSession.findUnique({
+    where: { sessionToken },
+    select: { id: true, sessionToken: true, tableId: true, venueId: true, expiresAt: true },
   });
-  // The above can return up to 50 sessions; scan for the matching token in
-  // constant time. (Postgres LIMIT 50 is cheap.) For correctness when the
-  // venue has many sessions, do a direct token lookup as a fallback.
-  let authorized = false;
-  if (session && tokensEqual(session.sessionToken, sessionToken)) {
-    authorized = true;
-  } else {
-    const direct = await db.guestSession.findUnique({
-      where: { sessionToken },
-      select: { venueId: true, expiresAt: true },
-    });
-    if (direct && direct.venueId === venue.id) {
-      authorized = true;
-    }
-  }
-  if (!authorized) {
+  if (!session || session.venueId !== venue.id) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  if (!tokensEqual(session.sessionToken, sessionToken)) {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  }
+  if (session.expiresAt.getTime() <= Date.now()) {
+    return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
   }
 
   const bill = await db.bill.findUnique({
@@ -72,7 +58,11 @@ export async function GET(req: Request, ctx: { params: { slug: string; billId: s
       table: { select: { label: true } },
     },
   });
-  if (!bill || bill.venueId !== venue.id) {
+  // Scope by venue AND table. Same-venue guests at OTHER tables shouldn't
+  // be able to read a bill just because they hold any session token at the
+  // venue. The qrToken landing flow seats every guest at the table that
+  // owns this bill, so this is a tight match.
+  if (!bill || bill.venueId !== venue.id || bill.tableId !== session.tableId) {
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 

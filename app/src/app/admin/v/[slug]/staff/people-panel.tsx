@@ -166,7 +166,7 @@ export function PeoplePanel(props: {
       const res = await fetch(`/api/admin/staff/${m.id}/resend-invite`, { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
-      setError(body.delivered ? `Re-sent invite to ${m.email}.` : `Invite queued — email send failed, contact support.`);
+      setError(body.delivered ? `Re-sent invite to ${m.email}.` : `Invite queued. Email send failed, contact support.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not resend invite");
     }

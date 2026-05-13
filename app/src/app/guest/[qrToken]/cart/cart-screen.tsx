@@ -141,8 +141,8 @@ export function CartScreen({
         <p className="text-3xl">·</p>
         <h2 className="mt-3 text-xl font-medium">Order placed</h2>
         <p className="mt-2 text-sm text-slate/65">
-          The kitchen and your server have been notified. Watch this tab —
-          your bill will update as items are fired.
+          The kitchen and your server have been notified. Watch this tab.
+          Your bill will update as items are fired.
         </p>
         <div className="mt-5 flex flex-col items-center gap-2">
           <Link

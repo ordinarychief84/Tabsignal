@@ -10,7 +10,7 @@ import { UpgradeRequired } from "../upgrade-required";
 import { ImportPanel } from "./import-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — regulars" };
+export const metadata = { title: "TabCall · regulars" };
 
 export default async function RegularsPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();

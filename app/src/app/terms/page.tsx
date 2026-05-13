@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "TabCall — terms of service" };
+export const metadata = { title: "TabCall · terms of service" };
 
 // Stub terms page. Real legal copy lives here once we have it. Linked from
 // the signup footer so "agree to TabCall's terms" actually points somewhere.
@@ -28,14 +28,15 @@ export default function TermsPage() {
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Terms of Service</p>
         <h1 className="mt-2 text-4xl font-medium tracking-tight">The short version.</h1>
         <p className="mt-4 text-base leading-relaxed text-slate/70">
-          Effective May 9, 2026. We&rsquo;ll keep this readable. The lawyer-language
-          version is on the way; until then, this is what you&rsquo;re agreeing to.
+          Effective May 9, 2026. Plain language. The full legal version is on
+          the way. Until then, this is what you&rsquo;re agreeing to.
         </p>
 
         <Section title="Who runs TabCall">
           <p>
-            TabCall is operated by Tab-Call (we / us / our), a US-based company
-            building software for independent bars and restaurants. Reach us at{" "}
+            TabCall is operated by Tab-Call (we / us / our), a US-based
+            company building software for independent bars and restaurants.
+            Reach us at{" "}
             <a href="mailto:hello@tabcall.app" className="text-umber underline-offset-4 hover:underline">
               hello@tabcall.app
             </a>
@@ -45,70 +46,74 @@ export default function TermsPage() {
 
         <Section title="Your account">
           <p>
-            You sign in with email — no passwords. We send a one-tap link that
-            expires in 15 minutes. Keep your email account secure; anyone with
-            access to it can sign in to your venue.
+            You sign in with a magic link, no passwords. The link expires in
+            15 minutes. Keep your email account secure: anyone with access to
+            it can sign in to your venue.
           </p>
         </Section>
 
-        <Section title="Pricing">
+        <Section title="Pricing and trials">
           <p>
-            Starter is free with a 0.5% transaction fee on payments processed
-            through TabCall (Stripe&rsquo;s 2.9% + 30¢ is passed through at cost).
-            Growth is $99/mo, Pro is $299/mo, billed monthly. Cancel any time;
-            you&rsquo;ll be billed through the end of the current cycle.
+            Starter is free for up to 5 tables, no card required. Growth is
+            $99/month, Pro is $299/month, both billed per venue. Growth and
+            Pro start with a 14-day free trial: pay nothing for 14 days,
+            cancel anytime, no card needed to start. After day 14, add a card
+            to keep paid features. If you don&rsquo;t, you drop to Starter.
+            Stripe processing (2.9% + 30¢) is passed through at cost. Founding
+            plan is concierge only, priced on request.
           </p>
         </Section>
 
         <Section title="Your data">
           <p>
-            You own your venue&rsquo;s data — sessions, requests, feedback, regulars.
-            We process it to run the service. We never sell guest data to third
-            parties. Guests opt into the regulars dossier via phone OTP; their
-            data stays at the venue level (no cross-venue identity sharing without
-            explicit consent).
+            You own your venue&rsquo;s data: sessions, requests, reviews,
+            reservations, regulars. We process it to run the service. We
+            never sell guest data. Guests opt in by phone number only. Their
+            loyalty record stays at the venue level (no cross-venue identity
+            sharing without explicit consent).
           </p>
           <p>
-            If you stop using TabCall, you can export your data via CSV from the
-            admin panel or by emailing us. We delete it on request.
+            If you stop using TabCall, you can export your data via CSV from
+            the admin panel or by emailing us. We delete our copy on request.
           </p>
         </Section>
 
         <Section title="Payments">
           <p>
-            Payments are processed by Stripe. Funds settle directly to your
-            Stripe account; TabCall takes its 0.5% as a Stripe Application Fee.
-            We never see, store, or transmit card data.
+            Payments are processed by Stripe Connect. Funds settle directly
+            to your Stripe account. TabCall never sees, stores, or transmits
+            card data.
           </p>
         </Section>
 
         <Section title="Liability">
           <p>
-            TabCall is provided &ldquo;as is.&rdquo; We aim for very high uptime but can&rsquo;t
-            promise zero outages. We&rsquo;re not responsible for missed orders,
-            stranded tabs, or service disruptions caused by upstream providers
-            (Stripe, your POS, your wifi). Run a paper backup process for the
-            first week so you&rsquo;re comfortable.
+            TabCall is provided &ldquo;as is.&rdquo; We aim for very high
+            uptime but can&rsquo;t promise zero outages. We&rsquo;re not
+            responsible for missed orders, stranded tabs, or service
+            disruptions caused by upstream providers (Stripe, your POS, your
+            wifi). Run a paper backup process for the first week so
+            you&rsquo;re comfortable.
           </p>
         </Section>
 
         <Section title="Service-of-alcohol responsibility">
           <p>
-            TabCall surfaces guest requests and AI-classified feedback to your
+            TabCall surfaces guest requests and AI-classified reviews to your
             staff. It does <strong>not</strong> verify guest age or sobriety.
-            Responsibility for compliance with TABC / state alcohol regulations
-            remains entirely with the venue and its staff. Use the &ldquo;Check ID on
-            first drink&rdquo; setting as one tool in your compliance kit, not the
-            whole kit.
+            Compliance with TABC and state alcohol regulations remains
+            entirely with the venue and its staff. Use the &ldquo;check ID on
+            first drink&rdquo; setting as one tool in your compliance kit,
+            not the whole kit.
           </p>
         </Section>
 
         <Section title="Changes">
           <p>
-            We&rsquo;ll update these terms as the product evolves. Material changes
-            will be emailed to your account at least 30 days before they take
-            effect. Continuing to use TabCall after that means you accept the
-            update.
+            We&rsquo;ll update these terms as the product evolves. Material
+            changes will be emailed to your account at least 30 days before
+            they take effect. Continuing to use TabCall after that means you
+            accept the update.
           </p>
         </Section>
 

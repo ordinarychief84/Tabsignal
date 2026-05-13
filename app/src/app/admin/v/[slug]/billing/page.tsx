@@ -5,7 +5,7 @@ import { PLANS, planByPriceId } from "@/lib/plans";
 import { BillingPanel } from "./billing-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — billing" };
+export const metadata = { title: "TabCall · billing" };
 
 export default async function BillingPage({
   params,

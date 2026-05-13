@@ -163,16 +163,16 @@ export function SignupForm() {
           role="status"
           aria-live="polite"
         >
-          <p className="text-base font-medium text-coral">Account created — but the email didn&rsquo;t go out</p>
+          <p className="text-base font-medium text-coral">Account created, but the email didn&rsquo;t go out</p>
           <p className="mt-2 text-sm text-slate/75">
-            Your venue is set up, but our email provider couldn&rsquo;t deliver the
-            sign-in link to <span className="font-mono text-xs">{email}</span>.
+            Your venue is set up, but our email provider couldn&rsquo;t
+            deliver the sign-in link to <span className="font-mono text-xs">{email}</span>.
             This is on our side, not yours.
           </p>
           <p className="mt-3 text-sm text-slate/75">
             Email <a className="text-umber underline-offset-4 hover:underline" href="mailto:support@tab-call.com">support@tab-call.com</a>{" "}
-            from this address and we&rsquo;ll re-issue your sign-in link within
-            an hour.
+            from this address and we&rsquo;ll re-issue your sign-in link
+            within an hour.
           </p>
           {devLink ? (
             <p className="mt-4 break-all rounded bg-slate/5 px-3 py-2 text-[11px] text-slate/55">
@@ -192,14 +192,15 @@ export function SignupForm() {
         <p className="text-base font-medium">Check your email</p>
         {alreadyRegistered ? (
           <p className="mt-1 text-sm text-slate/70">
-            If <span className="font-mono text-xs">{email}</span> is registered with us,
-            we&rsquo;ve sent a sign-in link. Open it from this device.
+            If <span className="font-mono text-xs">{email}</span> is
+            registered with us, we&rsquo;ve sent a sign-in link. Open it from
+            this device.
           </p>
         ) : (
           <p className="mt-1 text-sm text-slate/70">
             We sent a sign-in link to <span className="font-mono text-xs">{email}</span>.
-            Tap it from this device and you&rsquo;ll land on a quick three-step
-            wizard. The link expires in 15 minutes.
+            Tap it from this device and you&rsquo;ll land on a quick
+            three-step setup. The link expires in 15 minutes.
           </p>
         )}
 
@@ -360,7 +361,7 @@ export function SignupForm() {
         <a href="/terms" className="text-umber underline-offset-4 hover:underline">
           TabCall&rsquo;s terms
         </a>
-        . We never email guests; you&rsquo;ll only hear from us about your own venue.
+        . We never email guests. You&rsquo;ll only hear from us about your own venue.
       </p>
     </form>
   );

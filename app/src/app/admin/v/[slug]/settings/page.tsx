@@ -8,7 +8,7 @@ import { LogoUpload } from "./logo-upload";
 import { SessionsCard } from "./sessions-card";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — settings" };
+export const metadata = { title: "TabCall · settings" };
 
 export default async function SettingsPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();
@@ -30,7 +30,7 @@ export default async function SettingsPage({ params }: { params: { slug: string 
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Settings</h1>
         <p className="mt-2 text-sm text-slate/60">
           Self-serve what you can. Structural changes (POS bridge, Stripe Connect attachment)
-          stay concierge — email TabCall.
+          stay concierge. Email TabCall.
         </p>
       </header>
 
@@ -43,7 +43,7 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           <EditableField slug={params.slug} field="timezone" label="Timezone" initial={venue.timezone} placeholder="America/Chicago" help="IANA name. Affects how analytics buckets the day." />
         </Card>
 
-        <Card title="Payments — Stripe Connect">
+        <Card title="Payments · Stripe Connect">
           <p className="text-sm text-slate/65">
             Charges settle directly to your Stripe account. TabCall keeps a 0.5% platform fee.
           </p>
@@ -57,7 +57,7 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             {stripeReady
               ? "Charges enabled"
               : stripeAttached
-              ? "Account attached — onboarding incomplete"
+              ? "Account attached, onboarding incomplete"
               : "Not connected"}
           </div>
 
@@ -138,7 +138,7 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           ) : (
             <p className="mt-3 inline-flex items-center gap-2 rounded-lg bg-coral/15 px-3 py-2 text-[12px] text-slate/70">
               <span className="h-1.5 w-1.5 rounded-full bg-coral" />
-              No Place ID set. 4–5★ ratings show a generic thanks — you&rsquo;re leaving public reviews on the table.
+              No Place ID set. 4–5★ ratings show a generic thanks. You&rsquo;re leaving public reviews on the table.
             </p>
           )}
         </Card>
@@ -157,7 +157,7 @@ export default async function SettingsPage({ params }: { params: { slug: string 
         <Card title="Guest UX copy">
           <p className="text-[12px] text-slate/55">
             Short, mobile-first. Each renders inline on the QR landing or
-            feedback screen. Leave blank to use TabCall&rsquo;s defaults — they
+            feedback screen. Leave blank to use TabCall&rsquo;s defaults. They
             already work fine.
           </p>
           <EditableField

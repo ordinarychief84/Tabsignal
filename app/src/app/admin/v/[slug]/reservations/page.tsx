@@ -7,7 +7,7 @@ import { UpgradeRequired } from "../upgrade-required";
 import { ReservationsPanel } from "./reservations-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — reservations" };
+export const metadata = { title: "TabCall · reservations" };
 
 export default async function ReservationsPage({
   params,

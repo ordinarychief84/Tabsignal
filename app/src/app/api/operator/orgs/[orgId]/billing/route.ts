@@ -93,7 +93,7 @@ export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
     org: updated,
     plan: parsed.planId,
     note: parsed.planId !== "free" && !plan.stripePriceId
-      ? "Plan flipped, but STRIPE_PRICE_" + parsed.planId.toUpperCase() + " env is unset — billing won't actually charge until that's configured."
+      ? "Plan flipped, but STRIPE_PRICE_" + parsed.planId.toUpperCase() + " env is unset. Billing won't actually charge until that's configured."
       : null,
   });
 }
@@ -123,7 +123,7 @@ async function notifyPlanChange(args: {
         <p style="margin:0 0 16px;color:#0E0F1A;">${escapeHtml(perks)}</p>
         <p style="margin:0 0 12px;font-size:13px;color:#8B6F4E;">
           ${args.planId !== "free"
-            ? "Reach out if anything looks wrong — flipping a plan in the operator console doesn&rsquo;t auto-charge; we&rsquo;ll handle Stripe Subscription setup separately."
+            ? "Reach out if anything looks wrong. Flipping a plan in the operator console doesn&rsquo;t auto-charge; we&rsquo;ll handle Stripe Subscription setup separately."
             : "You&rsquo;ve been moved back to the Starter tier. Realtime queue + bad-rating intercept stay on; everything else gates back."
           }
         </p>
@@ -133,7 +133,7 @@ async function notifyPlanChange(args: {
       </td></tr>
     </table>
   `.trim();
-  const text = `${args.org.name} — plan updated → ${planLabel} (${args.status.toLowerCase()})\n\n${perks}\n\nUpdated by ${args.operatorEmail ?? "TabCall"}.`;
+  const text = `${args.org.name}: plan updated → ${planLabel} (${args.status.toLowerCase()})\n\n${perks}\n\nUpdated by ${args.operatorEmail ?? "TabCall"}.`;
 
   try {
     await sendEmail({ to: recipients, subject, html, text });

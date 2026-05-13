@@ -12,7 +12,7 @@ import { isPlatformStaffAsync } from "@/lib/auth/operator";
 import { AdminsPanel } from "./admins-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — admins" };
+export const metadata = { title: "TabCall · admins" };
 
 export default async function AdminsPage() {
   const session = await getStaffSession();

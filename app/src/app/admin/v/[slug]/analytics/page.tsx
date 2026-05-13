@@ -10,7 +10,7 @@ import { UpgradeRequired } from "../upgrade-required";
 import { METRICS, buildSegment, segmentKey, venueMetricsForDate, type MetricName } from "@/lib/benchmarks";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — analytics" };
+export const metadata = { title: "TabCall · analytics" };
 
 const RANGES: { id: AnalyticsRange; label: string }[] = [
   { id: "today", label: "Today" },
@@ -68,7 +68,7 @@ export default async function AnalyticsPage({
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Insights</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">Analytics</h1>
           <p className="mt-2 text-sm text-slate/60">
-            What&rsquo;s working — based on payment + rating data through {new Date(data.rangeEnd).toLocaleString()}.
+            What&rsquo;s working, based on payment + rating data through {new Date(data.rangeEnd).toLocaleString()}.
           </p>
         </div>
         <a
@@ -163,11 +163,11 @@ export default async function AnalyticsPage({
           <h2 className="text-[11px] uppercase tracking-[0.16em] text-umber">How you compare</h2>
           <p className="mt-1 text-xs text-slate/55">
             Yesterday vs other {benchmarks.segment.venueType}s in {benchmarks.segment.city}.
-            Anonymized — only segment medians are shown.
+            Anonymized. Only segment medians are shown.
           </p>
           {benchmarks.rows.every(r => r.segment === null) ? (
             <p className="mt-4 rounded bg-slate/5 px-3 py-3 text-xs text-slate/55">
-              Building your benchmark — appears once 5+ Pro venues in your segment have a day of data.
+              Building your benchmark. Appears once 5+ Pro venues in your segment have a day of data.
             </p>
           ) : (
             <ul className="mt-4 space-y-3">
@@ -191,7 +191,7 @@ export default async function AnalyticsPage({
                   <div
                     className="w-full rounded-t bg-slate"
                     style={{ height: `${heightPct}%` }}
-                    title={`${h.hour}:00 — ${dollars(h.revenueCents)}`}
+                    title={`${h.hour}:00 · ${dollars(h.revenueCents)}`}
                   />
                 </div>
                 <span className="text-[9px] text-slate/40">{h.hour}</span>

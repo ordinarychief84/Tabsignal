@@ -5,7 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { isPlatformStaffAsync, operatorAllowlist } from "@/lib/auth/operator";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — operator console" };
+export const metadata = { title: "TabCall · operator console" };
 
 export default async function OperatorConsole() {
   const session = await getStaffSession();

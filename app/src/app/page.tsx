@@ -1,5 +1,5 @@
 /**
- * TabCall — landing page.
+ * TabCall, landing page.
  *
  * Visual language inspired by nory.ai's editorial pacing:
  *  - dark hero with a huge headline + floating product mockups
@@ -8,7 +8,7 @@
  *  - two-up feature cards with embedded UI fragments
  *  - massive bold sentence as a lead-in to CTA bands
  *
- * Brand palette (use ONLY these — see tailwind.config.ts):
+ * Brand palette (use ONLY these, see tailwind.config.ts):
  *   slate     #0E0F1A   dark surfaces, navbar, hero, footer
  *   slate.light #1A1C2C cards over slate
  *   oat       #F8F6F1   light surfaces
@@ -18,6 +18,8 @@
  *   umber     #8B6F4E   warm CTA / divider accent
  *
  * Section rule: a single section uses one accent at most. No gradients.
+ *
+ * Copy rule: no em dashes. Use comma, period, parens, or colon.
  */
 
 import Link from "next/link";
@@ -82,22 +84,146 @@ function Logo({
 
 /* ------------------------------ navbar ----------------------------- */
 
+/**
+ * Product dropdown groups. Every item links to #product on the landing page
+ * because feature subsections are not yet split into their own routes. When
+ * deeper pages ship, swap the href here. Labels are the canonical names used
+ * in marketing copy and in the footer.
+ */
+const PRODUCT_GROUPS: { title: string; items: { label: string; href: string }[] }[] = [
+  {
+    title: "Guest at the table",
+    items: [
+      { label: "Call waiter", href: "#product" },
+      { label: "Pay the bill", href: "#product" },
+      { label: "Split a bill", href: "#product" },
+      { label: "Pre-order from QR", href: "#product" },
+      { label: "Save a wishlist", href: "#product" },
+      { label: "Reservations and waitlist", href: "#product" },
+      { label: "Reviews and ratings", href: "#product" },
+    ],
+  },
+  {
+    title: "Staff and managers",
+    items: [
+      { label: "Live queue (live request feed)", href: "#product" },
+      { label: "Push notifications", href: "#product" },
+      { label: "Manager dashboard", href: "#product" },
+      { label: "Reviews inbox", href: "#product" },
+      { label: "Order and bill view", href: "#product" },
+    ],
+  },
+  {
+    title: "Owner and admin",
+    items: [
+      { label: "Branding (logo, banner, colors)", href: "#product" },
+      { label: "Promotions and banners", href: "#product" },
+      { label: "Staff and roles", href: "#product" },
+      { label: "QR codes and tables", href: "#product" },
+      { label: "Tip pool", href: "#product" },
+      { label: "POS integration (preview)", href: "#product" },
+      { label: "Loyalty regulars", href: "#product" },
+    ],
+  },
+  {
+    title: "Platform",
+    items: [
+      { label: "Multi-location console", href: "#product" },
+      { label: "Cross-venue benchmarks", href: "#product" },
+      { label: "Audit log", href: "#product" },
+      { label: "Security dashboard", href: "#product" },
+    ],
+  },
+];
+
+function ProductDropdown() {
+  // Pure CSS dropdown. The wrapper is `group`; the button keeps aria-expanded
+  // wired through CSS so screen readers see the change on focus-within.
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        aria-expanded="false"
+        aria-haspopup="true"
+        className="inline-flex items-center gap-1 text-sm text-oat/80 transition-colors hover:text-oat focus:text-oat focus:outline-none group-focus-within:text-oat group-hover:text-oat"
+      >
+        Product
+        <svg
+          aria-hidden
+          width="10"
+          height="10"
+          viewBox="0 0 12 12"
+          className="transition-transform group-hover:rotate-180 group-focus-within:rotate-180"
+        >
+          <path
+            d="M2 4l4 4 4-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {/* Hover bridge: keeps the panel open while moving cursor down. */}
+      <div
+        aria-hidden
+        className="pointer-events-none invisible absolute left-0 right-0 top-full h-3 group-hover:pointer-events-auto group-hover:visible group-focus-within:pointer-events-auto group-focus-within:visible"
+      />
+
+      <div
+        role="menu"
+        className="invisible absolute left-1/2 top-[calc(100%+0.75rem)] z-40 w-[min(960px,90vw)] -translate-x-1/2 translate-y-1 rounded-2xl bg-white p-8 opacity-0 shadow-2xl ring-1 ring-slate/10 transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+      >
+        <div className="grid grid-cols-2 gap-x-8 gap-y-6 lg:grid-cols-4">
+          {PRODUCT_GROUPS.map((group) => (
+            <div key={group.title}>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
+                {group.title}
+              </p>
+              <ul className="mt-3 space-y-2">
+                {group.items.map((item) => (
+                  <li key={item.label}>
+                    <a
+                      href={item.href}
+                      role="menuitem"
+                      className="block rounded-md px-2 py-1 text-[13px] leading-snug text-slate/80 transition-colors hover:bg-oat hover:text-slate"
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-light/40 bg-slate/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Logo variant="light" />
         <nav className="hidden items-center gap-8 text-sm text-oat/80 md:flex">
-          <a href="#product" className="hover:text-oat">Product</a>
+          <ProductDropdown />
           <a href="#how" className="hover:text-oat">How it works</a>
           <a href="#pricing" className="hover:text-oat">Pricing</a>
           <Link href="/staff/login" className="hover:text-oat">Login</Link>
+        </nav>
+        {/* Mobile: dropdown collapses to a plain anchor that scrolls to #product. */}
+        <nav className="flex items-center gap-5 text-sm text-oat/80 md:hidden">
+          <a href="#product" className="hover:text-oat">Product</a>
+          <a href="#pricing" className="hover:text-oat">Pricing</a>
         </nav>
         <Link
           href="/signup"
           className="rounded-full bg-oat px-5 py-2 text-sm font-medium text-slate transition-colors hover:bg-oat/90"
         >
-          Book a demo
+          Start free
         </Link>
       </div>
     </header>
@@ -110,24 +236,24 @@ function Hero() {
   return (
     <section className="relative overflow-hidden bg-slate">
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:grid-cols-[1.05fr_1fr] md:py-28 lg:py-32">
-        {/* LEFT — headline column */}
+        {/* LEFT, headline column */}
         <div className="text-oat">
           <span className="inline-flex items-center gap-2 rounded-full border border-oat/15 bg-slate-light/60 px-3.5 py-1.5 text-[12px] text-oat/80">
             <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-[10px] font-bold text-slate">
               ★
             </span>
-            Top performer · Restaurant ops · 4.8 from Houston operators
+            4.8 from Houston operators. No ad budget, just word of mouth.
           </span>
 
           <h1 className="mt-6 text-[52px] font-semibold leading-[0.95] tracking-[-0.025em] text-oat md:text-[72px] lg:text-[88px]">
-            <span className="block">The bad review</span>
-            <span className="block text-chartreuse">never goes public.</span>
+            <span className="block">The 1-star review</span>
+            <span className="block text-chartreuse">that never went public.</span>
           </h1>
 
           <p className="mt-7 max-w-xl text-lg leading-relaxed text-oat/70">
-            TabCall sits on top of your POS — Toast, Square, Clover, anything.
-            Guests scan a QR. The closest server&rsquo;s phone buzzes. And the
-            second a 1-star is brewing, our AI mails it to you — not Google.
+            TabCall sits on top of your POS. Guests scan a QR. The closest
+            server&rsquo;s phone buzzes. And the second a bad rating is
+            brewing, our AI routes it to your inbox instead of Google.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -149,16 +275,16 @@ function Hero() {
                   <path d="M2 1l5 3.5L2 8V1z" fill="#F8F6F1" />
                 </svg>
               </span>
-              Watch the 60-sec tour
+              See how it works
             </a>
           </div>
 
           <p className="mt-5 text-[12px] text-oat/45">
-            Starter free, 0.5%/transaction. No contract. Cancel by text.
+            Free Starter plan. No card to start. Cancel by text.
           </p>
         </div>
 
-        {/* RIGHT — layered hero mockup */}
+        {/* RIGHT, layered hero mockup */}
         <HeroMockup />
       </div>
     </section>
@@ -168,13 +294,13 @@ function Hero() {
 function HeroMockup() {
   return (
     <div className="relative mx-auto w-full max-w-md">
-      {/* Floating tag — top-left */}
+      {/* Floating tag, top-left */}
       <div className="absolute -left-2 top-3 z-20 inline-flex items-center gap-2 rounded-full bg-slate-light/95 px-3 py-1.5 text-[11px] text-oat/85 ring-1 ring-white/10 backdrop-blur md:-left-8">
         <span className="h-1.5 w-1.5 rounded-full bg-sea" />
-        Live floor — Otto&rsquo;s Lounge
+        Live floor, Otto&rsquo;s Lounge
       </div>
 
-      {/* Email card — main */}
+      {/* Email card, main */}
       <div className="rounded-3xl bg-slate-light p-6 shadow-2xl ring-1 ring-white/5">
         <div className="flex items-center justify-between">
           <p className="text-[11px] uppercase tracking-[0.18em] text-oat/50">
@@ -195,7 +321,7 @@ function HeroMockup() {
         <div className="mt-5 space-y-2 text-sm">
           <Row k="Likely cause" v="Service speed" />
           <Row k="Server on table" v="Marcus" />
-          <Row k="Suggested" v="Comp the next round; talk to Marcus before close." last />
+          <Row k="Suggested" v="Comp the next round. Talk to Marcus before close." last />
         </div>
 
         <p className="mt-5 inline-flex items-center gap-2 text-[11px] tracking-wide text-oat/45">
@@ -204,7 +330,7 @@ function HeroMockup() {
         </p>
       </div>
 
-      {/* Floating "0% public" badge — bottom-right */}
+      {/* Floating "0% public" badge, bottom-right */}
       <div className="absolute -bottom-5 right-2 z-20 flex items-center gap-3 rounded-2xl bg-oat px-4 py-3 text-slate shadow-xl ring-1 ring-slate/5 md:-right-8">
         <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-chartreuse">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -225,16 +351,16 @@ function HeroMockup() {
         </div>
       </div>
 
-      {/* Floating "live request" pill — top-right */}
+      {/* Floating "live request" pill, top-right */}
       <div className="absolute -right-3 top-20 z-20 hidden rounded-2xl bg-oat px-4 py-3 text-slate shadow-xl ring-1 ring-slate/5 md:-right-12 md:block">
         <p className="text-[10px] uppercase tracking-[0.16em] text-slate/55">
-          Avg close
+          Avg bill close
         </p>
         <p className="mt-0.5 text-2xl font-semibold leading-none">
           1<span className="text-base font-medium text-slate/55">m</span>32
           <span className="text-base font-medium text-slate/55">s</span>
         </p>
-        <p className="mt-1 text-[10px] text-sea">↓ 84% vs Toast</p>
+        <p className="mt-1 text-[10px] text-sea">↓ 84% vs paper tab</p>
       </div>
     </div>
   );
@@ -276,7 +402,7 @@ function TrustStrip() {
           Trusted by the rooms that get loud after 10.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-base text-slate/65">
-          Houston bars and lounges that don&rsquo;t want a new POS — they want
+          Houston bars and lounges that don&rsquo;t want a new POS. They want
           their floor to move faster.
         </p>
 
@@ -309,18 +435,18 @@ function SectionTitle() {
           Why bars switch
         </p>
         <h2 className="mt-5 text-[40px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[64px]">
-          Why operators love TabCall.
+          Why operators run TabCall.
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate/65">
-          We don&rsquo;t replace your POS, your printer, or your menu. We sit on
-          top — and free your floor up to do what it&rsquo;s actually there for:
+          We don&rsquo;t replace your POS, your printer, or your menu. We sit
+          on top, and free your floor to do what it&rsquo;s actually there for:
           serve faster, save the rating, hold the regular.
         </p>
         <a
           href="#product"
           className="mt-8 inline-flex items-center gap-2 rounded-full border border-slate/20 bg-white px-6 py-3 text-sm font-medium text-slate transition-colors hover:border-slate/40"
         >
-          Learn about the product
+          See the product
           <span aria-hidden>→</span>
         </a>
       </div>
@@ -342,7 +468,7 @@ function ResultsBand() {
       tag: "Floor speed",
       dot: "bg-sea",
       value: "1m 32s",
-      label: "Average bill close vs 8m on Toast",
+      label: "Average bill close vs 8m on a paper tab",
     },
     {
       tag: "Tip lift",
@@ -397,25 +523,26 @@ function OnePlatform() {
       <div className="mx-auto max-w-7xl px-6 pb-24">
         <div className="overflow-hidden rounded-[32px] bg-white p-8 ring-1 ring-slate/5 md:p-14">
           <div className="grid items-center gap-12 md:grid-cols-2">
-            {/* Left — copy */}
+            {/* Left, copy */}
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-                One surface
+                One feed
               </p>
               <h3 className="mt-4 text-[36px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[48px]">
-                The power of one quiet feed.
+                One quiet feed. Every signal.
               </h3>
               <p className="mt-5 max-w-md text-base leading-relaxed text-slate/65">
-                Every table, every signal, every server. Live queue, ranked by
-                age and urgency. The 3-minute red flag finds itself before the
-                guest does.
+                Every table, every signal, every server, ranked by age and
+                urgency. A request that has been waiting 3 minutes turns coral
+                on the PWA before the guest ever raises a hand.
               </p>
               <ul className="mt-7 space-y-3">
                 {[
-                  "Live request queue, sub-second routing",
-                  "Tip-aware bill view, Apple/Google/card",
-                  "AI bad-rating intercept on every star prompt",
-                  "Works on top of any POS — or no POS at all",
+                  "Live request queue on a PWA, sub-second routing",
+                  "Acknowledge, hand off, resolve with a reason code",
+                  "Push notifications when the PWA is backgrounded (FCM)",
+                  "Bill view, kitchen view, reservations, waitlist, tip pool",
+                  "Manager dashboard: response time, completion, peak hours",
                 ].map((b) => (
                   <li key={b} className="flex gap-3 text-[15px] text-slate/80">
                     <span
@@ -428,7 +555,7 @@ function OnePlatform() {
               </ul>
             </div>
 
-            {/* Right — venue stat panel */}
+            {/* Right, venue stat panel */}
             <VenuePanelMock />
           </div>
         </div>
@@ -451,7 +578,7 @@ function VenuePanelMock() {
             />
             <circle cx="12" cy="9" r="2.2" fill="#0E0F1A" />
           </svg>
-          Otto&rsquo;s Lounge — Houston
+          Otto&rsquo;s Lounge, Houston
         </div>
 
         {/* Sales card */}
@@ -488,7 +615,7 @@ function VenuePanelMock() {
             3<span className="text-base font-medium text-slate/55"> /4</span>
           </p>
           <p className="mt-1 text-xs text-slate/55">
-            Privately routed before going public
+            Routed to you before going public
           </p>
         </div>
       </div>
@@ -505,16 +632,16 @@ function TwoUpFeatures() {
         <div className="grid gap-6 md:grid-cols-2">
           <FeatureCard
             tag="AI intercept"
-            title="Save the bad review for the lottery."
-            body="Our AI reads every private feedback note in under a minute and emails you the table, the server, and the likely cause. The guest never sees a public review form."
+            title="Save the bad review for your inbox."
+            body="After paying, every guest sees a star prompt. 4 to 5 stars route to Google. 1 to 3 stars route to you with an AI category (service speed, drink quality, staff attitude, wait time, food, noise) plus the table, the server, and a suggested action."
           >
             <NotificationStack />
           </FeatureCard>
 
           <FeatureCard
             tag="Plays nice"
-            title="Straightforward integrations."
-            body="From POS to payouts to the bartender's PWA, plug TabCall on top of what you already pay for. Toast, Square, Clover, Stripe, Apple Pay, Google Pay. No rip-out."
+            title="Sits on top of what you already pay for."
+            body="Stripe Connect for payments. A POS integration layer with providers planned for Toast, Square, and Clover. Apple Pay, Google Pay, card. No rip-out, no menu rebuild, no printer chain to redo."
           >
             <IntegrationOrbit />
           </FeatureCard>
@@ -575,7 +702,7 @@ function NotificationStack() {
         </svg>
       ),
       bg: "bg-sea/30",
-      label: "Bar 2 · waited 4:12 — escalate",
+      label: "Bar 2 · waited 4:12, escalate",
     },
     {
       icon: (
@@ -584,7 +711,7 @@ function NotificationStack() {
         </svg>
       ),
       bg: "bg-chartreuse/40",
-      label: "Marcus — 2nd flag this shift",
+      label: "Marcus, 2nd flag this shift",
     },
   ];
   return (
@@ -613,11 +740,11 @@ function IntegrationOrbit() {
     { label: "Square", tone: "sea" },
     { label: "Stripe", tone: "white" },
     { label: "Apple Pay", tone: "umber" },
-    { label: "—", tone: "white" }, // brand center placeholder, replaced below
+    { label: "·", tone: "white" }, // brand center placeholder, replaced below
     { label: "Google Pay", tone: "chartreuse" },
     { label: "Clover", tone: "white" },
-    { label: "Yelp", tone: "coral" },
-    { label: "Toast KDS", tone: "white" },
+    { label: "Google", tone: "coral" },
+    { label: "FCM Push", tone: "white" },
   ];
   const tone = (t: string) => {
     switch (t) {
@@ -664,23 +791,23 @@ function HowItWorks() {
     {
       n: "01",
       tone: "bg-sea/30",
-      title: "Guest taps. Closest server’s phone buzzes.",
+      title: "Guest scans. Closest server’s phone buzzes.",
       body:
-        "Four buttons on the QR page: drink, bill, refill, help. No app to download, no waving, no eye contact across a packed room. Sub-second routing.",
+        "Four buttons at the table: call waiter, request bill, ask for a refill, ask for help. No app to download. Sub-second delivery to the staff PWA. If nobody acknowledges in 3 minutes, the request turns coral and escalates.",
     },
     {
       n: "02",
       tone: "bg-chartreuse/30",
-      title: "Bill closes at the table. 90 seconds, end to end.",
+      title: "Bill closes from the table. No card data stored.",
       body:
-        "Apple Pay, Google Pay, card. Tip preselected. Average POS close: 8 minutes. Yours: 90 seconds. That’s another turn before last call.",
+        "Stripe Connect, Apple Pay, Google Pay, card. Split by item or by share, two guests can pay different items without colliding. Pre-order from the QR menu before getting seated, pickup code on confirmation.",
     },
     {
       n: "03",
       tone: "bg-coral/20",
-      title: "1–3★? It comes to you, not Google.",
+      title: "1 to 3 stars? It comes to you. Not Google.",
       body:
-        "Every guest rates after payment. 5★ gets nudged to Google. 1–3★ gets classified by our AI and emailed to you — table, server, likely cause — before it lands public.",
+        "Every guest rates after paying. 4 and 5 stars get nudged to your Google profile. 1 to 3 stars route to the manager with an AI-classified category: service speed, drink quality, staff attitude, wait time, food, or noise.",
     },
   ];
   return (
@@ -727,59 +854,205 @@ function HowItWorks() {
 
 /* ------------------------------ pricing ---------------------------- */
 
-function Pricing() {
-  const tiers = [
-    {
-      name: "Starter",
-      price: "Free",
-      sub: "+ 0.5% per transaction",
-      tagline: "For the bar that wants to try it tonight.",
-      features: [
-        "Realtime QR request queue",
-        "AI bad-rating intercept",
-        "Stripe Connect at 2.9% + 30¢",
-        "Up to 1 staff seat",
-      ],
-      cta: "Start free",
-      ctaHref: "/signup",
-      highlight: false,
-    },
-    {
-      name: "Growth",
-      price: "$99",
-      sub: "per month, per venue",
-      tagline: "When the floor is full and the back office is messy.",
-      features: [
-        "Everything in Starter",
-        "Menu + pre-order at QR",
-        "Bill split (multi-card or named tabs)",
-        "Tip pooling by shift or by server",
-        "Per-server, per-shift analytics",
-        "Unlimited staff seats",
-      ],
-      cta: "Book setup call",
-      ctaHref: "/signup",
-      highlight: true,
-    },
-    {
-      name: "Pro",
-      price: "$299",
-      sub: "per month, per venue",
-      tagline: "For groups, regulars, and the long game.",
-      features: [
-        "Everything in Growth",
-        "Multi-location dashboard",
-        "Custom branding on the QR page",
-        "Regulars dossier (PWA buzz)",
-        "Loyalty + reservations",
-        "Benchmarking against peer venues",
-      ],
-      cta: "Book setup call",
-      ctaHref: "/signup",
-      highlight: false,
-    },
-  ];
+/**
+ * Tier columns drive both the top cards and the matrix header. Order matters:
+ * Starter, Growth, Pro, Founding. `key` is the lookup used by feature rows.
+ */
+const PRICING_TIERS: {
+  key: "starter" | "growth" | "pro" | "founding";
+  name: string;
+  price: string;
+  sub: string;
+  tagline: string;
+  trial: boolean;
+  cta: string;
+  ctaHref: string;
+  highlight: boolean;
+}[] = [
+  {
+    key: "starter",
+    name: "Starter",
+    price: "Free",
+    sub: "Up to 5 tables. No card.",
+    tagline: "Call waiter, request bill, reviews. Live tonight.",
+    trial: false,
+    cta: "Start free",
+    ctaHref: "/signup",
+    highlight: false,
+  },
+  {
+    key: "growth",
+    name: "Growth",
+    price: "$99",
+    sub: "per month, up to 25 tables",
+    tagline: "Full menu, pre-orders, splits, tip pool, reservations, waitlist, analytics.",
+    trial: true,
+    cta: "Start free trial",
+    ctaHref: "/signup?plan=growth",
+    highlight: true,
+  },
+  {
+    key: "pro",
+    name: "Pro",
+    price: "$299",
+    sub: "per month, unlimited tables",
+    tagline: "Loyalty, promotions, branding, benchmarks, multi-location, POS layer.",
+    trial: true,
+    cta: "Start free trial",
+    ctaHref: "/signup?plan=pro",
+    highlight: false,
+  },
+  {
+    key: "founding",
+    name: "Founding",
+    price: "On request",
+    sub: "Concierge onboarding only",
+    tagline: "Everything in Pro, plus a TabCall-managed setup and a dedicated Slack channel.",
+    trial: false,
+    cta: "Talk to us",
+    ctaHref: "mailto:hello@tab-call.com",
+    highlight: false,
+  },
+];
 
+type TierKey = (typeof PRICING_TIERS)[number]["key"];
+
+const MATRIX_GROUPS: {
+  title: string;
+  rows: { label: string; tiers: TierKey[] }[];
+}[] = [
+  {
+    title: "Guest table flow",
+    rows: [
+      { label: "Call waiter", tiers: ["starter", "growth", "pro", "founding"] },
+      { label: "Request bill", tiers: ["starter", "growth", "pro", "founding"] },
+      { label: "Pay from QR", tiers: ["starter", "growth", "pro", "founding"] },
+      { label: "Split bill", tiers: ["growth", "pro", "founding"] },
+      { label: "Pre-order", tiers: ["growth", "pro", "founding"] },
+      { label: "Wishlist", tiers: ["growth", "pro", "founding"] },
+      { label: "Reservations", tiers: ["growth", "pro", "founding"] },
+      { label: "Waitlist", tiers: ["growth", "pro", "founding"] },
+      { label: "Reviews", tiers: ["starter", "growth", "pro", "founding"] },
+    ],
+  },
+  {
+    title: "Staff tools",
+    rows: [
+      { label: "Live queue PWA", tiers: ["starter", "growth", "pro", "founding"] },
+      { label: "Push notifications", tiers: ["starter", "growth", "pro", "founding"] },
+      { label: "Auto-escalation", tiers: ["growth", "pro", "founding"] },
+      { label: "Hand off requests", tiers: ["growth", "pro", "founding"] },
+      { label: "Resolution reasons", tiers: ["growth", "pro", "founding"] },
+    ],
+  },
+  {
+    title: "Manager dashboard",
+    rows: [
+      { label: "Response time", tiers: ["growth", "pro", "founding"] },
+      { label: "Completion time", tiers: ["growth", "pro", "founding"] },
+      { label: "Peak hours", tiers: ["growth", "pro", "founding"] },
+      { label: "Staff performance", tiers: ["growth", "pro", "founding"] },
+      { label: "Audit log", tiers: ["pro", "founding"] },
+    ],
+  },
+  {
+    title: "Menu and ordering",
+    rows: [
+      { label: "Categories", tiers: ["growth", "pro", "founding"] },
+      { label: "Featured items", tiers: ["growth", "pro", "founding"] },
+      { label: "Image upload", tiers: ["growth", "pro", "founding"] },
+      { label: "Order state machine", tiers: ["growth", "pro", "founding"] },
+      { label: "Tip pool", tiers: ["growth", "pro", "founding"] },
+    ],
+  },
+  {
+    title: "Promotions",
+    rows: [
+      { label: "Happy hour", tiers: ["pro", "founding"] },
+      { label: "Banner", tiers: ["pro", "founding"] },
+      { label: "Business lunch", tiers: ["pro", "founding"] },
+      { label: "Limited time", tiers: ["pro", "founding"] },
+      { label: "New item", tiers: ["pro", "founding"] },
+      { label: "Discount highlight", tiers: ["pro", "founding"] },
+    ],
+  },
+  {
+    title: "Loyalty",
+    rows: [
+      { label: "Returning guest identify", tiers: ["pro", "founding"] },
+      { label: "Per-venue points", tiers: ["pro", "founding"] },
+      { label: "Visit history", tiers: ["pro", "founding"] },
+    ],
+  },
+  {
+    title: "Branding",
+    rows: [
+      { label: "Logo", tiers: ["pro", "founding"] },
+      { label: "Banner image", tiers: ["pro", "founding"] },
+      { label: "Brand colors", tiers: ["pro", "founding"] },
+      { label: "Font selection", tiers: ["pro", "founding"] },
+      { label: "Welcome message", tiers: ["pro", "founding"] },
+      { label: "Review prompt", tiers: ["pro", "founding"] },
+    ],
+  },
+  {
+    title: "POS",
+    rows: [
+      { label: "Toast (preview)", tiers: ["pro", "founding"] },
+      { label: "Square (preview)", tiers: ["pro", "founding"] },
+      { label: "Clover (preview)", tiers: ["pro", "founding"] },
+    ],
+  },
+  {
+    title: "Platform",
+    rows: [
+      { label: "Multi-location operator", tiers: ["pro", "founding"] },
+      { label: "Cross-venue benchmarks (k>=5)", tiers: ["pro", "founding"] },
+      { label: "Impersonation audit", tiers: ["pro", "founding"] },
+      { label: "Security dashboard", tiers: ["pro", "founding"] },
+    ],
+  },
+  {
+    title: "Support",
+    rows: [
+      { label: "Email response time", tiers: ["starter", "growth", "pro", "founding"] },
+      { label: "Concierge onboarding", tiers: ["founding"] },
+    ],
+  },
+];
+
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      className="text-slate"
+    >
+      <circle cx="7" cy="7" r="7" fill="#C9F61C" />
+      <path
+        d="M3.8 7.2l2.2 2.2 4.2-4.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AbsentDot() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block h-1.5 w-1.5 rounded-full bg-slate/30"
+    />
+  );
+}
+
+function Pricing() {
   return (
     <section id="pricing" className="bg-oat">
       <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
@@ -788,38 +1061,40 @@ function Pricing() {
             Pricing
           </p>
           <h2 className="mt-4 text-[40px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[60px]">
-            Three tiers. No contracts.
+            Pick the plan that matches the floor.
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate/65">
-            Starter is self-serve and live in 3 minutes. Growth and Pro include
-            a 15-minute setup call so we can wire up payouts, menu, and staff
-            with you.
+            Starter is free at 5 tables. Growth and Pro: start free, pay
+            nothing for 14 days, cancel anytime, no card needed to start.
+            Founding is concierge only.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-3">
-          {tiers.map((t) => (
+        {/* Tier cards */}
+        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {PRICING_TIERS.map((t) => (
             <article
-              key={t.name}
+              key={t.key}
               className={[
-                "flex flex-col rounded-3xl p-8",
+                "flex flex-col rounded-3xl p-7",
                 t.highlight
                   ? "bg-slate text-oat ring-1 ring-slate"
                   : "bg-white text-slate ring-1 ring-slate/10",
               ].join(" ")}
             >
-              <div className="flex items-baseline justify-between">
-                <h3 className="text-xl font-semibold">{t.name}</h3>
-                {t.highlight ? (
-                  <span className="rounded-full bg-chartreuse px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate">
-                    Most picked
-                  </span>
-                ) : null}
-              </div>
+              {t.trial ? (
+                <span className="inline-flex w-fit items-center rounded-full bg-chartreuse px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate">
+                  14-day free trial. No card to start.
+                </span>
+              ) : (
+                <span className="inline-block h-[22px]" aria-hidden />
+              )}
+
+              <h3 className="mt-4 text-xl font-semibold">{t.name}</h3>
 
               <p
                 className={[
-                  "mt-6 text-[44px] font-semibold leading-none tracking-tight",
+                  "mt-4 text-[40px] font-semibold leading-none tracking-tight",
                   t.highlight ? "text-oat" : "text-slate",
                 ].join(" ")}
               >
@@ -836,37 +1111,17 @@ function Pricing() {
 
               <p
                 className={[
-                  "mt-5 text-sm leading-relaxed",
+                  "mt-4 text-sm leading-relaxed",
                   t.highlight ? "text-oat/70" : "text-slate/70",
                 ].join(" ")}
               >
                 {t.tagline}
               </p>
 
-              <ul
-                className={[
-                  "mt-7 space-y-3 text-[14px]",
-                  t.highlight ? "text-oat/85" : "text-slate/80",
-                ].join(" ")}
-              >
-                {t.features.map((f) => (
-                  <li key={f} className="flex gap-3">
-                    <span
-                      aria-hidden
-                      className={[
-                        "mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                        t.highlight ? "bg-chartreuse" : "bg-slate",
-                      ].join(" ")}
-                    />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-
               <Link
                 href={t.ctaHref}
                 className={[
-                  "mt-8 inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition-colors",
+                  "mt-6 inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition-colors",
                   t.highlight
                     ? "bg-chartreuse text-slate hover:bg-chartreuse/90"
                     : "bg-slate text-oat hover:bg-slate/90",
@@ -878,8 +1133,52 @@ function Pricing() {
           ))}
         </div>
 
+        {/* Feature matrix */}
+        <div className="mt-16 overflow-hidden rounded-3xl bg-white ring-1 ring-slate/10">
+          {/* Sticky tier header row */}
+          <div
+            className="sticky top-16 z-10 grid items-center gap-2 border-b border-slate/10 bg-white px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate/60"
+            style={{ gridTemplateColumns: "minmax(0,1.6fr) repeat(4, minmax(0,1fr))" }}
+          >
+            <span>Feature</span>
+            {PRICING_TIERS.map((t) => (
+              <span key={t.key} className="text-center text-slate">
+                {t.name}
+              </span>
+            ))}
+          </div>
+
+          {MATRIX_GROUPS.map((group) => (
+            <div key={group.title} className="border-b border-slate/10 last:border-b-0">
+              <p className="bg-oat/60 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-umber">
+                {group.title}
+              </p>
+              <ul>
+                {group.rows.map((row) => (
+                  <li
+                    key={row.label}
+                    className="grid items-center gap-2 border-t border-slate/5 px-6 py-3 text-[14px] text-slate/80 first:border-t-0"
+                    style={{ gridTemplateColumns: "minmax(0,1.6fr) repeat(4, minmax(0,1fr))" }}
+                  >
+                    <span>{row.label}</span>
+                    {PRICING_TIERS.map((t) => (
+                      <span
+                        key={t.key}
+                        className="flex items-center justify-center"
+                      >
+                        {row.tiers.includes(t.key) ? <CheckIcon /> : <AbsentDot />}
+                      </span>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
         <p className="mt-10 text-center text-xs text-slate/45">
-          All plans run month-to-month. No contracts. Cancel by text. Stripe
+          Growth and Pro: start free, pay nothing for 14 days, cancel anytime,
+          no card needed to start. All plans run month to month. Stripe
           processing (2.9% + 30¢) is passed through at cost.
         </p>
       </div>
@@ -893,35 +1192,39 @@ function Faq() {
   const qs = [
     {
       q: "Do I need to replace my POS?",
-      a: "No. TabCall runs on top of Toast, Square, Clover, or anything else. We don’t touch your menu, your tax setup, or your printer chain. If you have no POS, we work on our own too.",
+      a: "No. TabCall runs on top. We don’t touch your menu, your tax setup, or your printer chain. The POS integration layer has providers planned for Toast, Square, and Clover. If you have no POS, we work standalone.",
+    },
+    {
+      q: "How does the 14-day free trial work?",
+      a: "Start free, pay nothing for 14 days, cancel anytime, no card needed to start. Growth and Pro both ship with the trial. On day 15, add a card if you want to keep paid features. If you don’t, you drop to Starter. No auto-charge.",
     },
     {
       q: "How long until we’re live?",
-      a: "Starter is self-serve and takes about 3 minutes: connect Stripe, name your tables, print the QR tents. Growth and Pro include a 15-minute setup call so we can wire up payouts, menu sync, and staff seats with you.",
+      a: "Starter is self-serve: magic-link sign-in, name your tables (bulk-create works), print the QR tents, finish Stripe Connect onboarding. Most owners are taking real payments inside an hour.",
     },
     {
       q: "What about staff who don’t have phones?",
-      a: "Buy a $80 Android off Amazon and clip it behind the bar. The PWA installs in one tap, no app store. Most venues run one shared phone for the bar and let servers use their own.",
-    },
-    {
-      q: "Why a 0.5% transaction fee on Starter?",
-      a: "Stripe Connect costs are real. The 0.5% covers our actual platform cost so we can keep Starter free. Growth and Pro flat-rate plans drop that to zero — Stripe is still passed through at 2.9% + 30¢, at cost.",
+      a: "Buy an $80 Android off Amazon and clip it behind the bar. The staff PWA installs in one tap, no app store. Push notifications work when the PWA is backgrounded. Most venues run one shared phone for the bar and let servers use their own.",
     },
     {
       q: "Will guests have to download an app?",
-      a: "Never. The QR opens a regular webpage. Guests tap, request, pay, rate. No install, no account, no friction. About 60% of guests scan within the first 90 seconds of sitting down.",
+      a: "Never. The QR opens a regular webpage. Guests scan, pick a category, pay, and rate. No install, no account. Returning guests can identify by phone number to collect loyalty points per venue.",
     },
     {
       q: "What actually happens to bad reviews?",
-      a: "After payment, every guest sees a star prompt. 4–5★ gets a one-tap link to your Google profile. 1–3★ goes private: our AI tags it (service speed, food, vibe, billing) and emails you the table, the server, and the likely cause. The guest never sees a public review form.",
+      a: "After payment, every guest sees a star prompt. 4 and 5 stars get a one-tap link to your Google profile. 1 to 3 stars stay private: our AI tags it (service speed, drink quality, staff attitude, wait time, food, noise) and routes the table, the server, and a suggested action to the manager. Mark it seen, flag for follow-up, comp the next round.",
+    },
+    {
+      q: "What do staff and managers see?",
+      a: "A live queue PWA. Acknowledge a request, hand it off, mark resolved with a reason code. Delayed requests escalate automatically (coral when delayed, chartreuse when active). Managers get a dashboard with response time, completion time, peak hours, and per-server performance. Every staff action is in the audit log.",
+    },
+    {
+      q: "Can I run multiple locations?",
+      a: "Yes. Pro and Founding include the multi-org operator console: cross-venue search, anonymized benchmarks (peer group of at least 5), security dashboard, and the ability to impersonate a venue’s staff for support (fully audited).",
     },
     {
       q: "Is my guest data safe?",
-      a: "Yes. Guests opt in by phone number only — no name harvesting, no email scraping. Each venue’s data is isolated; we never sell, broker, or model on your floor data. If you cancel, we hand it to you and delete our copy.",
-    },
-    {
-      q: "Can I upgrade to Growth or Pro on my own?",
-      a: "Not yet. Growth and Pro require a 15-minute setup call so we can wire up Stripe payouts, menu sync, custom branding, and staff seats. It’s deliberately a real conversation — most owners use it to ask the questions they should have asked their POS rep three years ago.",
+      a: "Yes. Guests opt in by phone number only, no name harvesting, no email scraping. Each venue’s data is isolated. We never sell, broker, or train on your floor data. Stripe handles card data, we never see or store it. If you cancel, we hand your data over and delete our copy.",
     },
   ];
 
@@ -973,7 +1276,7 @@ function Faq() {
           <Link href="/signup" className="underline-offset-4 hover:underline">
             Start free
           </Link>{" "}
-          and ask us on the setup call — or email hello@tab-call.com.
+          and ask us during setup, or email hello@tab-call.com.
         </p>
       </div>
     </section>
@@ -988,11 +1291,11 @@ function CtaBand() {
       <div className="mx-auto max-w-5xl px-6 py-24 text-center md:py-32">
         <h2 className="text-[44px] font-semibold leading-[0.98] tracking-[-0.02em] text-oat md:text-[80px]">
           Be the bar that gets the email at <span className="text-chartreuse">10:14</span>,
-          <br className="hidden md:inline" /> not the Yelp at <span className="text-coral">10:42</span>.
+          <br className="hidden md:inline" /> not the public 1-star at <span className="text-coral">10:42</span>.
         </h2>
         <p className="mx-auto mt-6 max-w-xl text-base text-oat/70">
-          Free to start. $99/mo for menu, pre-order, analytics. $299/mo for
-          multi-location, regulars dossier, reservations. Cancel by text.
+          Free Starter plan. Growth $99/mo, Pro $299/mo. Both include a 14-day
+          free trial. No card needed to start. Cancel by text.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
@@ -1005,7 +1308,7 @@ function CtaBand() {
             href="/signup"
             className="inline-flex items-center justify-center rounded-full border border-oat/15 px-7 py-3.5 text-[15px] font-medium text-oat transition-colors hover:bg-oat/5"
           >
-            Book a setup call
+            Talk to us first
           </Link>
         </div>
       </div>
@@ -1022,7 +1325,7 @@ function Footer() {
         <div>
           <Logo variant="light" />
           <p className="mt-4 max-w-xs text-sm text-oat/55">
-            Built for the bars that respect the floor. Houston, then everywhere.
+            Built for the bars that respect the floor. Houston first.
           </p>
         </div>
 
@@ -1031,11 +1334,11 @@ function Footer() {
             Product
           </p>
           <ul className="mt-4 space-y-3 text-sm">
-            <li><a href="#how" className="hover:text-oat">How it works</a></li>
+            <li><a href="#product" className="hover:text-oat">Call waiter</a></li>
+            <li><a href="#product" className="hover:text-oat">Pay the bill</a></li>
             <li><a href="#product" className="hover:text-oat">Live queue</a></li>
-            <li><a href="#pricing" className="hover:text-oat">Pricing</a></li>
-            <li><a href="#faq" className="hover:text-oat">FAQ</a></li>
-            <li><Link href="/signup" className="hover:text-oat">Set up a venue</Link></li>
+            <li><a href="#product" className="hover:text-oat">Manager dashboard</a></li>
+            <li><a href="#product" className="hover:text-oat">Multi-location console</a></li>
           </ul>
         </div>
 
@@ -1047,6 +1350,7 @@ function Footer() {
             <li>hello@tab-call.com</li>
             <li>Houston, TX</li>
             <li><Link href="/staff/login" className="hover:text-oat">Staff sign in</Link></li>
+            <li><Link href="/terms" className="hover:text-oat">Terms</Link></li>
           </ul>
         </div>
       </div>

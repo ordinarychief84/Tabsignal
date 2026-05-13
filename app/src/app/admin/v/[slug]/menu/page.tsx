@@ -7,7 +7,7 @@ import { UpgradeRequired } from "../upgrade-required";
 import { MenuPanel } from "./menu-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — menu" };
+export const metadata = { title: "TabCall · menu" };
 
 export default async function MenuPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();

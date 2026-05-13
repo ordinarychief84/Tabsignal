@@ -121,7 +121,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
         <p style="margin:12px 0 0;font-size:11px;color:#8B6F4E;">Code: ${safeCode}</p>
       </div>
     `.trim();
-    const text = `${venueName} — new reservation\n\nGuest: ${parsed.guestName} (${phone})\nParty: ${parsed.partySize}\nWhen: ${formatted}\n${parsed.zone ? `Zone: ${parsed.zone}\n` : ""}${parsed.notes ? `Notes: ${parsed.notes}\n` : ""}Code: ${codeShort}`;
+    const text = `${venueName} · new reservation\n\nGuest: ${parsed.guestName} (${phone})\nParty: ${parsed.partySize}\nWhen: ${formatted}\n${parsed.zone ? `Zone: ${parsed.zone}\n` : ""}${parsed.notes ? `Notes: ${parsed.notes}\n` : ""}Code: ${codeShort}`;
     try {
       await sendEmail({ to, subject, html, text });
     } catch (err) {

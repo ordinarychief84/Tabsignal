@@ -4,7 +4,7 @@ import { isPlatformStaffAsync } from "@/lib/auth/operator";
 import { OrgsPanel } from "./orgs-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — orgs" };
+export const metadata = { title: "TabCall · orgs" };
 
 export default async function OrgsPage() {
   const session = await getStaffSession();

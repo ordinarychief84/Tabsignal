@@ -78,7 +78,7 @@ export function OnboardingPanel({
           ) : stripeAttached ? (
             <div className="space-y-2">
               <p className="text-sm text-slate/70">
-                Stripe account attached, but charges aren&rsquo;t enabled yet —
+                Stripe account attached, but charges aren&rsquo;t enabled yet.
                 ID verification is still pending in Stripe. Reopen the dashboard
                 to finish.
               </p>
@@ -111,7 +111,7 @@ export function OnboardingPanel({
           n={3}
           state={staffStep}
           title="Invite a staff member"
-          body="They sign in by magic link from their phone — no app to install, no password to remember. You can do this later from Staff."
+          body="They sign in by magic link from their phone. No app to install, no password to remember. You can do this later from Staff."
         >
           <InviteStaffInline slug={slug} onInvited={() => setStaffInvited(true)} done={staffInvited} />
         </Step>
@@ -139,7 +139,7 @@ export function OnboardingPanel({
         {!canFinish ? (
           <p className="mt-2 text-center text-[11px] text-slate/55">
             You can poke around the manager dashboard before connecting Stripe.
-            Bills won&rsquo;t close yet — finish Stripe from <span className="underline">Settings</span> when you have your business docs handy.
+            Bills won&rsquo;t close yet. Finish Stripe from <span className="underline">Settings</span> when you have your business docs handy.
           </p>
         ) : null}
       </div>

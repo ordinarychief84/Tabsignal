@@ -223,7 +223,7 @@ function Row({
           onClick={() => {
             const ok = confirm(
               hasHistory
-                ? `${t.label} has past activity — delete will be refused. Continue?`
+                ? `${t.label} has past activity. Delete will be refused. Continue?`
                 : `Delete ${t.label}? This can't be undone.`
             );
             if (ok) onDelete(t.id);

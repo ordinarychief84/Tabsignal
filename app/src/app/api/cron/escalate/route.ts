@@ -130,7 +130,7 @@ export async function GET(req: Request) {
 
         const { invalidTokens } = await sendPushToStaff(tokens, {
           title: `${c.type} · ${c.table.label}`,
-          body: "Delayed — please respond now.",
+          body: "Delayed. Please respond now.",
           data: {
             requestId: c.id,
             type: c.type,

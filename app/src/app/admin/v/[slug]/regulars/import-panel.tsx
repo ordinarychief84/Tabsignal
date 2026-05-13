@@ -80,7 +80,7 @@ export function ImportPanel({ slug }: { slug: string }) {
       </header>
 
       <p className="text-xs text-slate/60">
-        Pre-seed your regulars from a list — phone, name (optional), note (optional).
+        Pre-seed your regulars from a list: phone, name (optional), note (optional).
         500 rows max. Imported guests appear in your dossier as soon as they identify
         via QR + phone OTP.
       </p>
@@ -120,7 +120,7 @@ export function ImportPanel({ slug }: { slug: string }) {
         {result ? (
           <div className="rounded-lg border border-chartreuse/40 bg-chartreuse/10 px-3 py-3">
             <p className="text-sm font-medium text-slate">
-              Imported {result.rowsAccepted} row{result.rowsAccepted === 1 ? "" : "s"} —
+              Imported {result.rowsAccepted} row{result.rowsAccepted === 1 ? "" : "s"}:
               {" "}{result.profilesCreated} new, {result.profilesUpdated} updated,
               {" "}{result.notesAdded} note{result.notesAdded === 1 ? "" : "s"} added.
             </p>
@@ -131,7 +131,7 @@ export function ImportPanel({ slug }: { slug: string }) {
                 </summary>
                 <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-slate/65">
                   {result.errors.map((e, i) => (
-                    <li key={i}>line {e.line}: {e.reason} — {e.raw.slice(0, 80)}</li>
+                    <li key={i}>line {e.line}: {e.reason} · {e.raw.slice(0, 80)}</li>
                   ))}
                 </ul>
               </details>

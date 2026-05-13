@@ -292,7 +292,7 @@ function SpecialEditor({
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />
-          <span>Active — guests see this on the QR landing</span>
+          <span>Active. Guests see this on the QR landing</span>
         </label>
       </div>
       <div className="mt-5 flex items-center gap-2">

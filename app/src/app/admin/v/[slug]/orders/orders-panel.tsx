@@ -220,7 +220,7 @@ function OrderRow({
           <li key={i.id} className="text-slate/80">
             <span className="text-slate/40">{i.quantity}× </span>
             {i.nameSnapshot}
-            {i.notes ? <span className="ml-2 text-[11px] text-umber">— {i.notes}</span> : null}
+            {i.notes ? <span className="ml-2 text-[11px] text-umber">· {i.notes}</span> : null}
           </li>
         ))}
       </ul>

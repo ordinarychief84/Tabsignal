@@ -50,7 +50,7 @@ export function badRatingHtml(args: BadRatingArgs): string {
             ${compCta}
             <a href="${escapeHtml(args.staffQueueUrl)}" style="display:inline-block;background:#0E0F1A;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;">Open live queue</a>
             <p style="margin:14px 0 0;font-size:11px;color:#8B6F4E;line-height:1.5;">
-              ${args.compCta ? "Comp link is single-use and expires in 24h. " : ""}AI-generated suggestion — verify before acting. The guest&rsquo;s words matter more than the category.
+              ${args.compCta ? "Comp link is single-use and expires in 24h. " : ""}AI-generated suggestion, verify before acting. The guest&rsquo;s words matter more than the category.
             </p>
           </td></tr>
         </table>
@@ -62,7 +62,7 @@ export function badRatingHtml(args: BadRatingArgs): string {
 
 export function badRatingText(args: BadRatingArgs): string {
   const lines: string[] = [];
-  lines.push(`${args.venueName} — ${args.tableLabel} — ${args.rating} stars`);
+  lines.push(`${args.venueName} · ${args.tableLabel} · ${args.rating} stars`);
   lines.push(args.occurredAt.toLocaleString());
   lines.push("");
   lines.push(args.note?.trim() ? `"${args.note.trim()}"` : "(no note)");

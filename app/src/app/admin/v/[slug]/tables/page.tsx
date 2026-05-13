@@ -5,7 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { TablesPanel } from "./tables-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — tables" };
+export const metadata = { title: "TabCall · tables" };
 
 export default async function TablesPage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();
@@ -27,7 +27,7 @@ export default async function TablesPage({ params }: { params: { slug: string } 
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Floor</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">Tables</h1>
           <p className="mt-2 text-sm text-slate/60">
-            Add, rename, or remove tables. Each table has its own QR tent — print
+            Add, rename, or remove tables. Each table has its own QR tent. Print
             them from{" "}
             <Link href={`/admin/v/${params.slug}/qr-tents`} className="text-umber underline-offset-4 hover:underline">
               QR tents

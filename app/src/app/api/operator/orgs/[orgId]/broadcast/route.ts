@@ -55,7 +55,7 @@ export async function POST(req: Request, ctx: { params: { orgId: string } }) {
   `.trim();
 
   const text =
-    `${org.name} — ${parsed.subject}\n\n` +
+    `${org.name} · ${parsed.subject}\n\n` +
     `${parsed.body}\n\n` +
     `(Broadcast sent by ${session?.email ?? "operator"}.)`;
 

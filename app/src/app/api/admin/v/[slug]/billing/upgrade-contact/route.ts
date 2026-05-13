@@ -55,7 +55,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   const operatorTo = operators.length > 0 ? operators : ["hello@tabcall.app"];
 
   const planLabel = parsed.plan === "pro" ? "Pro ($299/mo)" : "Growth ($99/mo)";
-  const subject = `[Onboard] ${venue.name} — wants ${planLabel}`;
+  const subject = `[Onboard] ${venue.name} · wants ${planLabel}`;
   const text =
     `${venue.name} (${venue.slug}) wants to upgrade.\n` +
     `Org: ${venue.org.name} (${venue.org.id})\n` +
@@ -66,7 +66,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     `Reply to this email to start the thread, or jump in the operator console:\n` +
     `https://www.tab-call.com/operator/orgs/${venue.org.id}\n`;
   const html = `
-    <h2 style="font-family: -apple-system, sans-serif;">${escapeHtml(venue.name)} — wants ${escapeHtml(planLabel)}</h2>
+    <h2 style="font-family: -apple-system, sans-serif;">${escapeHtml(venue.name)} · wants ${escapeHtml(planLabel)}</h2>
     <p style="font-family: -apple-system, sans-serif;">
       Org: <strong>${escapeHtml(venue.org.name)}</strong>
       (<code>${venue.org.id}</code>)<br>

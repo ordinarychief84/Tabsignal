@@ -5,7 +5,7 @@ import { assignableRoles } from "@/lib/auth/permissions";
 import { PeoplePanel } from "./people-panel";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — people" };
+export const metadata = { title: "TabCall · people" };
 
 export default async function PeoplePage({ params }: { params: { slug: string } }) {
   const session = await getStaffSession();

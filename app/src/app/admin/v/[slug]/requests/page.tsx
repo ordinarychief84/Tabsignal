@@ -6,7 +6,7 @@ import { emit } from "@/lib/realtime";
 import { RequestsList } from "./requests-list";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "TabCall — live requests" };
+export const metadata = { title: "TabCall · live requests" };
 
 // Same threshold the live endpoint uses (PRD F6). Replicated here so the
 // server-rendered initial state already reflects escalations without

@@ -121,7 +121,7 @@ export function AdminsPanel({ selfEmail }: { selfEmail: string }) {
       <section className="mb-8 rounded-2xl border border-slate/10 bg-white p-6">
         <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Add a new admin</p>
         <p className="mt-1 text-sm text-slate/55">
-          Stored in DB. Effective immediately — no redeploy. The new
+          Stored in DB. Effective immediately, no redeploy. The new
           admin signs in via <code>/staff/login</code> with this email.
         </p>
         <form onSubmit={addAdmin} className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
@@ -161,7 +161,7 @@ export function AdminsPanel({ selfEmail }: { selfEmail: string }) {
 
         {items.length === 0 && !loading ? (
           <div className="rounded-2xl border border-coral/20 bg-coral/5 px-6 py-10 text-center text-sm text-coral">
-            ⚠ No admins. Add one above or set <code>OPERATOR_EMAILS</code> in Vercel — without an admin, <code>/operator</code> denies everyone.
+            ⚠ No admins. Add one above or set <code>OPERATOR_EMAILS</code> in Vercel. Without an admin, <code>/operator</code> denies everyone.
           </div>
         ) : (
           <ul className="space-y-3">
