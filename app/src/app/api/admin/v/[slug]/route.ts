@@ -46,6 +46,13 @@ const Body = z.object({
   requireIdOnFirstDrink: z.boolean().optional(),
   // Notification routing — comma-separated emails or null to clear.
   alertEmails: z.string().max(500).nullable().optional(),
+  // Guest UX copy. Short — these render inline in mobile views, so the
+  // 240-char cap keeps a long-winded paragraph from pushing the action
+  // buttons off-screen. Null falls back to the baked-in defaults the
+  // guest UI ships with.
+  guestWelcomeMessage: z.string().max(240).nullable().optional(),
+  guestConfirmationMessage: z.string().max(240).nullable().optional(),
+  reviewPrompt: z.string().max(240).nullable().optional(),
   // Per-shift kill switches.
   requestsEnabled: z.boolean().optional(),
   preorderEnabled: z.boolean().optional(),
@@ -96,6 +103,9 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   if (parsed.logoUrl !== undefined) data.logoUrl = parsed.logoUrl;
   if (parsed.requireIdOnFirstDrink !== undefined) data.requireIdOnFirstDrink = parsed.requireIdOnFirstDrink;
   if (parsed.alertEmails !== undefined) data.alertEmails = parsed.alertEmails;
+  if (parsed.guestWelcomeMessage !== undefined) data.guestWelcomeMessage = parsed.guestWelcomeMessage;
+  if (parsed.guestConfirmationMessage !== undefined) data.guestConfirmationMessage = parsed.guestConfirmationMessage;
+  if (parsed.reviewPrompt !== undefined) data.reviewPrompt = parsed.reviewPrompt;
   if (parsed.requestsEnabled !== undefined) data.requestsEnabled = parsed.requestsEnabled;
   if (parsed.preorderEnabled !== undefined) data.preorderEnabled = parsed.preorderEnabled;
   if (parsed.reservationsEnabled !== undefined) data.reservationsEnabled = parsed.reservationsEnabled;
@@ -118,6 +128,9 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
       logoUrl: true,
       requireIdOnFirstDrink: true,
       alertEmails: true,
+      guestWelcomeMessage: true,
+      guestConfirmationMessage: true,
+      reviewPrompt: true,
       requestsEnabled: true,
       preorderEnabled: true,
       reservationsEnabled: true,

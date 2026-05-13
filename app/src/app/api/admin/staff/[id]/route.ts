@@ -45,6 +45,7 @@ function shape(s: Awaited<ReturnType<typeof loadTarget>>) {
     name: s.name,
     email: s.email,
     role: s.role,
+    section: s.section,
     status: s.status,
     lastSeenAt: s.lastSeenAt?.toISOString() ?? null,
     invitedAt: s.createdAt.toISOString(),
@@ -70,6 +71,8 @@ const PatchBody = z.object({
   name: z.string().min(1).max(120).optional(),
   role: z.enum(["OWNER", "MANAGER", "SERVER", "HOST", "VIEWER"]).optional(),
   status: z.enum(["ACTIVE", "INVITED", "SUSPENDED"]).optional(),
+  // Free-text section (e.g. "Patio"). Pass null to clear.
+  section: z.string().max(40).nullable().optional(),
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -87,12 +90,19 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   // Build the update payload incrementally so we only audit the fields
   // that actually change.
-  const data: { name?: string; role?: StaffRole; status?: StaffStatus; suspendedAt?: Date | null; suspendedById?: string | null } = {};
+  const data: { name?: string; role?: StaffRole; status?: StaffStatus; suspendedAt?: Date | null; suspendedById?: string | null; section?: string | null } = {};
   const changes: Record<string, { from: unknown; to: unknown }> = {};
 
   if (parsed.name && parsed.name !== target.name) {
     data.name = parsed.name;
     changes.name = { from: target.name, to: parsed.name };
+  }
+
+  // Section: free-text metadata; no permission gate beyond the existing
+  // venue-manager check already enforced upstream. Accept null to clear.
+  if (parsed.section !== undefined && parsed.section !== target.section) {
+    data.section = parsed.section;
+    changes.section = { from: target.section, to: parsed.section };
   }
 
   if (parsed.role && parsed.role !== target.role) {

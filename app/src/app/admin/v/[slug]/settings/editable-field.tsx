@@ -10,7 +10,10 @@ type Field =
   | "googlePlaceId"
   | "brandColor"
   | "logoUrl"
-  | "alertEmails";
+  | "alertEmails"
+  | "guestWelcomeMessage"
+  | "guestConfirmationMessage"
+  | "reviewPrompt";
 
 export function EditableField({
   slug,

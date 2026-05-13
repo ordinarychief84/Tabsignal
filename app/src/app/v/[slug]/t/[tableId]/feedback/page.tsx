@@ -81,7 +81,9 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
       <div className="mx-auto flex max-w-md flex-col px-6 py-10">
         <header className="mb-8">
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
-          <h1 className="mt-2 text-3xl font-medium tracking-tight">How was tonight?</h1>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight">
+            {venue.reviewPrompt ?? "How was tonight?"}
+          </h1>
         </header>
         <FeedbackScreen
           slug={params.slug}

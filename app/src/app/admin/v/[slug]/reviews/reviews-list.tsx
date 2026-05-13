@@ -11,6 +11,8 @@ type Review = {
   aiSuggestion: string | null;
   aiServerName: string | null;
   seenByMgr: boolean;
+  flagged: boolean;
+  flaggedAt: string | null;
   createdAt: string;
   tableLabel: string;
 };
@@ -36,11 +38,13 @@ const RANGE_OPTIONS: { label: string; days: number }[] = [
 export function ReviewsList({
   slug,
   days,
+  flaggedOnly,
   initial,
   initialCursor,
 }: {
   slug: string;
   days: number;
+  flaggedOnly: boolean;
   initial: Review[];
   initialCursor: string | null;
 }) {
@@ -62,6 +66,16 @@ export function ReviewsList({
     });
   }
 
+  function toggleFlaggedFilter() {
+    const sp = new URLSearchParams(searchParams?.toString() ?? "");
+    if (flaggedOnly) sp.delete("flagged");
+    else sp.set("flagged", "true");
+    startTransition(() => {
+      router.replace(`${pathname}?${sp.toString()}`);
+      router.refresh();
+    });
+  }
+
   async function toggleSeen(id: string, next: boolean) {
     setItems(prev => prev.map(i => (i.id === id ? { ...i, seenByMgr: next } : i)));
     try {
@@ -75,6 +89,30 @@ export function ReviewsList({
     }
   }
 
+  async function toggleFlag(id: string, next: boolean) {
+    const prevState = items.find(i => i.id === id);
+    setItems(prev =>
+      prev.map(i => (i.id === id ? { ...i, flagged: next, flaggedAt: next ? new Date().toISOString() : null } : i))
+    );
+    try {
+      const res = await fetch(`/api/admin/v/${slug}/reviews/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flagged: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      // Roll back on failure.
+      setItems(prev =>
+        prev.map(i =>
+          i.id === id
+            ? { ...i, flagged: prevState?.flagged ?? !next, flaggedAt: prevState?.flaggedAt ?? null }
+            : i
+        )
+      );
+    }
+  }
+
   async function loadMore() {
     if (!cursor || loading) return;
     setLoading(true);
@@ -84,6 +122,7 @@ export function ReviewsList({
         days: String(days),
         cursor,
         take: "50",
+        ...(flaggedOnly ? { flagged: "true" } : {}),
       });
       const res = await fetch(`/api/admin/v/${slug}/reviews?${qs.toString()}`);
       const body = await res.json();
@@ -99,7 +138,7 @@ export function ReviewsList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-umber">
           <span>Window</span>
           <select
@@ -113,6 +152,19 @@ export function ReviewsList({
             ))}
           </select>
         </label>
+        <button
+          type="button"
+          onClick={toggleFlaggedFilter}
+          disabled={pending}
+          className={[
+            "rounded-full border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition-colors disabled:opacity-50",
+            flaggedOnly
+              ? "border-coral bg-coral text-slate"
+              : "border-coral/40 text-coral hover:border-coral",
+          ].join(" ")}
+        >
+          {flaggedOnly ? "Showing flagged" : "Flagged only"}
+        </button>
       </div>
 
       <ul className="space-y-3">
@@ -121,13 +173,24 @@ export function ReviewsList({
             key={r.id}
             className={[
               "rounded-2xl border bg-white p-5 transition-colors",
-              r.seenByMgr ? "border-slate/10 opacity-70" : "border-coral/40",
+              // Flagged wins visually — coral border + subtle coral tint
+              // even if also marked seen. Seen-only dims the card.
+              r.flagged
+                ? "border-coral bg-coral/5"
+                : r.seenByMgr
+                ? "border-slate/10 opacity-70"
+                : "border-coral/40",
             ].join(" ")}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
                   {r.tableLabel} · {timeAgo(r.createdAt)}
+                  {r.flagged ? (
+                    <span className="ml-2 rounded-full bg-coral px-2 py-0.5 text-[10px] font-semibold text-slate">
+                      FLAGGED
+                    </span>
+                  ) : null}
                 </p>
                 <p className="mt-2 flex items-center gap-2">
                   <Stars rating={r.rating} />
@@ -141,13 +204,27 @@ export function ReviewsList({
                   ) : null}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => toggleSeen(r.id, !r.seenByMgr)}
-                className="shrink-0 rounded-lg border border-slate/15 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-              >
-                {r.seenByMgr ? "Unmark seen" : "Mark seen"}
-              </button>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toggleSeen(r.id, !r.seenByMgr)}
+                  className="rounded-lg border border-slate/15 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
+                >
+                  {r.seenByMgr ? "Unmark seen" : "Mark seen"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleFlag(r.id, !r.flagged)}
+                  className={[
+                    "rounded-lg border px-3 py-1.5 text-[11px] font-medium",
+                    r.flagged
+                      ? "border-coral bg-coral text-slate"
+                      : "border-coral/40 text-coral hover:border-coral",
+                  ].join(" ")}
+                >
+                  {r.flagged ? "Unflag" : "Flag"}
+                </button>
+              </div>
             </div>
 
             {r.note ? (

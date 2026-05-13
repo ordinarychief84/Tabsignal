@@ -25,12 +25,16 @@ export function GuestRequestPanel({
   slug,
   tableLabel,
   prevTab = null,
+  confirmationMessage = null,
 }: {
   sessionId: string;
   sessionToken: string;
   slug: string;
   tableLabel: string;
   prevTab?: PrevTab | null;
+  // Manager-curated override for the post-tap confirmation banner. Null
+  // = use the default "Sent. We're alerting your server." copy.
+  confirmationMessage?: string | null;
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [activeType, setActiveType] = useState<RequestType | null>(null);
@@ -181,7 +185,9 @@ export function GuestRequestPanel({
             {acknowledged ? "Acknowledged" : "Request sent"}
           </p>
           <h2 className="mt-3 text-2xl font-medium text-slate">
-            {acknowledged ? "Staff is on the way" : "Sent. We’re alerting your server."}
+            {acknowledged
+              ? "Staff is on the way"
+              : confirmationMessage ?? "Sent. We’re alerting your server."}
           </h2>
           <p className="mt-2 text-sm text-slate/60">
             {acknowledged

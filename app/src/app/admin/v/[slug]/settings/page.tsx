@@ -154,6 +154,38 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           />
         </Card>
 
+        <Card title="Guest UX copy">
+          <p className="text-[12px] text-slate/55">
+            Short, mobile-first. Each renders inline on the QR landing or
+            feedback screen. Leave blank to use TabCall&rsquo;s defaults — they
+            already work fine.
+          </p>
+          <EditableField
+            slug={params.slug}
+            field="guestWelcomeMessage"
+            label="QR landing welcome line"
+            placeholder="Welcome to Otto's. What can we get you?"
+            initial={venue.guestWelcomeMessage ?? ""}
+            help="Shown above the four request buttons. Keep under 80 chars or the layout wraps."
+          />
+          <EditableField
+            slug={params.slug}
+            field="guestConfirmationMessage"
+            label="Request-sent confirmation"
+            placeholder="Sent. We're alerting your server."
+            initial={venue.guestConfirmationMessage ?? ""}
+            help="Replaces the post-tap confirmation banner. Default is venue-neutral."
+          />
+          <EditableField
+            slug={params.slug}
+            field="reviewPrompt"
+            label="Feedback prompt"
+            placeholder="How was tonight?"
+            initial={venue.reviewPrompt ?? ""}
+            help="The headline above the star rating on the feedback screen. Default: 'How was tonight?'"
+          />
+        </Card>
+
         <SessionsCard email={session.email} />
 
         <Card title="Tonight">

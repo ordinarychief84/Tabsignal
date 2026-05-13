@@ -14,7 +14,7 @@ export default async function ReviewsPage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams?: { days?: string };
+  searchParams?: { days?: string; flagged?: string };
 }) {
   const session = await getStaffSession();
   if (!session) redirect(`/staff/login?next=/admin/v/${params.slug}/reviews`);
@@ -30,10 +30,18 @@ export default async function ReviewsPage({
     ? Math.min(Math.max(Math.trunc(daysParsed), 1), 90)
     : DEFAULT_DAYS;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  // ?flagged=true narrows the initial list to manager-flagged rows
+  // regardless of rating. The 4-5★ stat (Google-bound) still uses the
+  // unfiltered count so the summary makes sense.
+  const flaggedOnly = searchParams?.flagged === "true";
 
   const [bad, total5] = await Promise.all([
     db.feedbackReport.findMany({
-      where: { venueId: venue.id, rating: { lte: 3 }, createdAt: { gte: since } },
+      where: {
+        venueId: venue.id,
+        ...(flaggedOnly ? { flagged: true } : { rating: { lte: 3 } }),
+        createdAt: { gte: since },
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: { session: { include: { table: { select: { label: true } } } } },
       take: PAGE_SIZE + 1,
@@ -79,6 +87,7 @@ export default async function ReviewsPage({
         <ReviewsList
           slug={params.slug}
           days={days}
+          flaggedOnly={flaggedOnly}
           initial={initialItems.map(r => ({
             id: r.id,
             rating: r.rating,
@@ -87,6 +96,8 @@ export default async function ReviewsPage({
             aiSuggestion: r.aiSuggestion,
             aiServerName: r.aiServerName,
             seenByMgr: r.seenByMgr,
+            flagged: r.flagged,
+            flaggedAt: r.flaggedAt?.toISOString() ?? null,
             createdAt: r.createdAt.toISOString(),
             tableLabel: r.session.table.label,
           }))}

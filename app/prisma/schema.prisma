@@ -143,6 +143,14 @@ model Venue {
   requestsEnabled        Boolean          @default(true)
   preorderEnabled        Boolean          @default(true)
   reservationsEnabled    Boolean          @default(true)
+  // Optional guest-facing copy. Manager-editable from Settings; the
+  // guest flow falls back to baked-in defaults when these are null.
+  // Keep concise — these render inline in the QR landing and feedback
+  // screen, so long blocks of text would push the action buttons off
+  // a phone viewport.
+  guestWelcomeMessage    String?          @db.Text
+  guestConfirmationMessage String?        @db.Text
+  reviewPrompt           String?          @db.Text
   createdAt              DateTime         @default(now())
   org                    Organization     @relation(fields: [orgId], references: [id])
   tables                 Table[]
@@ -264,6 +272,10 @@ model StaffMember {
   // timestamp gets rejected at verifySessionToken. Nullable: rows
   // pre-dating the feature retain unrestricted token TTL.
   sessionsValidAfter DateTime?
+  // Free-text section assignment (e.g. "Patio", "Bar", "Floor 2"). Used
+  // alongside TableAssignment for venues that group staff by zone rather
+  // than per-table. Pure metadata — display + filter only.
+  section            String?
   // Self-referential audit: who invited this row, who suspended it.
   // Both nullable so the original venue OWNER (created by signup)
   // doesn't need a phantom inviter.
@@ -525,6 +537,11 @@ model FeedbackReport {
   aiSuggestion String?
   aiServerName String?
   seenByMgr    Boolean      @default(false)
+  // Manager-flagged for follow-up (escalation, refund, legal, etc).
+  // Distinct from seenByMgr: a review can be seen AND flagged. Reviews
+  // page filters on this column independently.
+  flagged      Boolean      @default(false)
+  flaggedAt    DateTime?
   createdAt    DateTime     @default(now())
   venue        Venue        @relation(fields: [venueId], references: [id])
   session      GuestSession @relation(fields: [sessionId], references: [id])

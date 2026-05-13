@@ -9,6 +9,7 @@ type Member = {
   name: string;
   email: string;
   role: string;
+  section: string | null;
   status: "ACTIVE" | "INVITED" | "SUSPENDED";
   ackedCount: number;
   lastSeenAt: string | null;
@@ -107,6 +108,23 @@ export function PeoplePanel(props: {
     } catch (e) {
       setItems(prev);
       setError(e instanceof Error ? e.message : "Could not change role");
+    }
+  }
+
+  async function saveSection(m: Member, nextRaw: string) {
+    // Treat empty string as "clear" (server accepts null).
+    const next = nextRaw.trim() === "" ? null : nextRaw.trim().slice(0, 40);
+    if ((m.section ?? null) === next) return;
+    const prev = items;
+    setItems(items.map(i => (i.id === m.id ? { ...i, section: next } : i)));
+    setError(null);
+    try {
+      const res = await patch(m.id, { section: next });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
+    } catch (e) {
+      setItems(prev);
+      setError(e instanceof Error ? e.message : "Could not save section");
     }
   }
 
@@ -212,6 +230,7 @@ export function PeoplePanel(props: {
             onResendInvite={resendInvite}
             onToggleTables={() => setEditingTablesFor(editingTablesFor === m.id ? null : m.id)}
             onSaveAssignment={saveAssignment}
+            onSaveSection={saveSection}
             showResendInvite
           />
         ))}
@@ -238,6 +257,7 @@ export function PeoplePanel(props: {
             onResendInvite={resendInvite}
             onToggleTables={() => setEditingTablesFor(editingTablesFor === m.id ? null : m.id)}
             onSaveAssignment={saveAssignment}
+            onSaveSection={saveSection}
           />
         ))}
       </Section>
@@ -265,6 +285,7 @@ export function PeoplePanel(props: {
               onResendInvite={resendInvite}
               onToggleTables={() => undefined}
               onSaveAssignment={saveAssignment}
+            onSaveSection={saveSection}
             />
           ))}
         </Section>
@@ -327,6 +348,7 @@ function InviteCard({ assignableRoles, onInvited, onError }: {
         name: body.name,
         email: body.email,
         role: body.role,
+        section: body.section ?? null,
         status: body.status,
         ackedCount: 0,
         lastSeenAt: null,
@@ -414,6 +436,7 @@ function Row(props: {
   onResendInvite: (m: Member) => void;
   onToggleTables: () => void;
   onSaveAssignment: (id: string, tableIds: string[]) => void;
+  onSaveSection: (m: Member, next: string) => void;
 }) {
   const { m } = props;
   const roleSelectable = props.isManagerTier && !props.isSelf && m.status !== "SUSPENDED";
@@ -438,6 +461,22 @@ function Row(props: {
               ) : null}
             </p>
             <p className="truncate text-[12px] text-slate/55">{m.email}</p>
+            {/* Section: editable for manager-tier callers, read-only chip
+              * otherwise. Empty input clears the field (server accepts null). */}
+            {props.isManagerTier ? (
+              <input
+                type="text"
+                defaultValue={m.section ?? ""}
+                onBlur={e => props.onSaveSection(m, e.target.value)}
+                placeholder="Section (e.g. Patio, Bar)"
+                maxLength={40}
+                className="mt-1 w-full rounded border border-slate/10 bg-oat/40 px-2 py-0.5 text-[11px] text-slate/70 placeholder:text-slate/30 focus:border-chartreuse focus:outline-none focus:ring-0"
+              />
+            ) : m.section ? (
+              <p className="mt-1 inline-block rounded bg-sea/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate/70">
+                {m.section}
+              </p>
+            ) : null}
           </div>
         </div>
 

@@ -17,6 +17,7 @@ export function AdminNav({
   const pathname = usePathname();
   const items: { href: string; label: string; growth?: boolean; pro?: boolean }[] = [
     { href: `/admin/v/${slug}`,             label: "Dashboard"  },
+    { href: `/admin/v/${slug}/requests`,    label: "Live requests" },
     { href: `/admin/v/${slug}/analytics`,   label: "Analytics", growth: true },
     { href: `/admin/v/${slug}/menu`,        label: "Menu",      growth: true },
     { href: `/admin/v/${slug}/specials`,    label: "Specials"   },
