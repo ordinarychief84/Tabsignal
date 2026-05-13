@@ -166,6 +166,16 @@ model Venue {
   waitlist               Waitlist[]
   specials               VenueSpecial[]
   auditLog               AuditLog[]
+  // Spec-verbatim Guest Commerce Module (parallel schema; coexists with
+  // PreOrder/VenueSpecial/legacy BillSplit). See migration
+  // 20260512_guest_commerce_v2 for the trade-offs.
+  orders                 Order[]
+  bills                  Bill[]
+  promotions             Promotion[]
+  wishlists              Wishlist[]
+  posSyncLogs            PosSyncLog[]
+  venueBranding          VenueBranding?
+  posIntegration         PosIntegration?
 
   @@index([orgId])
 }
@@ -221,6 +231,7 @@ model MenuItem {
   description   String?
   priceCents    Int
   isActive      Boolean       @default(true)
+  isFeatured    Boolean       @default(false)
   sortOrder     Int           @default(0)
   imageUrl      String?
   // Drinks/alcohol → trip the same first-drink ID-check flag a DRINK
@@ -231,8 +242,12 @@ model MenuItem {
   updatedAt     DateTime      @updatedAt
   venue         Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
   category      MenuCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orderItems    OrderItem[]
+  promotionLinks PromotionItem[]
+  wishlistItems WishlistItem[]
 
   @@index([venueId, isActive])
+  @@index([venueId, isFeatured])
   @@index([categoryId])
 }
 
@@ -249,6 +264,10 @@ model Table {
   assignments TableAssignment[]
   preOrders   PreOrder[]
   reservations Reservation[]
+  // Guest Commerce Module back-refs.
+  orders      Order[]
+  bills       Bill[]
+  wishlists   Wishlist[]
 
   @@unique([venueId, label])
   @@index([venueId])
@@ -357,6 +376,10 @@ model GuestSession {
   splits                BillSplit[]
   preOrders             PreOrder[]
   guestProfile          GuestProfile?    @relation(fields: [guestProfileId], references: [id])
+  // Guest Commerce Module back-refs (V2 schema).
+  orders                Order[]
+  billSplitsV2          BillSplitV2[]
+  wishlist              Wishlist?
 
   @@index([venueId, tableId])
   @@index([expiresAt])
@@ -755,4 +778,324 @@ model PlatformAdmin {
   createdAt     DateTime       @default(now())
 
   @@index([email])
+}
+
+// =====================================================================
+// Guest Commerce Module — spec-verbatim parallel schema
+// =====================================================================
+//
+// These models coexist with the deployed flow (PreOrder, GuestSession,
+// VenueSpecial, legacy BillSplit). The deployed `/v/[slug]/t/[tableId]/*`
+// surface continues to use the original schema. The new `/guest/[qrToken]/*`
+// surface uses these models. Either can be the source of truth on a
+// per-venue basis; the admin screens will eventually surface both.
+//
+// Naming compromise: existing `BillSplit` keeps its name; the new
+// item-level split model is `BillSplitV2` so Prisma doesn't collide.
+// Schema migration would consolidate later; not in scope today.
+
+enum OrderStatus {
+  NEW
+  ACCEPTED
+  PREPARING
+  READY
+  SERVED
+  CANCELLED
+}
+
+enum OrderItemStatus {
+  NEW
+  ACCEPTED
+  PREPARING
+  READY
+  SERVED
+  CANCELLED
+}
+
+enum BillStatus {
+  OPEN
+  PARTIAL
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+enum BillItemStatus {
+  UNPAID
+  PAID
+}
+
+enum BillSplitV2Status {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PromotionType {
+  HAPPY_HOUR
+  BUSINESS_LUNCH
+  BANNER
+  LIMITED_TIME_ITEM
+  NEW_ITEM
+  DISCOUNT_HIGHLIGHT
+}
+
+enum PromotionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+enum WishlistStatus {
+  ACTIVE
+  CONVERTED
+  CANCELLED
+}
+
+enum PosIntegrationStatus {
+  PENDING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  venueId         String
+  tableId         String?
+  guestSessionId  String?
+  status          OrderStatus   @default(NEW)
+  subtotalCents   Int
+  taxCents        Int           @default(0)
+  serviceCents    Int           @default(0)
+  tipCents        Int           @default(0)
+  totalCents      Int
+  posReference    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  venue           Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table           Table?        @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  guestSession    GuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  bill            Bill?
+
+  @@index([venueId, status, createdAt])
+  @@index([guestSessionId])
+}
+
+model OrderItem {
+  id            String          @id @default(cuid())
+  orderId       String
+  menuItemId    String?
+  nameSnapshot  String
+  priceCents    Int
+  quantity      Int             @default(1)
+  notes         String?
+  status        OrderItemStatus @default(NEW)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem      MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  billItem      BillItem?
+
+  @@index([orderId])
+}
+
+model Bill {
+  id              String     @id @default(cuid())
+  venueId         String
+  tableId         String?
+  orderId         String?    @unique
+  status          BillStatus @default(OPEN)
+  subtotalCents   Int
+  taxCents        Int        @default(0)
+  serviceCents    Int        @default(0)
+  tipTotalCents   Int        @default(0)
+  totalCents      Int
+  amountPaidCents Int        @default(0)
+  amountDueCents  Int
+  posReference    String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  venue           Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table           Table?     @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  order           Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  items           BillItem[]
+  splits          BillSplitV2[]
+
+  @@index([venueId, status, createdAt])
+}
+
+model BillItem {
+  id              String         @id @default(cuid())
+  billId          String
+  orderItemId     String?        @unique
+  nameSnapshot    String
+  priceCents      Int
+  quantity        Int
+  status          BillItemStatus @default(UNPAID)
+  paidBySplitId   String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  bill            Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
+  orderItem       OrderItem?     @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  paidBySplit     BillSplitV2?   @relation("BillItemPaidBy", fields: [paidBySplitId], references: [id], onDelete: SetNull)
+  splitItems      BillSplitItem[]
+
+  @@index([billId, status])
+}
+
+// Item-level bill split — the spec's `bill_splits`. Coexists with the
+// legacy `BillSplit` model (which does even-N session splits). The "V2"
+// suffix is purely to avoid the Prisma model-name collision.
+model BillSplitV2 {
+  id                    String         @id @default(cuid())
+  billId                String
+  guestSessionId        String?
+  status                BillSplitV2Status @default(PENDING)
+  subtotalCents         Int
+  taxCents              Int            @default(0)
+  serviceCents          Int            @default(0)
+  tipCents              Int            @default(0)
+  totalCents            Int
+  paymentReference      String?
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  bill                  Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
+  guestSession          GuestSession?  @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  splitItems            BillSplitItem[]
+  paidItems             BillItem[]     @relation("BillItemPaidBy")
+
+  @@index([billId, status])
+  @@index([stripePaymentIntentId])
+}
+
+model BillSplitItem {
+  id          String      @id @default(cuid())
+  billSplitId String
+  billItemId  String
+  amountCents Int
+  createdAt   DateTime    @default(now())
+  billSplit   BillSplitV2 @relation(fields: [billSplitId], references: [id], onDelete: Cascade)
+  billItem    BillItem    @relation(fields: [billItemId], references: [id], onDelete: Cascade)
+
+  @@unique([billSplitId, billItemId])
+}
+
+model Promotion {
+  id              String          @id @default(cuid())
+  venueId         String
+  title           String
+  description     String?
+  type            PromotionType
+  bannerImageUrl  String?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  status          PromotionStatus @default(ACTIVE)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  venue           Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  items           PromotionItem[]
+
+  @@index([venueId, status, startsAt])
+}
+
+model PromotionItem {
+  id          String    @id @default(cuid())
+  promotionId String
+  menuItemId  String
+  createdAt   DateTime  @default(now())
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, menuItemId])
+  @@index([menuItemId])
+}
+
+model Wishlist {
+  id             String         @id @default(cuid())
+  venueId        String
+  tableId        String?
+  guestSessionId String         @unique
+  status         WishlistStatus @default(ACTIVE)
+  sharedWithStaffAt DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table          Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  guestSession   GuestSession   @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  items          WishlistItem[]
+
+  @@index([venueId, status])
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  menuItemId String
+  quantity   Int      @default(1)
+  notes      String?
+  createdAt  DateTime @default(now())
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, menuItemId])
+}
+
+model VenueBranding {
+  id              String   @id @default(cuid())
+  venueId         String   @unique
+  logoUrl         String?
+  primaryColor    String?
+  secondaryColor  String?
+  accentColor     String?
+  fontFamily      String?
+  welcomeMessage  String?
+  bannerImageUrl  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  venue           Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+model PosIntegration {
+  id                   String               @id @default(cuid())
+  venueId              String               @unique
+  // "NONE" | "TOAST" | "SQUARE" | "CLOVER". Kept loose-typed so adding a
+  // provider doesn't require a Prisma migration.
+  provider             String
+  status               PosIntegrationStatus @default(PENDING)
+  // Encrypted blob — never read by frontend. The lib/pos/* abstraction
+  // is the only thing that decrypts at request time.
+  encryptedCredentials String?              @db.Text
+  lastSyncAt           DateTime?
+  lastError            String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  venue                Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([provider, status])
+}
+
+model PosSyncLog {
+  id                  String   @id @default(cuid())
+  venueId             String
+  provider            String
+  // Dot-namespaced verb: "menu.sync", "order.send", "order.update_status",
+  // "bill.fetch", "bill.mark_paid".
+  action              String
+  // "success" | "error"
+  status              String
+  // Never include credentials in these. The lib/pos/* helpers strip
+  // anything matching /token|secret|password|apiKey|api_key/i before
+  // writing.
+  requestPayloadSafe  Json?
+  responsePayloadSafe Json?
+  errorMessage        String?
+  createdAt           DateTime @default(now())
+  venue               Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, createdAt])
 }

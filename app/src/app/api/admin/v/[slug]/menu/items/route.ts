@@ -20,6 +20,7 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
       description: i.description,
       priceCents: i.priceCents,
       isActive: i.isActive,
+      isFeatured: i.isFeatured,
       sortOrder: i.sortOrder,
       ageRestricted: i.ageRestricted,
       imageUrl: i.imageUrl,
@@ -36,6 +37,9 @@ const CreateBody = z.object({
   categoryId: z.string().nullable().optional(),
   sortOrder: z.number().int().min(0).max(10000).default(0),
   isActive: z.boolean().default(true),
+  // Optional on create so existing callers (e.g. seed scripts, the
+  // simple "+ Item" prompt) don't break — defaults to false at the DB.
+  isFeatured: z.boolean().optional(),
   ageRestricted: z.boolean().default(false),
   imageUrl: z.string().url().nullable().optional(),
 });
@@ -65,6 +69,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
       categoryId: parsed.categoryId ?? null,
       sortOrder: parsed.sortOrder,
       isActive: parsed.isActive,
+      isFeatured: parsed.isFeatured ?? false,
       ageRestricted: parsed.ageRestricted,
       imageUrl: parsed.imageUrl ?? null,
     },

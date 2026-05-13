@@ -92,6 +92,64 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
   switch (event.type) {
     case "payment_intent.succeeded": {
       const intent = event.data.object as Stripe.PaymentIntent;
+
+      // V2 item-level bill split (Guest Commerce Module). Distinct from the
+      // legacy BillSplit branch below — V2 carries its own metadata key so
+      // we route on that first and never collide with the deployed flow.
+      const v2SplitId = intent.metadata?.tabcall_v2_split_id;
+      if (v2SplitId) {
+        const split = await tx.billSplitV2.findUnique({ where: { id: v2SplitId } });
+        if (!split || split.paidAt) return; // idempotent — already processed
+
+        await tx.billSplitV2.update({
+          where: { id: split.id },
+          data: {
+            status: "PAID",
+            paidAt: new Date(),
+            stripePaymentIntentId: intent.id,
+          },
+        });
+        await tx.billItem.updateMany({
+          where: { paidBySplitId: split.id },
+          data: { status: "PAID" },
+        });
+
+        // Re-compute the parent Bill's running totals from the splits that
+        // are now PAID. amountDueCents drives the PAID vs PARTIAL flip.
+        const paidSplits = await tx.billSplitV2.findMany({
+          where: { billId: split.billId, status: "PAID" },
+          select: { totalCents: true },
+        });
+        const amountPaidCents = paidSplits.reduce((s, sp) => s + sp.totalCents, 0);
+        const bill = await tx.bill.findUnique({
+          where: { id: split.billId },
+          select: { id: true, venueId: true, totalCents: true },
+        });
+        if (bill) {
+          const amountDueCents = Math.max(0, bill.totalCents - amountPaidCents);
+          await tx.bill.update({
+            where: { id: bill.id },
+            data: {
+              amountPaidCents,
+              amountDueCents,
+              status: amountDueCents <= 0 ? "PAID" : "PARTIAL",
+            },
+          });
+          void emit({
+            kind: "venue",
+            id: bill.venueId,
+            event: "bill_split_paid",
+            payload: {
+              billId: bill.id,
+              splitId: split.id,
+              amountPaidCents,
+              amountDueCents,
+            },
+          });
+        }
+        return;
+      }
+
       const preOrderId = intent.metadata?.tabcall_preorder_id;
       // Pre-order payment: mark order paid so it appears on the staff queue.
       if (preOrderId) {

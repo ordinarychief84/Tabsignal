@@ -38,10 +38,12 @@ type StaffMate = { id: string; name: string };
 
 export function StaffQueue({
   venueId,
+  venueSlug: venueSlugProp,
   staffId,
   assignedTableIds = [],
 }: {
   venueId: string;
+  venueSlug?: string;
   staffId?: string;
   assignedTableIds?: string[];
 }) {
@@ -68,6 +70,14 @@ export function StaffQueue({
     visits: number;
     topItem: string | null;
     pinnedNote: string | null;
+  } | null>(null);
+  // Wishlist shared by a guest. Coral card at the top of the page; auto-
+  // dismisses after 60s. Click "View" to deep-link into Live Requests.
+  const [wishlistToast, setWishlistToast] = useState<{
+    wishlistId: string;
+    tableLabel: string | null;
+    itemCount: number;
+    items: { name: string; priceCents: number; quantity: number }[];
   } | null>(null);
   const aborter = useRef<AbortController | null>(null);
   const assignedSet = new Set(assignedTableIds);
@@ -159,6 +169,27 @@ export function StaffQueue({
       refresh();
     }
 
+    function onWishlistShared(payload: {
+      wishlistId?: string;
+      tableLabel?: string | null;
+      itemCount?: number;
+      items?: { name: string; priceCents: number; quantity: number }[];
+    } | null) {
+      if (!payload?.wishlistId) return;
+      const toast = {
+        wishlistId: payload.wishlistId,
+        tableLabel: payload.tableLabel ?? null,
+        itemCount: payload.itemCount ?? (payload.items?.length ?? 0),
+        items: payload.items ?? [],
+      };
+      setWishlistToast(toast);
+      // Auto-dismiss after 60s — the staff member's chance to act on it.
+      setTimeout(
+        () => setWishlistToast(curr => (curr?.wishlistId === toast.wishlistId ? null : curr)),
+        60_000
+      );
+    }
+
     function onRegularArrivedForYou(payload: {
       sessionId?: string;
       tableId?: string | null;
@@ -189,6 +220,7 @@ export function StaffQueue({
     socket.on("request_escalated", onEscalated);
     socket.on("request_handed_off_to_you", onHandedOffToYou);
     socket.on("regular_arrived_for_you", onRegularArrivedForYou);
+    socket.on("wishlist_shared", onWishlistShared);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
 
@@ -201,6 +233,7 @@ export function StaffQueue({
       socket.off("request_escalated", onEscalated);
       socket.off("request_handed_off_to_you", onHandedOffToYou);
       socket.off("regular_arrived_for_you", onRegularArrivedForYou);
+      socket.off("wishlist_shared", onWishlistShared);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       aborter.current?.abort();
@@ -329,6 +362,45 @@ export function StaffQueue({
 
   return (
     <>
+      {wishlistToast ? (
+        <div className="mb-3 rounded-2xl border border-coral/40 bg-coral/15 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-coral">
+                Wishlist shared
+              </p>
+              <p className="mt-1 text-sm text-oat">
+                <span className="font-medium">{wishlistToast.tableLabel ?? "A guest"}</span>
+                {" "}shared a wishlist of {wishlistToast.itemCount} item{wishlistToast.itemCount === 1 ? "" : "s"}
+              </p>
+              {wishlistToast.items.length > 0 ? (
+                <p className="mt-1 truncate text-[11px] text-oat/60">
+                  {wishlistToast.items.map(i => `${i.quantity > 1 ? `${i.quantity}× ` : ""}${i.name}`).join(", ")}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {venueSlugProp ? (
+                <a
+                  href={`/admin/v/${venueSlugProp}/requests?wishlist=${encodeURIComponent(wishlistToast.wishlistId)}`}
+                  className="rounded-md border border-coral/40 bg-coral/20 px-2 py-1 text-[11px] font-medium text-coral hover:bg-coral/30"
+                >
+                  View
+                </a>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setWishlistToast(null)}
+                aria-label="Dismiss"
+                className="rounded-full border border-coral/30 px-2 py-0.5 text-[11px] text-coral"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {reconnecting ? (
         <div className="mb-3 rounded-lg bg-sea/20 px-3 py-2 text-center text-xs text-oat/70">
           Reconnecting…

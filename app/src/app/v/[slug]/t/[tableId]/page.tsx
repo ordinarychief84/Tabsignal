@@ -49,6 +49,24 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
       },
     },
   });
+  // Pull live BANNER promotions for this venue. Same filter as the guest
+  // API: status=ACTIVE AND inside the time window. Only banner-type
+  // promos render on the landing — menu-targeted badges live on /menu.
+  const now = new Date();
+  const banners = await db.promotion.findMany({
+    where: {
+      venueId: resolved.venueId,
+      status: "ACTIVE",
+      type: "BANNER",
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+      ],
+    },
+    orderBy: [{ startsAt: "desc" }, { createdAt: "desc" }],
+    take: 6,
+  });
+
   const items = session ? parseLineItems(session.lineItems) : [];
   const lastRequestAt = session?.requests[0]?.createdAt ?? null;
   const minutesSinceLast = lastRequestAt
@@ -74,6 +92,28 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
         </p>
       </header>
 
+      {banners.length > 0 ? (
+        <div className="space-y-2 px-6 pb-4">
+          {banners.map(p => (
+            <div
+              key={p.id}
+              className="overflow-hidden rounded-2xl border border-sea/40 bg-sea/15"
+            >
+              {p.bannerImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.bannerImageUrl} alt="" className="h-24 w-full object-cover" />
+              ) : null}
+              <div className="px-4 py-2">
+                <p className="text-sm font-medium text-slate">{p.title}</p>
+                {p.description ? (
+                  <p className="mt-1 text-[12px] text-slate/70">{p.description}</p>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <GuestRequestPanel
         sessionId={resolved.sessionId}
         sessionToken={resolved.sessionToken}
@@ -87,9 +127,16 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
       />
 
       <footer className="mt-auto border-t border-slate/5 px-6 py-5">
-        <p className="text-center text-[11px] tracking-wide text-slate/40">
-          Powered by TabCall
-        </p>
+        <div className="flex items-center justify-center gap-4 text-[11px] tracking-wide">
+          <Link
+            href={`/v/${params.slug}/t/${encodeURIComponent(resolved.tableLabel)}/wishlist?s=${encodeURIComponent(resolved.sessionToken)}`}
+            className="text-slate/60 underline-offset-4 hover:text-slate hover:underline"
+          >
+            Wishlist
+          </Link>
+          <span className="text-slate/20">·</span>
+          <p className="text-slate/40">Powered by TabCall</p>
+        </div>
       </footer>
     </main>
   );
