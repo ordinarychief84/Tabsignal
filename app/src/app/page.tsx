@@ -1,29 +1,26 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { NewsletterForm } from "./newsletter-form";
+import { MarketingNav, MarketingFooter, Logo } from "./marketing-chrome";
+import { FEATURES, PRIMARY_FEATURE_SLUGS, getFeature } from "@/lib/features-data";
 
 /**
  * TabCall landing page — hospitality SaaS direction (Toast / Resy / Square feel).
- * Structure follows the design mockup:
- *   1. Navbar
- *   2. Hero (Delight guests. Empower staff.)
+ *
+ * Structure (matches design mockups):
+ *   1. Navbar           — shared chrome, Features + Resources dropdowns
+ *   2. Hero             — Delight guests. Empower staff.
  *   3. Trusted-by strip
- *   4. Feature grid (6 cards)
- *   5. How TabCall works
+ *   4. Feature spotlights — 6 detail blocks with bespoke visuals
+ *   5. How TabCall works — 3 steps, links to /how-it-works for the full page
  *   6. Metrics strip
  *   7. Testimonials
- *   8. Pricing  (kept because "Pricing" is in the nav)
+ *   8. Pricing
  *   9. Final CTA
- *  10. Footer
+ *  10. Footer           — shared chrome
  *
- * Palette is driven by Tailwind tokens (see tailwind.config.ts):
- *   slate  = #232130  Deep Ink
- *   oat    = #F7F5F2  Soft Linen
- *   linen  = #FBFAF7
- *   chartreuse.DEFAULT = #F2E7B7  Warm Butter
- *   sea.soft = #C7D6CF Sage
- *   umber.soft = #B7A39A Clay
- *   coral.DEFAULT = #C8634F  / coral.soft = #E8B8B8 Soft Coral
+ * Each "Learn more" on the feature blocks routes to /features/[slug] so the
+ * user only sees content for the feature they clicked. /how-it-works and
+ * /features have their own scoped pages.
  */
 
 export const metadata: Metadata = {
@@ -35,138 +32,17 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <main className="bg-oat text-slate">
-      <Navbar />
+      <MarketingNav />
       <Hero />
       <TrustedStrip />
-      <FeatureGrid />
+      <FeatureSpotlights />
       <HowItWorks />
       <Metrics />
       <Testimonials />
       <Pricing />
       <FinalCta />
-      <Footer />
+      <MarketingFooter />
     </main>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Logo                                                                   */
-/* ---------------------------------------------------------------------- */
-
-function Logo({ variant = "dark" }: { variant?: "dark" | "light" }) {
-  const wordColor = variant === "light" ? "#FFFFFF" : "#232130";
-  return (
-    <span className="inline-flex items-center gap-2 leading-none" aria-label="TabCall">
-      <span
-        aria-hidden
-        className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate"
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20">
-          <path
-            d="M 6 11 Q 12 6, 18 11"
-            fill="none"
-            stroke="#F2E7B7"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
-        </svg>
-      </span>
-      <span
-        className="text-lg font-semibold tracking-tight"
-        style={{ color: wordColor }}
-      >
-        TabCall
-      </span>
-    </span>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Navbar                                                                 */
-/* ---------------------------------------------------------------------- */
-
-const RESOURCES = [
-  { label: "Blog", href: "#" },
-  { label: "Help Center", href: "#" },
-  { label: "Guides", href: "#" },
-  { label: "Videos", href: "#" },
-  { label: "Careers", href: "#" },
-];
-
-function ResourcesDropdown() {
-  return (
-    <div className="group relative">
-      <button
-        type="button"
-        aria-haspopup="true"
-        className="inline-flex items-center gap-1 text-sm text-slate/75 transition-colors hover:text-slate focus:text-slate focus:outline-none"
-      >
-        Resources
-        <svg
-          aria-hidden
-          width="10"
-          height="10"
-          viewBox="0 0 12 12"
-          className="transition-transform group-hover:rotate-180 group-focus-within:rotate-180"
-        >
-          <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      <div
-        aria-hidden
-        className="pointer-events-none invisible absolute left-0 right-0 top-full h-3 group-hover:pointer-events-auto group-hover:visible group-focus-within:pointer-events-auto group-focus-within:visible"
-      />
-      <div
-        role="menu"
-        className="invisible absolute right-0 top-[calc(100%+0.5rem)] z-40 w-56 -translate-y-1 rounded-2xl bg-white p-2 opacity-0 shadow-lift ring-1 ring-umber-soft/30 transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
-      >
-        {RESOURCES.map((r) => (
-          <a
-            key={r.label}
-            href={r.href}
-            role="menuitem"
-            className="block rounded-lg px-3 py-2 text-sm text-slate/80 hover:bg-oat hover:text-slate"
-          >
-            {r.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Navbar() {
-  return (
-    <header className="sticky top-0 z-30 border-b border-umber-soft/30 bg-oat/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
-        <Link href="/" aria-label="TabCall home">
-          <Logo variant="dark" />
-        </Link>
-
-        <nav className="hidden items-center gap-8 text-sm text-slate/75 md:flex">
-          <a href="#features" className="hover:text-slate">Features</a>
-          <a href="#how" className="hover:text-slate">How It Works</a>
-          <a href="#pricing" className="hover:text-slate">Pricing</a>
-          <ResourcesDropdown />
-        </nav>
-
-        <div className="flex items-center gap-3 md:gap-5">
-          <Link
-            href="/staff/login"
-            className="hidden text-sm text-slate/75 hover:text-slate md:inline-block"
-          >
-            Login
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-full bg-chartreuse px-4 py-2 text-sm font-semibold text-slate shadow-soft transition-colors hover:bg-chartreuse/85 md:px-5"
-          >
-            Get Started Free
-          </Link>
-        </div>
-      </div>
-    </header>
   );
 }
 
@@ -177,8 +53,6 @@ function Navbar() {
 function Hero() {
   return (
     <section className="relative overflow-hidden bg-oat">
-      {/* Soft hospitality wash — sage radial top-right, butter wash bottom-left.
-          Evokes daylit cafe/restaurant without overwhelming the typography. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -189,7 +63,6 @@ function Hero() {
       />
 
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-10 md:grid-cols-[1fr_1fr] md:gap-10 md:px-8 md:pb-24 md:pt-16 lg:gap-16 lg:pb-28 lg:pt-20">
-        {/* LEFT: copy column */}
         <div className="animate-fade-up">
           <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-umber">
             All-in-one hospitality platform
@@ -214,8 +87,8 @@ function Hero() {
             >
               Get Started Free
             </Link>
-            <a
-              href="#how"
+            <Link
+              href="/how-it-works"
               className="inline-flex items-center gap-2 rounded-full border border-umber-soft/50 bg-white px-5 py-3 text-[15px] font-medium text-slate transition-colors hover:border-slate/30"
             >
               <span
@@ -227,27 +100,25 @@ function Hero() {
                 </svg>
               </span>
               See How It Works
-            </a>
+            </Link>
           </div>
 
-          {/* Feature shortcuts — three butter tiles + one sage to match mockup. */}
           <ul className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <FeatureShortcut tone="butter" title="Call Waiter" sub="Instant service">
+            <FeatureShortcut tone="butter" title="Call Waiter" sub="Instant service" href="/features/call-waiter">
               <BellIcon />
             </FeatureShortcut>
-            <FeatureShortcut tone="butter" title="Order" sub="From the table">
+            <FeatureShortcut tone="butter" title="Order" sub="From the table" href="/features/qr-orders">
               <ForkKnifeIcon />
             </FeatureShortcut>
-            <FeatureShortcut tone="butter" title="Pay" sub="Securely">
+            <FeatureShortcut tone="butter" title="Pay" sub="Securely" href="/features/qr-payments">
               <CardIcon />
             </FeatureShortcut>
-            <FeatureShortcut tone="sage" title="Review" sub="Share feedback">
+            <FeatureShortcut tone="sage" title="Review" sub="Share feedback" href="/features/reviews">
               <StarIcon />
             </FeatureShortcut>
           </ul>
         </div>
 
-        {/* RIGHT: visual column with QR tent + phone */}
         <HeroVisual />
       </div>
     </section>
@@ -258,27 +129,28 @@ function FeatureShortcut({
   tone,
   title,
   sub,
+  href,
   children,
 }: {
   tone: "butter" | "sage";
   title: string;
   sub: string;
+  href: string;
   children: React.ReactNode;
 }) {
-  const tile =
-    tone === "butter"
-      ? "bg-chartreuse/55 text-slate"
-      : "bg-sea-soft/70 text-slate";
+  const tile = tone === "butter" ? "bg-chartreuse/55" : "bg-sea-soft/70";
   return (
-    <li className="text-left">
-      <span
-        aria-hidden
-        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${tile}`}
-      >
-        {children}
-      </span>
-      <p className="mt-3 text-sm font-semibold text-slate">{title}</p>
-      <p className="text-[12px] text-slate/55">{sub}</p>
+    <li>
+      <Link href={href} className="group block text-left">
+        <span
+          aria-hidden
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate transition-transform group-hover:-translate-y-0.5 ${tile}`}
+        >
+          {children}
+        </span>
+        <p className="mt-3 text-sm font-semibold text-slate group-hover:text-umber">{title}</p>
+        <p className="text-[12px] text-slate/55">{sub}</p>
+      </Link>
     </li>
   );
 }
@@ -286,7 +158,6 @@ function FeatureShortcut({
 function HeroVisual() {
   return (
     <div className="relative mx-auto w-full max-w-[520px]">
-      {/* Soft circular wash behind both mockups, mimics natural light. */}
       <div
         aria-hidden
         className="absolute inset-0 -z-10 rounded-[40px]"
@@ -295,7 +166,6 @@ function HeroVisual() {
             "radial-gradient(50% 50% at 50% 50%, rgba(199, 214, 207, 0.35) 0%, rgba(247, 245, 242, 0) 75%)",
         }}
       />
-
       <div className="relative flex items-end justify-center gap-3 md:gap-5">
         <QRTent />
         <PhoneMockup />
@@ -305,27 +175,16 @@ function HeroVisual() {
 }
 
 function QRTent() {
-  // The QR tent is the platform's primary on-site touchpoint — guests see this
-  // before they ever see the app. Design rule: the QR is the hero. Everything
-  // else (brand, headline, trust copy) plays a supporting role.
   return (
     <div className="relative w-[44%] max-w-[240px] -rotate-1 animate-float-slow md:w-[46%]">
-      {/* Soft cast shadow under the tent — suggests a physical card on a real
-          restaurant table, not a floating UI element. */}
       <div
         aria-hidden
         className="absolute -bottom-2 left-3 right-3 -z-10 h-4 rounded-full bg-slate/15 blur-md"
       />
-
       <div className="relative overflow-hidden rounded-[20px] bg-white p-4 shadow-lift ring-1 ring-umber-soft/30">
-        {/* Compact brand line — present, but compressed so it doesn't compete
-            with the QR. */}
         <div className="flex items-center justify-between">
           <span className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-slate"
-            >
+            <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-slate">
               <svg viewBox="0 0 24 24" width="14" height="14">
                 <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2.2" strokeLinecap="round" />
                 <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
@@ -338,18 +197,11 @@ function QRTent() {
           </span>
         </div>
 
-        {/* Headline — eyebrow + H1 stacked tight. Reads as a single instruction. */}
         <div className="mt-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-umber">
-            Scan to
-          </p>
-          <p className="text-[18px] font-semibold leading-[1.05] tracking-tight text-slate">
-            Order &amp; Pay
-          </p>
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-umber">Scan to</p>
+          <p className="text-[18px] font-semibold leading-[1.05] tracking-tight text-slate">Order &amp; Pay</p>
         </div>
 
-        {/* QR centrepiece — sage halo behind, viewfinder brackets at the
-            corners, embedded TabCall mark in the centre. */}
         <div className="relative mt-3">
           <div
             aria-hidden
@@ -360,8 +212,6 @@ function QRTent() {
             }}
           />
           <div className="relative rounded-xl bg-white p-2 ring-1 ring-umber-soft/30">
-            {/* Scan viewfinder brackets — warm butter accents at corners,
-                signals "this is the scan target". */}
             <ScanBracket pos="tl" />
             <ScanBracket pos="tr" />
             <ScanBracket pos="bl" />
@@ -370,7 +220,6 @@ function QRTent() {
           </div>
         </div>
 
-        {/* Trust line — minimal copy that confirms the action takes seconds. */}
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[9px] font-medium text-slate/55">
           <CameraIcon />
           Point camera · No app needed
@@ -405,33 +254,23 @@ function CameraIcon() {
 }
 
 function QRCodePattern() {
-  // Decorative QR-like grid. 13x13 modules with three locator squares at
-  // corners + a centre knockout where the TabCall mark sits embedded — same
-  // pattern Square / Apple / many hospitality QRs use to signal "this is
-  // OUR QR, not a generic one".
   const SIZE = 13;
-  const CENTER_RADIUS = 1.5; // modules cleared around centre for the brand knockout
+  const CENTER_RADIUS = 1.5;
   const modules: boolean[][] = Array.from({ length: SIZE }, (_, y) =>
     Array.from({ length: SIZE }, (_, x) => {
-      // Three corner locators — TL, TR, BL — each 3x3 with a 1-module ring.
       const inLocator =
         (y < 3 && (x < 3 || x > SIZE - 4)) || (y > SIZE - 4 && x < 3);
       if (inLocator) {
         const ly = y < 3 ? y : y - (SIZE - 3);
         const lx = x < 3 ? x : x > SIZE - 4 ? x - (SIZE - 3) : x;
-        if (ly === 1 && lx === 1) return true; // solid core
-        return ly === 0 || ly === 2 || lx === 0 || lx === 2; // outer ring
+        if (ly === 1 && lx === 1) return true;
+        return ly === 0 || ly === 2 || lx === 0 || lx === 2;
       }
-      // Centre knockout — leave a small square in the middle empty so the
-      // embedded brand mark reads cleanly. Real-world branded QRs can
-      // afford ~20% of the code area lost to error correction.
       const cx = (SIZE - 1) / 2;
       const cy = (SIZE - 1) / 2;
       if (Math.abs(x - cx) <= CENTER_RADIUS && Math.abs(y - cy) <= CENTER_RADIUS) {
         return false;
       }
-      // Density pattern — looks denser than the 11x11 version, more
-      // photo-real.
       return (
         (x * 7 + y * 13 + x * y) % 3 === 0 ||
         (x + y) % 5 === 0 ||
@@ -455,7 +294,6 @@ function QRCodePattern() {
           ))
         )}
       </div>
-      {/* Embedded brand mark in the centre knockout. */}
       <span
         aria-hidden
         className="absolute left-1/2 top-1/2 inline-flex h-[22%] w-[22%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-white ring-1 ring-slate/10"
@@ -475,7 +313,6 @@ function PhoneMockup() {
   return (
     <div className="relative w-[58%] max-w-[270px] translate-y-2 animate-float rounded-[36px] bg-slate p-2 shadow-lift">
       <div className="rounded-[28px] bg-white p-4">
-        {/* Status bar */}
         <div className="flex items-center justify-between text-[10px] text-slate/55">
           <span>9:41</span>
           <span className="flex items-center gap-1">
@@ -506,10 +343,7 @@ function PhoneMockup() {
 function PhoneRow({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
   return (
     <li className="flex items-center gap-3 rounded-xl bg-oat px-3 py-2">
-      <span
-        aria-hidden
-        className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-chartreuse/60 text-slate"
-      >
+      <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-chartreuse/60 text-slate">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -556,55 +390,10 @@ function TrustedStrip() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Feature grid                                                           */
+/* Feature spotlights — 6 blocks with bespoke visuals (matches mockup #2) */
 /* ---------------------------------------------------------------------- */
 
-const FEATURES = [
-  {
-    icon: <QRIcon />,
-    tone: "butter" as const,
-    title: "QR Ordering",
-    body:
-      "Guests browse the digital menu, place orders, and send them directly to your kitchen, all from their table.",
-  },
-  {
-    icon: <SplitCardIcon />,
-    tone: "sage" as const,
-    title: "QR Payments & Bill Splitting",
-    body:
-      "Guests can view the bill, split it, add tips, and pay securely in seconds. Works with all major cards and wallets.",
-  },
-  {
-    icon: <BellIcon />,
-    tone: "butter" as const,
-    title: "Call Waiter",
-    body:
-      "One tap to call a waiter. Reduce wait times and improve guest satisfaction instantly.",
-  },
-  {
-    icon: <StarOutlineIcon />,
-    tone: "butter" as const,
-    title: "Reviews & Feedback",
-    body:
-      "Collect more reviews and feedback from happy guests to grow your reputation.",
-  },
-  {
-    icon: <ChartIcon />,
-    tone: "sage" as const,
-    title: "Analytics & Insights",
-    body:
-      "Track performance, response times, table turnover, and staff productivity in real time.",
-  },
-  {
-    icon: <PlugIcon />,
-    tone: "sage" as const,
-    title: "POS Integrations",
-    body:
-      "Seamlessly integrate with your POS system for real-time orders, menus, and payments.",
-  },
-];
-
-function FeatureGrid() {
+function FeatureSpotlights() {
   return (
     <section id="features" className="bg-oat py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 md:px-8">
@@ -615,49 +404,421 @@ function FeatureGrid() {
           pillEyebrow
         />
 
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <FeatureCard key={f.title} {...f} />
-          ))}
+        <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {PRIMARY_FEATURE_SLUGS.map((slug) => {
+            const f = getFeature(slug)!;
+            return <SpotlightCard key={slug} feature={f} />;
+          })}
         </div>
+
+        <p className="mt-10 text-center text-[13px] text-slate/65">
+          <Link href="/features" className="font-medium text-slate hover:text-umber">
+            See all features →
+          </Link>
+        </p>
       </div>
     </section>
   );
 }
 
-function FeatureCard({
-  icon,
-  tone,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  tone: "butter" | "sage";
-  title: string;
-  body: string;
-}) {
-  const tile =
-    tone === "butter" ? "bg-chartreuse/55 text-slate" : "bg-sea-soft/70 text-slate";
+function SpotlightCard({ feature: f }: { feature: ReturnType<typeof getFeature> & object }) {
   return (
-    <article className="group rounded-2xl border border-umber-soft/30 bg-white p-6 shadow-card transition-all hover:-translate-y-0.5 hover:border-umber-soft/55 hover:shadow-soft md:p-7">
-      <span
-        aria-hidden
-        className={`inline-flex h-12 w-12 items-center justify-center rounded-xl ${tile}`}
-      >
-        {icon}
-      </span>
-      <h3 className="mt-5 text-[18px] font-semibold text-slate md:text-[20px]">{title}</h3>
-      <p className="mt-2 text-[14px] leading-relaxed text-slate/65 md:text-[15px]">{body}</p>
-      <p className="mt-5 text-sm font-medium text-slate transition-colors group-hover:text-umber">
-        Learn more
-        <span aria-hidden className="ml-1 inline-block transition-transform group-hover:translate-x-0.5">→</span>
-      </p>
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-umber-soft/30 bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft">
+      <div className="p-6 md:p-7">
+        <h3 className="text-[18px] font-semibold leading-tight text-slate md:text-[20px]">
+          {f.title}
+        </h3>
+        <p className="mt-2 text-[13px] leading-relaxed text-slate/65 md:text-[14px]">
+          {f.body}
+        </p>
+      </div>
+
+      <div className="relative mt-auto flex h-[260px] items-end justify-center overflow-hidden bg-linen md:h-[280px]">
+        <SpotlightVisual slug={f.slug} />
+      </div>
+
+      <div className="flex items-center justify-between border-t border-umber-soft/30 bg-white p-5 md:px-7">
+        <span
+          aria-hidden
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate text-oat"
+        >
+          <SpotlightIcon slug={f.slug} />
+        </span>
+        <Link
+          href={`/features/${f.slug}`}
+          className="text-[13px] font-medium text-slate transition-colors group-hover:text-umber"
+        >
+          Learn more <span aria-hidden>→</span>
+        </Link>
+      </div>
     </article>
   );
 }
 
+function SpotlightVisual({ slug }: { slug: string }) {
+  switch (slug) {
+    case "qr-payments":
+      return <SpotlightBillPhone />;
+    case "qr-orders":
+      return <SpotlightOrderPhone />;
+    case "digital-menu":
+      return <SpotlightMenuTablet />;
+    case "wishlist":
+      return <SpotlightWishlistPhone />;
+    case "promotions":
+      return <SpotlightPromos />;
+    case "pos-integration":
+      return <SpotlightPos />;
+    default:
+      return null;
+  }
+}
+
+function MiniPhone({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative w-[140px] translate-y-6 rounded-[24px] bg-slate p-1.5 shadow-lift">
+      <div className="rounded-[18px] bg-white p-2.5">{children}</div>
+    </div>
+  );
+}
+
+function SpotlightBillPhone() {
+  return (
+    <div
+      className="relative flex h-full w-full items-end justify-end pr-3"
+      style={{
+        background:
+          "radial-gradient(60% 60% at 70% 60%, rgba(242, 231, 183, 0.35) 0%, rgba(251, 250, 247, 0) 65%)",
+      }}
+    >
+      <MiniPhone>
+        <div className="flex items-center justify-between text-[7px] text-slate/55">
+          <span>9:41</span>
+          <span className="font-semibold text-slate/70">Your Bill</span>
+          <span aria-hidden className="opacity-0">9:41</span>
+        </div>
+        <p className="mt-1 text-center text-[6px] text-umber">Table 12</p>
+        <ul className="mt-2 space-y-1 text-[7px] text-slate/80">
+          <BillMini name="Truffle Pasta" price="$24.00" />
+          <BillMini name="Grilled Salmon" price="$28.00" />
+          <BillMini name="2 × Lemonade" price="$6.00" />
+        </ul>
+        <div className="mt-2 border-t border-slate/10 pt-1.5 text-[6.5px] text-slate/65">
+          <BillMini name="Subtotal" price="$58.00" />
+          <BillMini name="Tax" price="$4.64" />
+          <BillMini name="Tip" price="$8.00" />
+        </div>
+        <div className="mt-1 border-t border-slate/10 pt-1.5 text-[8px] font-semibold text-slate">
+          <BillMini name="Total" price="$70.64" />
+        </div>
+        <button type="button" className="mt-2 w-full rounded-md bg-slate py-1 text-[7px] font-semibold text-oat">
+            Pay
+        </button>
+        <p className="mt-1 text-center text-[6px] text-slate/55">Pay with Card</p>
+      </MiniPhone>
+    </div>
+  );
+}
+
+function BillMini({ name, price }: { name: string; price: string }) {
+  return (
+    <li className="flex items-baseline justify-between">
+      <span>{name}</span>
+      <span className="font-mono tabular-nums">{price}</span>
+    </li>
+  );
+}
+
+function SpotlightOrderPhone() {
+  return (
+    <div
+      className="relative flex h-full w-full items-end justify-center"
+      style={{
+        background:
+          "radial-gradient(50% 70% at 80% 30%, rgba(199, 214, 207, 0.55) 0%, rgba(251, 250, 247, 0) 65%), radial-gradient(40% 50% at 20% 80%, rgba(242, 231, 183, 0.4) 0%, rgba(251, 250, 247, 0) 65%)",
+      }}
+    >
+      {/* Decorative plant silhouette top-right */}
+      <span
+        aria-hidden
+        className="absolute right-3 top-3 h-12 w-12 rounded-full bg-sea-soft/70 blur-sm"
+      />
+      <MiniPhone>
+        <div className="flex items-center justify-between text-[7px] text-slate/55">
+          <span>9:41</span>
+          <span className="font-semibold text-slate/70">Our Menu</span>
+          <span aria-hidden className="opacity-0">9:41</span>
+        </div>
+        <div className="mt-2 flex gap-1 text-[6px]">
+          {["All", "Starters", "Mains", "Drinks"].map((t, i) => (
+            <span
+              key={t}
+              className={
+                i === 0
+                  ? "rounded-full bg-slate px-1.5 py-0.5 font-semibold text-oat"
+                  : "rounded-full bg-oat px-1.5 py-0.5 text-slate/65"
+              }
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+        <p className="mt-2 text-[7px] font-semibold uppercase tracking-[0.14em] text-umber">Popular</p>
+        <ul className="mt-1 space-y-1">
+          {[
+            { n: "Burrata Salad", p: "$14" },
+            { n: "Truffle Pasta", p: "$24" },
+            { n: "Grilled Salmon", p: "$28" },
+          ].map((it) => (
+            <li key={it.n} className="flex items-center gap-1.5 rounded-md bg-oat p-1">
+              <span aria-hidden className="h-5 w-5 shrink-0 rounded bg-chartreuse/60" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[7px] font-semibold text-slate">{it.n}</p>
+                <p className="text-[6px] text-slate/55">{it.p}</p>
+              </div>
+              <span className="rounded bg-slate px-1 py-0.5 text-[6px] font-semibold text-oat">Add</span>
+            </li>
+          ))}
+        </ul>
+      </MiniPhone>
+    </div>
+  );
+}
+
+function SpotlightMenuTablet() {
+  return (
+    <div
+      className="relative flex h-full w-full items-end justify-end pr-3"
+      style={{
+        background:
+          "radial-gradient(50% 50% at 70% 60%, rgba(199, 214, 207, 0.45) 0%, rgba(251, 250, 247, 0) 65%)",
+      }}
+    >
+      <div className="w-[200px] translate-y-6 rounded-[18px] bg-slate p-1.5 shadow-lift">
+        <div className="rounded-[12px] bg-white p-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[8px] font-semibold text-slate">Our Menu</p>
+            <div className="flex gap-0.5 text-[6px]">
+              {["Starters", "Mains", "Drinks", "Desserts"].map((t, i) => (
+                <span
+                  key={t}
+                  className={
+                    i === 1
+                      ? "rounded bg-slate px-1 py-0.5 font-semibold text-oat"
+                      : "rounded bg-oat px-1 py-0.5 text-slate/65"
+                  }
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {[
+              { n: "Truffle Pasta", p: "$24.00" },
+              { n: "Grilled Salmon", p: "$28.00" },
+            ].map((it) => (
+              <li key={it.n} className="flex items-start gap-1.5 rounded-md bg-oat p-1.5">
+                <span aria-hidden className="h-8 w-8 shrink-0 rounded bg-chartreuse/60" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <p className="truncate text-[7px] font-semibold text-slate">{it.n}</p>
+                    <span className="text-[7px] font-semibold text-slate">{it.p}</span>
+                  </div>
+                  <p className="line-clamp-2 text-[6px] text-slate/55">Description placeholder lorem ipsum dolor.</p>
+                  <button type="button" className="mt-0.5 rounded bg-slate px-1 py-0.5 text-[6px] font-semibold text-oat">
+                    Add to Order
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpotlightWishlistPhone() {
+  return (
+    <div
+      className="relative flex h-full w-full items-end justify-center"
+      style={{
+        background:
+          "radial-gradient(50% 60% at 50% 50%, rgba(242, 231, 183, 0.45) 0%, rgba(251, 250, 247, 0) 65%)",
+      }}
+    >
+      <MiniPhone>
+        <div className="flex items-center justify-between text-[7px] text-slate/55">
+          <span>9:41</span>
+          <span className="font-semibold text-slate/70">My Wishlist</span>
+          <span aria-hidden className="opacity-0">9:41</span>
+        </div>
+        <ul className="mt-3 space-y-1">
+          {[
+            { n: "Spicy Tuna Roll", p: "$16.00" },
+            { n: "Wagyu Steak", p: "$42.00" },
+            { n: "Cheesecake", p: "$8.00" },
+          ].map((it) => (
+            <li key={it.n} className="flex items-center gap-1.5 rounded-md bg-oat p-1">
+              <span aria-hidden className="h-5 w-5 shrink-0 rounded bg-chartreuse/60" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[7px] font-semibold text-slate">{it.n}</p>
+                <p className="text-[6px] text-slate/55">{it.p}</p>
+              </div>
+              <span aria-hidden className="text-slate/60">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className="mt-3 w-full rounded-md bg-chartreuse py-1 text-[7px] font-semibold text-slate">
+          Show to Waiter
+        </button>
+      </MiniPhone>
+    </div>
+  );
+}
+
+function SpotlightPromos() {
+  return (
+    <div className="relative flex h-full w-full items-end justify-center p-4">
+      <div className="w-full max-w-[220px] translate-y-2 space-y-2">
+        <div className="rounded-xl bg-coral-soft/80 p-3 shadow-card">
+          <p className="text-[12px] font-semibold leading-tight text-slate">Happy Hour</p>
+          <p className="text-[8px] text-slate/70">4PM - 7PM</p>
+          <p className="mt-1.5 text-[11px] font-semibold text-slate">50% OFF</p>
+          <p className="text-[8px] text-slate/70">Selected Cocktails</p>
+          <button type="button" className="mt-2 rounded-full bg-slate px-2 py-0.5 text-[7px] font-semibold text-oat">
+            Order Now
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-white p-2 ring-1 ring-umber-soft/30">
+            <p className="text-[7px] font-semibold text-slate">Business Lunch</p>
+            <p className="text-[10px] font-semibold text-slate">$12.90</p>
+            <p className="text-[6px] text-slate/55">Mon - Fri</p>
+          </div>
+          <div className="rounded-lg bg-white p-2 ring-1 ring-umber-soft/30">
+            <p className="text-[7px] font-semibold text-slate">New Dish</p>
+            <p className="text-[7px] text-slate">Truffle Risotto</p>
+            <button type="button" className="mt-1 rounded bg-slate px-1 py-0.5 text-[6px] font-semibold text-oat">
+              Order Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpotlightPos() {
+  return (
+    <div
+      className="relative flex h-full w-full items-end justify-end pr-3"
+      style={{
+        background:
+          "radial-gradient(50% 50% at 70% 60%, rgba(199, 214, 207, 0.4) 0%, rgba(251, 250, 247, 0) 65%)",
+      }}
+    >
+      <div className="w-[200px] translate-y-6">
+        <div className="rounded-[14px] bg-slate p-1.5 shadow-lift">
+          <div className="rounded-[8px] bg-white p-2">
+            <div className="flex items-center justify-between text-[7px] text-slate/55">
+              <span className="font-semibold text-slate">New Order</span>
+              <span>Table 12</span>
+            </div>
+            <table className="mt-1.5 w-full text-[6.5px]">
+              <thead className="text-slate/55">
+                <tr>
+                  <th className="text-left font-medium">Item</th>
+                  <th className="text-right font-medium">Price</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate">
+                {["Truffle Pasta", "Burrata Salad", "Lemonade", "Grilled Salmon"].map((n) => (
+                  <tr key={n} className="border-t border-slate/8">
+                    <td className="py-1">{n}</td>
+                    <td className="py-1 text-right font-mono tabular-nums">$0.00</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button type="button" className="mt-2 w-full rounded bg-slate py-1 text-[7px] font-semibold text-oat">
+              Send
+            </button>
+          </div>
+        </div>
+        {/* POS terminal stand */}
+        <div aria-hidden className="mx-auto mt-1 h-4 w-12 rounded-b-lg bg-slate" />
+      </div>
+    </div>
+  );
+}
+
+function SpotlightIcon({ slug }: { slug: string }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none" as const,
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (slug) {
+    case "qr-payments":
+      return (
+        <svg {...common}>
+          <rect x="3" y="5" width="13" height="11" rx="2" />
+          <path d="M3 9h13" />
+          <rect x="9" y="11" width="12" height="9" rx="2" />
+        </svg>
+      );
+    case "qr-orders":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "digital-menu":
+      return (
+        <svg {...common}>
+          <circle cx="13.5" cy="6.5" r="2.5" />
+          <path d="M5 11h11M5 15h7M5 19h13" />
+        </svg>
+      );
+    case "wishlist":
+      return (
+        <svg {...common}>
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+      );
+    case "promotions":
+      return (
+        <svg {...common}>
+          <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        </svg>
+      );
+    case "pos-integration":
+      return (
+        <svg {...common}>
+          <path d="M7 8H4l3-4M17 16h3l-3 4M4 8h12M20 16H8" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 /* ---------------------------------------------------------------------- */
-/* How TabCall works                                                      */
+/* How TabCall works (compact summary; full page at /how-it-works)         */
 /* ---------------------------------------------------------------------- */
 
 const STEPS = [
@@ -709,9 +870,15 @@ function HowItWorks() {
                   </li>
                 ))}
               </ol>
+
+              <Link
+                href="/how-it-works"
+                className="mt-7 inline-flex items-center gap-1.5 text-[13px] font-medium text-slate hover:text-umber"
+              >
+                See the full flow <span aria-hidden>→</span>
+              </Link>
             </div>
 
-            {/* Right: menu phone mockup */}
             <MenuPhoneMockup />
           </div>
         </div>
@@ -765,10 +932,7 @@ function MenuPhoneMockup() {
           <ul className="mt-2 space-y-2">
             {items.map((it) => (
               <li key={it.name} className="flex items-center gap-3 rounded-2xl bg-oat p-2.5">
-                <span
-                  aria-hidden
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-chartreuse/60 text-slate"
-                >
+                <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-chartreuse/60 text-slate">
                   <PlateIcon />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -776,10 +940,7 @@ function MenuPhoneMockup() {
                   <p className="text-[9px] text-slate/55">{it.sub}</p>
                 </div>
                 <span className="text-[10px] font-semibold text-slate">{it.price}</span>
-                <button
-                  type="button"
-                  className="rounded-full bg-slate px-2.5 py-1 text-[9px] font-semibold text-oat"
-                >
+                <button type="button" className="rounded-full bg-slate px-2.5 py-1 text-[9px] font-semibold text-oat">
                   Add
                 </button>
               </li>
@@ -792,7 +953,7 @@ function MenuPhoneMockup() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Metrics strip                                                          */
+/* Metrics                                                                */
 /* ---------------------------------------------------------------------- */
 
 const METRICS = [
@@ -810,10 +971,7 @@ function Metrics() {
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
             {METRICS.map((m) => (
               <div key={m.label} className="text-center">
-                <span
-                  aria-hidden
-                  className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/80 text-slate ring-1 ring-white"
-                >
+                <span aria-hidden className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/80 text-slate ring-1 ring-white">
                   {m.icon}
                 </span>
                 <p className="mt-4 text-[28px] font-semibold tracking-tight text-slate md:text-[36px]">
@@ -901,7 +1059,6 @@ function Testimonials() {
           ))}
         </div>
 
-        {/* Pagination dots — purely decorative */}
         <div className="mt-8 flex items-center justify-center gap-2" aria-hidden>
           <span className="h-1.5 w-6 rounded-full bg-slate" />
           <span className="h-1.5 w-1.5 rounded-full bg-umber-soft/60" />
@@ -925,7 +1082,7 @@ function Stars() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Pricing — preserved from prior build; trimmed visual treatment to fit  */
+/* Pricing                                                                */
 /* ---------------------------------------------------------------------- */
 
 const PRICING_TIERS: {
@@ -1043,9 +1200,9 @@ function Pricing() {
         </div>
 
         <p className="mt-10 text-center text-xs text-slate/55">
-          Growth and Pro start with a 14-day free trial. No card needed to
-          start. All plans run month to month. Stripe processing (2.9% + 30¢)
-          is passed through at cost.
+          Growth and Pro start with a 14-day free trial. No card needed to start.
+          All plans run month to month. Stripe processing (2.9% + 30¢) is passed
+          through at cost.
         </p>
       </div>
     </section>
@@ -1087,15 +1244,9 @@ function FinalCta() {
               </div>
 
               <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-slate/65">
-                <li className="inline-flex items-center gap-1.5">
-                  <CheckDot /> Free 14-day trial
-                </li>
-                <li className="inline-flex items-center gap-1.5">
-                  <CheckDot /> No credit card required
-                </li>
-                <li className="inline-flex items-center gap-1.5">
-                  <CheckDot /> Setup in minutes
-                </li>
+                <li className="inline-flex items-center gap-1.5"><CheckDot /> Free 14-day trial</li>
+                <li className="inline-flex items-center gap-1.5"><CheckDot /> No credit card required</li>
+                <li className="inline-flex items-center gap-1.5"><CheckDot /> Setup in minutes</li>
               </ul>
             </div>
 
@@ -1107,8 +1258,6 @@ function FinalCta() {
                   "linear-gradient(135deg, rgba(199, 214, 207, 0.6) 0%, rgba(242, 231, 183, 0.5) 100%)",
               }}
             >
-              {/* Decorative dining vignette: stylised plates + cutlery so we
-                  do not depend on an image asset. */}
               <DiningVignette />
             </div>
           </div>
@@ -1137,128 +1286,11 @@ function DiningVignette() {
 
 function CheckDot() {
   return (
-    <span
-      aria-hidden
-      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-slate"
-    >
+    <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-slate">
       <svg width="9" height="9" viewBox="0 0 12 12">
         <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Footer                                                                 */
-/* ---------------------------------------------------------------------- */
-
-const FOOTER_COLUMNS = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "#features" },
-      { label: "How It Works", href: "#how" },
-      { label: "Pricing", href: "#pricing" },
-      { label: "Integrations", href: "#features" },
-      { label: "Updates", href: "#" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Blog", href: "#" },
-      { label: "Help Center", href: "#" },
-      { label: "Guides", href: "#" },
-      { label: "Videos", href: "#" },
-      { label: "Careers", href: "#" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About Us", href: "#" },
-      { label: "Contact Us", href: "mailto:hello@tab-call.com" },
-      { label: "Privacy Policy", href: "/terms" },
-      { label: "Terms of Service", href: "/terms" },
-    ],
-  },
-];
-
-function Footer() {
-  return (
-    <footer className="border-t border-umber-soft/40 bg-oat">
-      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr] md:gap-8 md:px-8 md:py-16">
-        <div>
-          <Logo variant="dark" />
-          <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-slate/65">
-            The all-in-one hospitality platform for restaurants, bars,
-            lounges, and cafés.
-          </p>
-          <div className="mt-5 flex items-center gap-3">
-            <SocialIcon label="Facebook"><FacebookIcon /></SocialIcon>
-            <SocialIcon label="Instagram"><InstagramIcon /></SocialIcon>
-            <SocialIcon label="LinkedIn"><LinkedInIcon /></SocialIcon>
-          </div>
-        </div>
-
-        {FOOTER_COLUMNS.map((col) => (
-          <div key={col.title}>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-umber">
-              {col.title}
-            </p>
-            <ul className="mt-4 space-y-2.5">
-              {col.links.map((l) => (
-                <li key={l.label}>
-                  {l.href.startsWith("/") ? (
-                    <Link
-                      href={l.href}
-                      className="text-[13px] text-slate/70 hover:text-slate"
-                    >
-                      {l.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={l.href}
-                      className="text-[13px] text-slate/70 hover:text-slate"
-                    >
-                      {l.label}
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-umber">
-            Stay in the loop
-          </p>
-          <p className="mt-4 text-[13px] leading-relaxed text-slate/65">
-            Get the latest updates, tips, and insights for modern hospitality.
-          </p>
-          <NewsletterForm />
-        </div>
-      </div>
-
-      <div className="border-t border-umber-soft/30">
-        <div className="mx-auto max-w-7xl px-5 py-6 text-center text-[12px] text-slate/55 md:px-8">
-          © {new Date().getFullYear()} TabCall. All rights reserved.
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-function SocialIcon({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <a
-      href="#"
-      aria-label={label}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate ring-1 ring-umber-soft/40 hover:bg-oat"
-    >
-      {children}
-    </a>
   );
 }
 
@@ -1291,7 +1323,7 @@ function SectionHeader({
           {eyebrow}
         </p>
       )}
-      <h2 className={`mt-4 text-[28px] font-semibold leading-[1.1] tracking-tight text-slate md:text-[36px] lg:text-[40px] ${left ? "" : ""}`}>
+      <h2 className="mt-4 text-[28px] font-semibold leading-[1.1] tracking-tight text-slate md:text-[36px] lg:text-[40px]">
         {title}
       </h2>
       {sub ? (
@@ -1304,7 +1336,7 @@ function SectionHeader({
 }
 
 /* ---------------------------------------------------------------------- */
-/* Icons                                                                  */
+/* Icons used in the hero phone mockup + feature shortcuts                */
 /* ---------------------------------------------------------------------- */
 
 function BellIcon() {
@@ -1316,10 +1348,9 @@ function BellIcon() {
   );
 }
 
-function ForkKnifeIcon({ small = false }: { small?: boolean }) {
-  const s = small ? 14 : 18;
+function ForkKnifeIcon() {
   return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M7 3v8a2 2 0 0 0 2 2v8" />
       <path d="M5 3v6a2 2 0 0 0 2 2" />
       <path d="M11 3v6a2 2 0 0 1-2 2" />
@@ -1328,10 +1359,9 @@ function ForkKnifeIcon({ small = false }: { small?: boolean }) {
   );
 }
 
-function CardIcon({ small = false }: { small?: boolean }) {
-  const s = small ? 14 : 18;
+function CardIcon() {
   return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <rect x="2" y="5" width="20" height="14" rx="2.5" />
       <path d="M2 10h20" />
       <path d="M6 15h4" />
@@ -1339,27 +1369,10 @@ function CardIcon({ small = false }: { small?: boolean }) {
   );
 }
 
-function StarIcon({ small = false }: { small?: boolean }) {
-  const s = small ? 14 : 18;
+function StarIcon() {
   return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M12 2l2.9 6.3 6.9.6-5.2 4.7 1.6 6.8L12 17l-6.2 3.4 1.6-6.8L2.2 8.9l6.9-.6L12 2z" />
-    </svg>
-  );
-}
-
-function StarOutlineIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 2l2.9 6.3 6.9.6-5.2 4.7 1.6 6.8L12 17l-6.2 3.4 1.6-6.8L2.2 8.9l6.9-.6L12 2z" />
-    </svg>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.13.9.36 1.78.7 2.6a2 2 0 0 1-.45 2.11l-1 1a16 16 0 0 0 6 6l1-1a2 2 0 0 1 2.11-.45c.82.34 1.7.57 2.6.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }
@@ -1369,50 +1382,6 @@ function ReceiptIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z" />
       <path d="M9 7h6M9 11h6M9 15h4" />
-    </svg>
-  );
-}
-
-function QRIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <path d="M14 14h3v3h-3zM20 14h1v1h-1zM14 20h1v1h-1zM18 17h3M17 17v3M20 20h1v1h-1z" />
-    </svg>
-  );
-}
-
-function SplitCardIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="5" width="13" height="11" rx="2" />
-      <path d="M3 9h13" />
-      <rect x="9" y="11" width="12" height="9" rx="2" />
-      <path d="M9 14h12" />
-    </svg>
-  );
-}
-
-function ChartIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M4 20V8" />
-      <path d="M10 20V4" />
-      <path d="M16 20v-8" />
-      <path d="M22 20V14" />
-      <path d="M2 20h22" />
-    </svg>
-  );
-}
-
-function PlugIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 2v6M15 2v6" />
-      <path d="M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8z" />
-      <path d="M12 17v5" />
     </svg>
   );
 }
@@ -1460,32 +1429,6 @@ function PeopleIcon() {
       <path d="M3 20c0-3 2.7-5.5 6-5.5s6 2.5 6 5.5" />
       <circle cx="17" cy="10" r="2.6" />
       <path d="M15 20c0-2 1.5-4 4-4s4 2 4 4" />
-    </svg>
-  );
-}
-
-function FacebookIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M13 22v-9h3l1-4h-4V6.5c0-1 .3-1.7 1.7-1.7H17V1.4C16.6 1.3 15.4 1.2 14 1.2c-3 0-5 1.8-5 5.1V9H6v4h3v9h4z" />
-    </svg>
-  );
-}
-
-function InstagramIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function LinkedInIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 24h5V8H0v16zm7.5-16v16h5v-8.4c0-2.2.4-4.3 3.1-4.3 2.7 0 2.7 2.5 2.7 4.5V24h5V13c0-5-1.1-8.6-6.4-8.6-2.6 0-4.3 1.4-5 2.7H12V8H7.5z" />
     </svg>
   );
 }
