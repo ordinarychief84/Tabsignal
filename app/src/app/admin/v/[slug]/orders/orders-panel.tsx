@@ -1,159 +1,252 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-type Order = {
+// V2 Orders queue panel. Mirrors the live-requests page interaction model:
+// tabs across the top, polling every 5s, optimistic action buttons. Action
+// validation lives in /api/admin/v/[slug]/orders/[id] — this panel just
+// pings the right verb and re-loads.
+
+export type OrderItem = {
   id: string;
-  status: "PENDING" | "READY" | "PICKED_UP" | "CANCELED";
-  pickupCode: string | null;
-  items: unknown;
-  totalCents: number;
-  tipCents: number;
-  guestName: string | null;
-  tableLabel: string | null;
-  paidAt: string | null;
-  readyAt: string | null;
-  pickedUpAt: string | null;
-  createdAt: string;
+  nameSnapshot: string;
+  priceCents: number;
+  quantity: number;
+  notes: string | null;
+  status: "NEW" | "ACCEPTED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
 };
 
-type Line = { menuItemId: string; name: string; quantity: number; unitCents: number };
+export type AdminOrder = {
+  id: string;
+  status: "NEW" | "ACCEPTED" | "PREPARING" | "READY" | "SERVED" | "CANCELLED";
+  tableLabel: string | null;
+  subtotalCents: number;
+  totalCents: number;
+  itemCount: number;
+  createdAt: string;
+  billId: string | null;
+  billStatus: string | null;
+  items: OrderItem[];
+};
+
+type Tab = "all" | "open" | "preparing" | "ready" | "completed";
+
+const TAB_ORDER: { id: Tab; label: string }[] = [
+  { id: "all",        label: "All"        },
+  { id: "open",       label: "Open"       },
+  { id: "preparing",  label: "Preparing"  },
+  { id: "ready",      label: "Ready"      },
+  { id: "completed",  label: "Completed"  },
+];
+
+const POLL_INTERVAL_MS = 5_000;
 
 function dollars(cents: number): string {
+  if (cents < 0) return `−$${(Math.abs(cents) / 100).toFixed(2)}`;
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function parseLines(json: unknown): Line[] {
-  if (!Array.isArray(json)) return [];
-  return json.flatMap((x: unknown) => {
-    if (!x || typeof x !== "object") return [];
-    const o = x as Record<string, unknown>;
-    if (typeof o.name !== "string" || typeof o.quantity !== "number" || typeof o.unitCents !== "number") return [];
-    return [{
-      menuItemId: typeof o.menuItemId === "string" ? o.menuItemId : "",
-      name: o.name,
-      quantity: o.quantity,
-      unitCents: o.unitCents,
-    }];
-  });
+function fmtTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-export function OrdersPanel({ slug }: { slug: string }) {
-  const [orders, setOrders] = useState<Order[]>([]);
+function bucketFor(o: AdminOrder): Exclude<Tab, "all"> {
+  if (o.status === "NEW" || o.status === "ACCEPTED") return "open";
+  if (o.status === "PREPARING") return "preparing";
+  if (o.status === "READY") return "ready";
+  return "completed";
+}
+
+export function OrdersPanel({
+  slug,
+  initial,
+}: {
+  slug: string;
+  initial: AdminOrder[];
+}) {
+  const [orders, setOrders] = useState<AdminOrder[]>(initial);
+  const [tab, setTab] = useState<Tab>("all");
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/v/${slug}/preorders`);
+      const res = await fetch(`/api/admin/v/${slug}/orders`, { cache: "no-store" });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
-      setOrders(body.orders);
+      setOrders(body.orders as AdminOrder[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }
-  }
+  }, [slug]);
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 5000);
+    const t = setInterval(load, POLL_INTERVAL_MS);
     return () => clearInterval(t);
-  }, []);
+  }, [load]);
 
-  async function patch(id: string, status: Order["status"]) {
-    try {
-      const res = await fetch(`/api/admin/v/${slug}/preorders/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) {
+  const patch = useCallback(
+    async (id: string, status: AdminOrder["status"]) => {
+      setPendingId(id);
+      setError(null);
+      try {
+        const res = await fetch(`/api/admin/v/${slug}/orders/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
+        if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
+        await load();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed");
+      } finally {
+        setPendingId(null);
       }
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-    }
-  }
+    },
+    [slug, load]
+  );
 
-  const pending = orders.filter(o => o.status === "PENDING");
-  const ready = orders.filter(o => o.status === "READY");
-  const done = orders.filter(o => o.status === "PICKED_UP");
+  const filtered = useMemo(() => {
+    if (tab === "all") return orders;
+    return orders.filter(o => bucketFor(o) === tab);
+  }, [orders, tab]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {error ? (
         <p className="rounded-lg border border-coral/40 bg-coral/5 px-4 py-3 text-sm text-coral">{error}</p>
       ) : null}
 
-      <Section title="Making" empty="No pending orders.">
-        {pending.map(o => <Card key={o.id} order={o} action="ready" onAction={() => patch(o.id, "READY")} />)}
-      </Section>
+      <nav className="flex gap-1 overflow-x-auto">
+        {TAB_ORDER.map(t => {
+          const active = t.id === tab;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={[
+                "whitespace-nowrap rounded-full px-4 py-1.5 text-sm transition-colors",
+                active
+                  ? "bg-slate text-oat"
+                  : "border border-slate/10 bg-white text-slate/70 hover:bg-slate/5",
+              ].join(" ")}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
 
-      <Section title="Ready for pickup" empty="Nothing ready.">
-        {ready.map(o => <Card key={o.id} order={o} action="pickup" onAction={() => patch(o.id, "PICKED_UP")} />)}
-      </Section>
-
-      <Section title="Picked up · last hour" empty="—">
-        {done.map(o => <Card key={o.id} order={o} action={null} onAction={() => {}} />)}
-      </Section>
+      {filtered.length === 0 ? (
+        <p className="rounded-2xl border border-slate/10 bg-white px-5 py-8 text-center text-sm text-slate/50">
+          No orders in this bucket.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map(o => (
+            <OrderRow
+              key={o.id}
+              order={o}
+              pending={pendingId === o.id}
+              onPatch={status => patch(o.id, status)}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-function Section({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
-  const arr = Array.isArray(children) ? children : [children];
-  const visible = arr.filter(Boolean);
-  return (
-    <section>
-      <h2 className="mb-2 text-[11px] uppercase tracking-[0.16em] text-umber">{title}</h2>
-      {visible.length === 0 ? (
-        <p className="rounded-lg border border-slate/10 bg-white px-5 py-4 text-sm text-slate/50">{empty}</p>
-      ) : (
-        <div className="space-y-2">{visible}</div>
-      )}
-    </section>
-  );
+function statusBadge(status: AdminOrder["status"]) {
+  switch (status) {
+    case "NEW":       return { label: "New",       cls: "bg-chartreuse/30 text-slate" };
+    case "ACCEPTED":  return { label: "Accepted",  cls: "bg-sea/20 text-slate" };
+    case "PREPARING": return { label: "Preparing", cls: "bg-umber/20 text-umber" };
+    case "READY":     return { label: "Ready",     cls: "bg-coral/20 text-coral" };
+    case "SERVED":    return { label: "Served",    cls: "bg-slate/10 text-slate/60" };
+    case "CANCELLED": return { label: "Cancelled", cls: "bg-slate/10 text-slate/40 line-through" };
+  }
 }
 
-function Card({
+function OrderRow({
   order,
-  action,
-  onAction,
+  pending,
+  onPatch,
 }: {
-  order: Order;
-  action: "ready" | "pickup" | null;
-  onAction: () => void;
+  order: AdminOrder;
+  pending: boolean;
+  onPatch: (status: AdminOrder["status"]) => void;
 }) {
-  const lines = parseLines(order.items);
+  const badge = statusBadge(order.status);
+  const nextActions: { label: string; status: AdminOrder["status"]; tone: "primary" | "secondary" | "danger" }[] = [];
+  if (order.status === "NEW")       nextActions.push({ label: "Accept",     status: "ACCEPTED",  tone: "primary" });
+  if (order.status === "ACCEPTED")  nextActions.push({ label: "Preparing",  status: "PREPARING", tone: "primary" });
+  if (order.status === "PREPARING") nextActions.push({ label: "Mark ready", status: "READY",     tone: "primary" });
+  if (order.status === "READY")     nextActions.push({ label: "Mark served", status: "SERVED",   tone: "primary" });
+  if (order.status !== "SERVED" && order.status !== "CANCELLED") {
+    nextActions.push({ label: "Cancel", status: "CANCELLED", tone: "danger" });
+  }
+
   return (
-    <article className="rounded-2xl border border-slate/10 bg-white p-5">
-      <header className="flex items-baseline justify-between">
-        <div>
-          <p className="font-mono text-2xl tracking-widest">{order.pickupCode}</p>
-          <p className="text-xs text-slate/50">
-            {order.guestName ?? "(no name)"} · {dollars(order.totalCents)}
+    <li className="rounded-2xl border border-slate/10 bg-white px-5 py-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-sm text-slate/40">#{order.id.slice(-6)}</span>
+          <span className="text-sm text-slate">
+            {order.tableLabel ? `Table ${order.tableLabel}` : "No table"}
+          </span>
+          <span className={["rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wider", badge.cls].join(" ")}>
+            {badge.label}
+          </span>
+          {order.billStatus ? (
+            <span className="rounded-full bg-slate/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate/50">
+              Bill {order.billStatus}
+            </span>
+          ) : null}
+        </div>
+        <div className="text-right">
+          <p className="font-mono text-sm tabular-nums text-slate">{dollars(order.totalCents)}</p>
+          <p className="text-[11px] text-slate/40">
+            {order.itemCount} {order.itemCount === 1 ? "item" : "items"} · {fmtTime(order.createdAt)}
           </p>
         </div>
-        {action === "ready" ? (
-          <button onClick={onAction} className="rounded-full bg-slate px-4 py-1.5 text-sm text-oat hover:bg-slate/90">
-            Mark ready
-          </button>
-        ) : null}
-        {action === "pickup" ? (
-          <button onClick={onAction} className="rounded-full bg-chartreuse px-4 py-1.5 text-sm text-slate hover:bg-chartreuse/80">
-            Picked up
-          </button>
-        ) : null}
       </header>
+
       <ul className="mt-3 space-y-1 text-sm">
-        {lines.map((l, i) => (
-          <li key={i} className="text-slate/80">
-            <span className="text-slate/40">{l.quantity}× </span>
-            {l.name}
+        {order.items.map(i => (
+          <li key={i.id} className="text-slate/80">
+            <span className="text-slate/40">{i.quantity}× </span>
+            {i.nameSnapshot}
+            {i.notes ? <span className="ml-2 text-[11px] text-umber">— {i.notes}</span> : null}
           </li>
         ))}
       </ul>
-    </article>
+
+      {nextActions.length > 0 ? (
+        <footer className="mt-4 flex flex-wrap gap-2">
+          {nextActions.map(a => (
+            <button
+              key={a.status}
+              type="button"
+              disabled={pending}
+              onClick={() => onPatch(a.status)}
+              className={[
+                "rounded-full px-4 py-1.5 text-sm transition-colors disabled:opacity-50",
+                a.tone === "primary"
+                  ? "bg-slate text-oat hover:bg-slate/90"
+                  : a.tone === "danger"
+                  ? "border border-coral/40 bg-white text-coral hover:bg-coral/5"
+                  : "border border-slate/10 bg-white text-slate hover:bg-slate/5",
+              ].join(" ")}
+            >
+              {a.label}
+            </button>
+          ))}
+        </footer>
+      ) : null}
+    </li>
   );
 }

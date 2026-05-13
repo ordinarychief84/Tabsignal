@@ -69,6 +69,7 @@ export default async function MenuPage({ params }: { params: { slug: string } })
           priceCents: i.priceCents,
           categoryId: i.categoryId,
           isActive: i.isActive,
+          isFeatured: i.isFeatured,
           ageRestricted: i.ageRestricted,
           sortOrder: i.sortOrder,
           imageUrl: i.imageUrl,

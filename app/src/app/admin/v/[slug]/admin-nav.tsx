@@ -18,10 +18,15 @@ export function AdminNav({
   const items: { href: string; label: string; growth?: boolean; pro?: boolean }[] = [
     { href: `/admin/v/${slug}`,             label: "Dashboard"  },
     { href: `/admin/v/${slug}/requests`,    label: "Live requests" },
+    // Guest Commerce Module (v2). Slotted right after Live requests so a
+    // manager can pivot from "who's calling" to "what they ordered" in one
+    // glance. Free-tier — no plan lock badge.
+    { href: `/admin/v/${slug}/orders`,      label: "Orders"     },
+    { href: `/admin/v/${slug}/bills`,       label: "Bills"      },
     { href: `/admin/v/${slug}/analytics`,   label: "Analytics", growth: true },
     { href: `/admin/v/${slug}/menu`,        label: "Menu",      growth: true },
     { href: `/admin/v/${slug}/specials`,    label: "Specials"   },
-    { href: `/admin/v/${slug}/orders`,      label: "Orders",    growth: true },
+    { href: `/admin/v/${slug}/promotions`,  label: "Promotions" },
     { href: `/admin/v/${slug}/reservations`, label: "Reservations", pro: true },
     { href: `/admin/v/${slug}/regulars`,    label: "Regulars",  pro: true },
     { href: `/admin/v/${slug}/reviews`,     label: "Reviews"    },
@@ -29,9 +34,11 @@ export function AdminNav({
     { href: `/admin/v/${slug}/audit`,       label: "Audit log"  },
     { href: `/admin/v/${slug}/tips`,        label: "Tips",      growth: true },
     { href: `/admin/v/${slug}/tables`,      label: "Tables"     },
+    { href: `/admin/v/${slug}/pos`,         label: "POS"        },
     { href: `/admin/v/${slug}/qr-tents`,    label: "QR tents"   },
     { href: `/admin/v/${slug}/billing`,     label: "Billing"    },
     { href: `/admin/v/${slug}/settings`,    label: "Settings"   },
+    { href: `/admin/v/${slug}/branding`,    label: "Branding"   },
   ];
 
   function isActive(href: string) {

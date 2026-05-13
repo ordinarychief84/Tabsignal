@@ -43,8 +43,10 @@ export type Permission =
   | "billing.change_plan"
   // Menu + ops
   | "menu.edit"
+  | "menu.feature_toggle"
   | "tables.edit"
   | "specials.edit"
+  | "promotions.manage"
   | "tip_pools.manage"
   | "preorders.manage"
   | "reservations.manage"
@@ -53,6 +55,13 @@ export type Permission =
   | "regulars.view"
   | "regulars.edit"
   | "audit.view"
+  // Branding
+  | "branding.manage"
+  // Integrations
+  | "pos.manage"
+  // Guest Commerce Module (Orders + Bills V2)
+  | "orders.manage"
+  | "bills.view"
   // Floor (handled mostly by /staff app, listed for completeness)
   | "requests.acknowledge"
   | "requests.handoff"
@@ -81,8 +90,10 @@ const ALL_PERMS = new Set<Permission>([
   "billing.view",
   "billing.change_plan",
   "menu.edit",
+  "menu.feature_toggle",
   "tables.edit",
   "specials.edit",
+  "promotions.manage",
   "tip_pools.manage",
   "preorders.manage",
   "reservations.manage",
@@ -91,6 +102,10 @@ const ALL_PERMS = new Set<Permission>([
   "regulars.view",
   "regulars.edit",
   "audit.view",
+  "branding.manage",
+  "pos.manage",
+  "orders.manage",
+  "bills.view",
   "requests.acknowledge",
   "requests.handoff",
   "requests.resolve",
@@ -120,8 +135,10 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
     "stripe.connect_onboarding",
     "billing.view",
     "menu.edit",
+    "menu.feature_toggle",
     "tables.edit",
     "specials.edit",
+    "promotions.manage",
     "tip_pools.manage",
     "preorders.manage",
     "reservations.manage",
@@ -130,6 +147,10 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
     "regulars.view",
     "regulars.edit",
     "audit.view",
+    "branding.manage",
+    "pos.manage",
+    "orders.manage",
+    "bills.view",
     "requests.acknowledge",
     "requests.handoff",
     "requests.resolve",
@@ -156,6 +177,7 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
   VIEWER: new Set<Permission>([
     "staff.list",
     "billing.view",
+    "bills.view",
     "reviews.view",
     "regulars.view",
     "audit.view",

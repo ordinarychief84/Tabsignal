@@ -14,7 +14,7 @@ export default async function StaffPage() {
   const staff = await db.staffMember.findUnique({
     where: { id: session.staffId },
     include: {
-      venue: { select: { id: true, name: true } },
+      venue: { select: { id: true, name: true, slug: true } },
       assignments: { include: { table: { select: { id: true, label: true } } } },
     },
   });
@@ -50,6 +50,7 @@ export default async function StaffPage() {
       <section className="mx-auto max-w-md px-4 py-5">
         <StaffQueue
           venueId={staff.venue.id}
+          venueSlug={staff.venue.slug}
           staffId={staff.id}
           assignedTableIds={assignedTableIds}
         />

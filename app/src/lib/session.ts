@@ -10,7 +10,64 @@ export type ResolvedSession = {
   tableId: string;
   venueName: string;
   tableLabel: string;
+  slug: string;
 };
+
+type VenueRef = { id: string; name: string; slug: string };
+type TableRef = { id: string; label: string };
+
+/**
+ * Find a live GuestSession for (venue, table) or mint a new one. Shared
+ * between the legacy `/v/[slug]/t/[tableId]` route and the flat
+ * `/guest/[qrToken]` route — both end up here.
+ */
+async function findOrCreateLiveSession(
+  venue: VenueRef,
+  table: TableRef,
+): Promise<ResolvedSession> {
+  const now = new Date();
+
+  const existing = await db.guestSession.findFirst({
+    where: {
+      venueId: venue.id,
+      tableId: table.id,
+      expiresAt: { gt: now },
+      paidAt: null,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (existing) {
+    return {
+      sessionId: existing.id,
+      sessionToken: existing.sessionToken,
+      venueId: venue.id,
+      tableId: table.id,
+      venueName: venue.name,
+      tableLabel: table.label,
+      slug: venue.slug,
+    };
+  }
+
+  const session = await db.guestSession.create({
+    data: {
+      venueId: venue.id,
+      tableId: table.id,
+      sessionToken: randomBytes(24).toString("hex"),
+      expiresAt: new Date(now.getTime() + EIGHT_HOURS_MS),
+    },
+  });
+
+  return {
+    sessionId: session.id,
+    sessionToken: session.sessionToken,
+    venueId: venue.id,
+    tableId: table.id,
+    venueName: venue.name,
+    tableLabel: table.label,
+    slug: venue.slug,
+  };
+}
 
 /**
  * Resolves a guest landing on /v/[slug]/t/[tableId]?s=[token].
@@ -32,7 +89,7 @@ export async function resolveGuestSession(
   if (!venue) throw new Error("VENUE_NOT_FOUND");
 
   // tableIdOrLabel can be a cuid (id) or a slugified label — try id first.
-  let table = await db.table.findFirst({
+  const table = await db.table.findFirst({
     where: { venueId: venue.id, OR: [{ id: tableIdOrLabel }, { label: tableIdOrLabel }] },
   });
   if (!table) throw new Error("TABLE_NOT_FOUND");
@@ -41,44 +98,36 @@ export async function resolveGuestSession(
     throw new Error("INVALID_TOKEN");
   }
 
-  const now = new Date();
+  return findOrCreateLiveSession(
+    { id: venue.id, name: venue.name, slug: venue.slug },
+    { id: table.id, label: table.label },
+  );
+}
 
-  const existing = await db.guestSession.findFirst({
-    where: {
-      venueId: venue.id,
-      tableId: table.id,
-      expiresAt: { gt: now },
-      paidAt: null,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+/**
+ * Resolves a guest landing on the flat /guest/[qrToken] route. The token
+ * itself identifies the table — no slug or table id in the URL.
+ *
+ * Throws "TABLE_NOT_FOUND" if the qrToken matches no table; throws
+ * "VENUE_NOT_FOUND" if the table somehow lacks a venue (shouldn't happen
+ * given the FK, but we belt-and-suspenders for the page's error handler).
+ */
+export async function resolveByQrToken(
+  qrToken: string,
+): Promise<ResolvedSession> {
+  if (!qrToken) throw new Error("TABLE_NOT_FOUND");
 
-  if (existing) {
-    return {
-      sessionId: existing.id,
-      sessionToken: existing.sessionToken,
-      venueId: venue.id,
-      tableId: table.id,
-      venueName: venue.name,
-      tableLabel: table.label,
-    };
-  }
-
-  const session = await db.guestSession.create({
-    data: {
-      venueId: venue.id,
-      tableId: table.id,
-      sessionToken: randomBytes(24).toString("hex"),
-      expiresAt: new Date(now.getTime() + EIGHT_HOURS_MS),
+  const table = await db.table.findUnique({
+    where: { qrToken },
+    include: {
+      venue: { select: { id: true, name: true, slug: true } },
     },
   });
+  if (!table) throw new Error("TABLE_NOT_FOUND");
+  if (!table.venue) throw new Error("VENUE_NOT_FOUND");
 
-  return {
-    sessionId: session.id,
-    sessionToken: session.sessionToken,
-    venueId: venue.id,
-    tableId: table.id,
-    venueName: venue.name,
-    tableLabel: table.label,
-  };
+  return findOrCreateLiveSession(
+    { id: table.venue.id, name: table.venue.name, slug: table.venue.slug },
+    { id: table.id, label: table.label },
+  );
 }

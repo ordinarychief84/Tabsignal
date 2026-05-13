@@ -16,6 +16,7 @@ type Item = {
   priceCents: number;
   categoryId: string | null;
   isActive: boolean;
+  isFeatured: boolean;
   ageRestricted: boolean;
   sortOrder: number;
   imageUrl: string | null;
@@ -130,9 +131,16 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
         ...prev,
         {
           id: res.id, name, description: null, priceCents, categoryId,
-          isActive: true, ageRestricted: false, sortOrder: 0, imageUrl: null,
+          isActive: true, isFeatured: false, ageRestricted: false, sortOrder: 0, imageUrl: null,
         },
       ]);
+    } catch {}
+  }
+
+  async function toggleFeatured(it: Item) {
+    try {
+      await api("PATCH", `/menu/items/${it.id}`, { isFeatured: !it.isFeatured });
+      setItems(prev => prev.map(x => x.id === it.id ? { ...x, isFeatured: !it.isFeatured } : x));
     } catch {}
   }
 
@@ -211,6 +219,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
           onChangePrice={changePrice}
           onToggleItemActive={toggleItemActive}
           onToggleAgeRestricted={toggleAgeRestricted}
+          onToggleFeatured={toggleFeatured}
           onDeleteItem={deleteItem}
         />
       ))}
@@ -224,6 +233,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
         onChangePrice={changePrice}
         onToggleItemActive={toggleItemActive}
         onToggleAgeRestricted={toggleAgeRestricted}
+        onToggleFeatured={toggleFeatured}
         onDeleteItem={deleteItem}
       />
 
@@ -248,6 +258,7 @@ function CategoryBlock({
   onChangePrice,
   onToggleItemActive,
   onToggleAgeRestricted,
+  onToggleFeatured,
   onDeleteItem,
 }: {
   category: Category;
@@ -261,6 +272,7 @@ function CategoryBlock({
   onChangePrice: (it: Item) => void;
   onToggleItemActive: (it: Item) => void;
   onToggleAgeRestricted: (it: Item) => void;
+  onToggleFeatured: (it: Item) => void;
   onDeleteItem: (it: Item) => void;
 }) {
   if (hideCategoryActions && items.length === 0) return null;
@@ -300,13 +312,28 @@ function CategoryBlock({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{it.name}</span>
+                  {it.isFeatured ? (
+                    <span className="rounded-full bg-chartreuse/30 px-2 text-[10px] font-medium text-umber">
+                      Featured
+                    </span>
+                  ) : null}
                   {it.ageRestricted ? <span className="rounded-full bg-coral/10 px-2 text-[10px] text-coral">21+</span> : null}
                   {!it.isActive ? <span className="rounded-full bg-slate/10 px-2 text-[10px] text-slate/60">86&apos;d</span> : null}
                 </div>
                 {it.description ? <p className="text-[11px] text-slate/50">{it.description}</p> : null}
               </div>
               <span className="mx-3 font-mono text-xs">{dollars(it.priceCents)}</span>
-              <div className="flex gap-1 text-xs">
+              <div className="flex items-center gap-1 text-xs">
+                <label className="mr-1 flex cursor-pointer items-center gap-1.5 rounded px-2 py-1 text-[11px] text-slate/70 hover:bg-slate/5">
+                  <input
+                    type="checkbox"
+                    checked={it.isFeatured}
+                    onChange={() => onToggleFeatured(it)}
+                    className="h-3.5 w-3.5 accent-chartreuse"
+                    aria-label={`Feature ${it.name}`}
+                  />
+                  <span>Feature</span>
+                </label>
                 <button onClick={() => onRenameItem(it)} className="rounded px-2 py-1 hover:bg-slate/5">Edit</button>
                 <button onClick={() => onChangePrice(it)} className="rounded px-2 py-1 hover:bg-slate/5">Price</button>
                 <button onClick={() => onToggleItemActive(it)} className="rounded px-2 py-1 hover:bg-slate/5">
