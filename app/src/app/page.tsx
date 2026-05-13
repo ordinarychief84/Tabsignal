@@ -14,13 +14,12 @@ import { FEATURES, PRIMARY_FEATURE_SLUGS, getFeature } from "@/lib/features-data
  *   5. How TabCall works — 3 steps, links to /how-it-works for the full page
  *   6. Metrics strip
  *   7. Testimonials
- *   8. Pricing
- *   9. Final CTA
- *  10. Footer           — shared chrome
+ *   8. Final CTA
+ *   9. Footer           — shared chrome
  *
- * Each "Learn more" on the feature blocks routes to /features/[slug] so the
- * user only sees content for the feature they clicked. /how-it-works and
- * /features have their own scoped pages.
+ * Pricing has its own scoped route at /pricing. Each "Learn more" on the
+ * feature blocks routes to /features/[slug] so the user only sees content
+ * for the feature they clicked. Same pattern across the navbar.
  */
 
 export const metadata: Metadata = {
@@ -39,7 +38,6 @@ export default function LandingPage() {
       <HowItWorks />
       <Metrics />
       <Testimonials />
-      <Pricing />
       <FinalCta />
       <MarketingFooter />
     </main>
@@ -1082,206 +1080,6 @@ function Stars() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Pricing                                                                */
-/* ---------------------------------------------------------------------- */
-
-type PricingTier = {
-  key: "starter" | "growth" | "pro" | "founding";
-  name: string;
-  price: string;
-  sub: string;
-  tagline: string;
-  trial: boolean;
-  cta: string;
-  ctaHref: string;
-  highlight: boolean;
-  /** Header above the feature list — e.g. "Everything in Growth, plus:". */
-  inheritsFrom?: string;
-  /** Feature bullets shown on the card. Keep tight — 6–8 per tier reads
-   *  cleanest at 4-up. Longer lists belong on a dedicated /pricing route. */
-  features: string[];
-};
-
-const PRICING_TIERS: PricingTier[] = [
-  {
-    key: "starter",
-    name: "Starter",
-    price: "Free",
-    sub: "Up to 5 tables. No card.",
-    tagline: "Live tonight. The essentials, free forever.",
-    trial: false,
-    cta: "Start free",
-    ctaHref: "/signup",
-    highlight: false,
-    features: [
-      "Call waiter, request bill, ask for help, refill",
-      "Live request queue (staff PWA)",
-      "Push notifications when backgrounded",
-      "Reviews and ratings, 1–5 stars",
-      "Stripe Connect payments (Apple Pay, Google Pay, cards)",
-      "Email support",
-    ],
-  },
-  {
-    key: "growth",
-    name: "Growth",
-    price: "$99",
-    sub: "per month, up to 25 tables",
-    tagline: "For restaurants that want the floor moving faster.",
-    trial: true,
-    cta: "Start free trial",
-    ctaHref: "/signup?plan=growth",
-    highlight: true,
-    inheritsFrom: "Starter",
-    features: [
-      "Full digital menu with photos and modifiers",
-      "QR ordering from the table",
-      "Bill splitting (by item or share) and tipping",
-      "Pre-orders from QR before seated",
-      "Wishlist guests can share with the server",
-      "Reservations and waitlist",
-      "Tip pool",
-      "Manager analytics: response time, completion, peak hours",
-      "Auto-escalation and request hand-off",
-    ],
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "$299",
-    sub: "per month, unlimited tables",
-    tagline: "For groups and multi-location operators.",
-    trial: true,
-    cta: "Start free trial",
-    ctaHref: "/signup?plan=pro",
-    highlight: false,
-    inheritsFrom: "Growth",
-    features: [
-      "Loyalty: returning-guest identify, points, visit history",
-      "Promotions and banners (happy hour, lunch, new dish)",
-      "Branding: logo, banner, brand colors, welcome message",
-      "POS integration: Toast, Square, Clover (preview)",
-      "Multi-location operator console",
-      "Cross-venue benchmarks (k≥5)",
-      "Security dashboard and audit log",
-      "Priority support",
-    ],
-  },
-  {
-    key: "founding",
-    name: "Founding",
-    price: "On request",
-    sub: "Concierge onboarding only",
-    tagline: "We set it up, you run service.",
-    trial: false,
-    cta: "Talk to us",
-    ctaHref: "mailto:hello@tab-call.com",
-    highlight: false,
-    inheritsFrom: "Pro",
-    features: [
-      "TabCall-managed setup (QR print, menu import, staff invite)",
-      "Dedicated Slack channel with the team",
-      "Custom integrations on request",
-      "Direct line into the product roadmap",
-      "Quarterly business review",
-    ],
-  },
-];
-
-function Pricing() {
-  return (
-    <section id="pricing" className="bg-oat pb-20 md:pb-28">
-      <div className="mx-auto max-w-7xl px-5 md:px-8">
-        <SectionHeader
-          eyebrow="Pricing"
-          title="Pick the plan that matches the floor"
-          sub="Starter is free at 5 tables. Growth and Pro start with a 14-day free trial. Founding is concierge only."
-          pillEyebrow
-        />
-
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {PRICING_TIERS.map((t) => (
-            <article
-              key={t.key}
-              className={[
-                "flex flex-col rounded-2xl p-6 transition-all hover:-translate-y-0.5",
-                t.highlight
-                  ? "border-2 border-chartreuse bg-white shadow-lift ring-1 ring-chartreuse/40"
-                  : "border border-umber-soft/30 bg-white shadow-card",
-              ].join(" ")}
-            >
-              {/* Reserve a fixed height for the trial pill row so all four
-                  cards align on the price below, with or without a pill. */}
-              <div className="flex h-[26px] items-center">
-                {t.trial ? (
-                  <span className="inline-flex items-center rounded-full bg-chartreuse px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate">
-                    14-day free trial
-                  </span>
-                ) : t.highlight ? (
-                  <span className="inline-flex items-center rounded-full bg-sea-soft/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate/75">
-                    Most popular
-                  </span>
-                ) : null}
-              </div>
-
-              <h3 className="mt-3 text-lg font-semibold text-slate">{t.name}</h3>
-
-              <p className="mt-2 text-[34px] font-semibold leading-none tracking-tight text-slate">
-                {t.price}
-              </p>
-              <p className="mt-1 text-xs text-slate/55">{t.sub}</p>
-
-              <p className="mt-4 text-[13px] leading-relaxed text-slate/70">{t.tagline}</p>
-
-              <Link
-                href={t.ctaHref}
-                className={[
-                  "mt-5 inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
-                  t.highlight
-                    ? "bg-chartreuse text-slate hover:bg-chartreuse/85"
-                    : "border border-slate/15 bg-white text-slate hover:border-slate/30",
-                ].join(" ")}
-              >
-                {t.cta}
-              </Link>
-
-              {/* Feature list — what's included with this tier. For tier
-                  2-4 we lead with "Everything in {previous}, plus:" so the
-                  inheritance is explicit and the list stays scannable. */}
-              <div className="mt-6 border-t border-umber-soft/30 pt-5">
-                {t.inheritsFrom ? (
-                  <p className="text-[11px] font-semibold text-slate">
-                    Everything in {t.inheritsFrom}, plus:
-                  </p>
-                ) : (
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-umber">
-                    What&rsquo;s included
-                  </p>
-                )}
-                <ul className="mt-3 space-y-2.5">
-                  {t.features.map((f) => (
-                    <li key={f} className="flex gap-2.5 text-[12px] leading-snug text-slate/75">
-                      <PricingCheck />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <p className="mt-10 text-center text-xs text-slate/55">
-          Growth and Pro start with a 14-day free trial. No card needed to start.
-          All plans run month to month. Stripe processing (2.9% + 30¢) is passed
-          through at cost.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
 /* Final CTA                                                              */
 /* ---------------------------------------------------------------------- */
 
@@ -1366,18 +1164,6 @@ function CheckDot() {
   );
 }
 
-function PricingCheck() {
-  return (
-    <span
-      aria-hidden
-      className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sea-soft/70 text-slate"
-    >
-      <svg width="9" height="9" viewBox="0 0 12 12">
-        <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </span>
-  );
-}
 
 /* ---------------------------------------------------------------------- */
 /* Shared SectionHeader                                                   */

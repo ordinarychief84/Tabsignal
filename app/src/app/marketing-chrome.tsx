@@ -183,7 +183,7 @@ export function MarketingNav() {
           <Link href="/how-it-works" className="hover:text-slate">
             How It Works
           </Link>
-          <Link href="/#pricing" className="hover:text-slate">
+          <Link href="/pricing" className="hover:text-slate">
             Pricing
           </Link>
           <ResourcesDropdown />
@@ -218,7 +218,7 @@ const FOOTER_COLUMNS = [
     links: [
       { label: "Features", href: "/features" },
       { label: "How It Works", href: "/how-it-works" },
-      { label: "Pricing", href: "/#pricing" },
+      { label: "Pricing", href: "/pricing" },
       { label: "Integrations", href: "/features/pos-integration" },
       { label: "Updates", href: "#" },
     ],
