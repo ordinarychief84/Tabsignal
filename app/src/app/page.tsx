@@ -1,7 +1,27 @@
+import fs from "node:fs";
+import path from "node:path";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { MarketingNav, MarketingFooter, Logo } from "./marketing-chrome";
 import { FEATURES, PRIMARY_FEATURE_SLUGS, getFeature } from "@/lib/features-data";
+
+/**
+ * Resolve a feature image from /public/landing/features/ if one was saved.
+ * Falls back to the inline CSS mockup when no file is present. Looking up
+ * the filesystem at build time keeps things zero-config: drop a file in,
+ * the spotlight uses it automatically.
+ */
+function findFeatureImage(slug: string): string | null {
+  const dir = path.join(process.cwd(), "public", "landing", "features");
+  for (const ext of ["png", "jpg", "jpeg", "webp"]) {
+    const p = path.join(dir, `${slug}.${ext}`);
+    if (fs.existsSync(p)) {
+      return `/landing/features/${slug}.${ext}`;
+    }
+  }
+  return null;
+}
 
 /**
  * TabCall landing page — hospitality SaaS direction (Toast / Resy / Square feel).
@@ -402,10 +422,11 @@ function FeatureSpotlights() {
           pillEyebrow
         />
 
-        <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
           {PRIMARY_FEATURE_SLUGS.map((slug) => {
             const f = getFeature(slug)!;
-            return <SpotlightCard key={slug} feature={f} />;
+            const image = findFeatureImage(f.slug);
+            return <SpotlightCard key={slug} feature={f} image={image} />;
           })}
         </div>
 
@@ -419,37 +440,55 @@ function FeatureSpotlights() {
   );
 }
 
-function SpotlightCard({ feature: f }: { feature: ReturnType<typeof getFeature> & object }) {
+function SpotlightCard({
+  feature: f,
+  image,
+}: {
+  feature: ReturnType<typeof getFeature> & object;
+  image: string | null;
+}) {
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-umber-soft/30 bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft">
-      <div className="p-6 md:p-7">
-        <h3 className="text-[18px] font-semibold leading-tight text-slate md:text-[20px]">
+    <Link
+      href={`/features/${f.slug}`}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-umber-soft/30 bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft md:flex-row md:items-stretch"
+    >
+      {/* LEFT: text column with icon-tile pinned to the bottom-left, matching
+          the design mockup exactly. On mobile this stacks above the visual. */}
+      <div className="flex flex-col p-6 md:w-[42%] md:p-8 lg:p-10">
+        <h3 className="text-[22px] font-semibold leading-tight text-slate md:text-[26px] lg:text-[30px]">
           {f.title}
         </h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-slate/65 md:text-[14px]">
+        <p className="mt-3 max-w-sm text-[14px] leading-relaxed text-slate/65 md:text-[15px]">
           {f.body}
         </p>
-      </div>
 
-      <div className="relative mt-auto flex h-[260px] items-end justify-center overflow-hidden bg-linen md:h-[280px]">
-        <SpotlightVisual slug={f.slug} />
-      </div>
-
-      <div className="flex items-center justify-between border-t border-umber-soft/30 bg-white p-5 md:px-7">
         <span
           aria-hidden
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate text-oat"
+          className="mt-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate text-oat md:mt-auto md:pt-0"
         >
           <SpotlightIcon slug={f.slug} />
         </span>
-        <Link
-          href={`/features/${f.slug}`}
-          className="text-[13px] font-medium text-slate transition-colors group-hover:text-umber"
-        >
-          Learn more <span aria-hidden>→</span>
-        </Link>
       </div>
-    </article>
+
+      {/* RIGHT: visual. Renders an image if a file was saved to
+          public/landing/features/<slug>.{png,jpg,jpeg,webp}, otherwise
+          falls back to the CSS mockup for the slug. */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-linen md:aspect-auto md:min-h-[280px] md:w-[58%]">
+        {image ? (
+          <Image
+            src={image}
+            alt={`${f.title} preview`}
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-end justify-center">
+            <SpotlightVisual slug={f.slug} />
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }
 
