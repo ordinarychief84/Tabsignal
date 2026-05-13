@@ -3,9 +3,9 @@ import { MarketingNav, MarketingFooter } from "../marketing-chrome";
 
 /**
  * /how-it-works. Written in About-us page format (Mission, What we do, the
- * Flow, Principles, By the numbers, Where we are). Scoped to nav + content +
- * footer. No marketing CTAs, no upsell blocks. Same click-to-detail pattern
- * as /features and /pricing.
+ * Flow, Principles, By the numbers). Scoped to nav + content + footer.
+ * No marketing CTAs, no upsell blocks. Same click-to-detail pattern as
+ * /features and /pricing.
  *
  * Voice: plain, operator-facing, hospitality direct. No em dashes. No
  * AI-slop language.
@@ -28,7 +28,6 @@ export default function HowItWorksPage() {
       <Flow />
       <Principles />
       <ByTheNumbers />
-      <WhereWeAre />
 
       <MarketingFooter />
     </main>
@@ -270,28 +269,6 @@ function ByTheNumbers() {
         </div>
       </div>
     </section>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Where we are                                                           */
-/* ---------------------------------------------------------------------- */
-
-function WhereWeAre() {
-  return (
-    <Block eyebrow="Where we are" title="Houston first.">
-      <p>
-        TabCall is built in Houston, Texas. Our first venues are Houston
-        bars and lounges that did not want a new POS, they wanted their
-        floor to move faster. We pick up the phone, and we show up for
-        the Saturday-night shifts that ship our work.
-      </p>
-      <p className="mt-4">
-        After Houston: Austin, Dallas, San Antonio. After Texas:
-        wherever a hospitality operator wants to read a 2-star rating in
-        their inbox before it reaches Google.
-      </p>
-    </Block>
   );
 }
 
