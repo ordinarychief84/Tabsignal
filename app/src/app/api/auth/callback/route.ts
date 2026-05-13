@@ -4,42 +4,7 @@ import { db } from "@/lib/db";
 import { verifyLinkToken, signSessionToken } from "@/lib/auth/token";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 import { isPlatformStaffAsync } from "@/lib/auth/operator";
-
-/**
- * Resolve the public origin from the request — Next.js binds to 0.0.0.0 in
- * dev, so `req.url` reports `http://0.0.0.0:3000` and any redirect built
- * from it would be unreachable from a phone. The Host header carries
- * whatever URL the client actually used.
- */
-function originFromRequest(req: Request): string {
-  const fwdProto = req.headers.get("x-forwarded-proto");
-  const fwdHost = req.headers.get("x-forwarded-host");
-  const host = fwdHost ?? req.headers.get("host");
-  if (host) {
-    const proto = fwdProto ?? (host.startsWith("localhost") || /^\d/.test(host) ? "http" : "https");
-    return `${proto}://${host}`;
-  }
-  return process.env.APP_URL ?? "http://localhost:3000";
-}
-
-/**
- * Only allow same-origin path redirects from the `next` param. Reject
- * absolute URLs and protocol-relative URLs to prevent open-redirect.
- *
- * `defaultDest` decides where someone with no `next` should land:
- *   - Operators (OPERATOR_EMAILS) → /operator
- *   - Everyone else → /staff (the floor app)
- *
- * Without this, an operator who hits /staff/login (the only sign-in
- * surface) ends up on /staff every time and has to manually navigate
- * to /operator — clumsy, surprising on a fresh device.
- */
-function safeNext(next: string | null | undefined, defaultDest = "/staff"): string {
-  if (!next) return defaultDest;
-  if (!next.startsWith("/")) return defaultDest;
-  if (next.startsWith("//")) return defaultDest;
-  return next;
-}
+import { originFromRequest, safeNext } from "@/lib/auth/redirect";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
