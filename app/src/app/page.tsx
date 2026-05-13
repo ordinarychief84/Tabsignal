@@ -207,9 +207,18 @@ function HeroQRTent() {
         <span className="inline-flex items-center gap-1.5">
           <span
             aria-hidden
-            className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary-deep"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-slate"
           >
-            <span className="material-symbols-outlined text-[14px] text-brand-lime">restaurant</span>
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path
+                d="M 6 11 Q 12 6, 18 11"
+                fill="none"
+                stroke="#F2E7B7"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+              <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+            </svg>
           </span>
           <span className="text-[11px] font-bold text-primary-deep">TabCall</span>
         </span>
