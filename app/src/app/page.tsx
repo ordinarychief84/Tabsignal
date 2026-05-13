@@ -198,7 +198,7 @@ function Hero() {
           <h1 className="mt-5 text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] text-slate md:text-[44px] lg:text-[64px]">
             Delight guests.
             <br />
-            <span className="text-umber">Empower staff.</span>
+            Empower staff.
           </h1>
 
           <p className="mt-5 max-w-lg text-base leading-relaxed text-slate/65 md:text-lg">
@@ -230,7 +230,7 @@ function Hero() {
             </a>
           </div>
 
-          {/* Feature shortcuts */}
+          {/* Feature shortcuts — three butter tiles + one sage to match mockup. */}
           <ul className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <FeatureShortcut tone="butter" title="Call Waiter" sub="Instant service">
               <BellIcon />
@@ -241,7 +241,7 @@ function Hero() {
             <FeatureShortcut tone="butter" title="Pay" sub="Securely">
               <CardIcon />
             </FeatureShortcut>
-            <FeatureShortcut tone="butter" title="Review" sub="Share feedback">
+            <FeatureShortcut tone="sage" title="Review" sub="Share feedback">
               <StarIcon />
             </FeatureShortcut>
           </ul>
@@ -499,7 +499,7 @@ const FEATURES = [
   },
   {
     icon: <StarOutlineIcon />,
-    tone: "sage" as const,
+    tone: "butter" as const,
     title: "Reviews & Feedback",
     body:
       "Collect more reviews and feedback from happy guests to grow your reputation.",
@@ -513,7 +513,7 @@ const FEATURES = [
   },
   {
     icon: <PlugIcon />,
-    tone: "butter" as const,
+    tone: "sage" as const,
     title: "POS Integrations",
     body:
       "Seamlessly integrate with your POS system for real-time orders, menus, and payments.",
@@ -1199,7 +1199,7 @@ function SectionHeader({
   return (
     <header className={wrap}>
       {pillEyebrow ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-umber-soft/40 bg-white px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-umber">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-sea-soft/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate/75">
           {eyebrow}
         </span>
       ) : (
