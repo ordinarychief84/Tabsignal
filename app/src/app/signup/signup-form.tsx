@@ -74,6 +74,17 @@ export function SignupForm() {
     const rawVenue = String(fd.get("venueName") ?? "");
     const rawZip = String(fd.get("zipCode") ?? "");
     const rawTables = String(fd.get("tableCount") ?? "");
+    const agreed = fd.get("agreeTerms") === "on";
+
+    // Terms gate: required before we'll even open the network. Mirrors
+    // the on-submit HTML5 `required` attribute, but enforces it here
+    // too in case JS reaches submit handler without the checkbox checked
+    // (e.g. browser autofill quirks).
+    if (!agreed) {
+      setStatus("error");
+      setError("Please agree to the Terms of Service and Privacy Policy before continuing.");
+      return;
+    }
 
     // Client-side gate: if any required field is invalid, show inline errors
     // and bail before hitting the network.
@@ -348,6 +359,36 @@ export function SignupForm() {
         </p>
       ) : null}
 
+      <label className="flex items-start gap-3 rounded-2xl border border-slate/10 bg-white px-5 py-4 text-sm text-slate/75">
+        <input
+          name="agreeTerms"
+          type="checkbox"
+          required
+          className="mt-1 h-4 w-4 shrink-0 rounded border-slate/30 text-slate accent-slate focus:ring-2 focus:ring-chartreuse"
+        />
+        <span className="leading-relaxed">
+          I agree to TabCall&rsquo;s{" "}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-umber underline underline-offset-4 hover:text-slate"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/terms#privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-umber underline underline-offset-4 hover:text-slate"
+          >
+            Privacy Policy
+          </a>
+          .
+        </span>
+      </label>
+
       <button
         type="submit"
         disabled={submitting}
@@ -357,11 +398,7 @@ export function SignupForm() {
       </button>
 
       <p className="text-center text-[11px] text-slate/45">
-        By creating an account you agree to{" "}
-        <a href="/terms" className="text-umber underline-offset-4 hover:underline">
-          TabCall&rsquo;s terms
-        </a>
-        . We never email guests. You&rsquo;ll only hear from us about your own venue.
+        We never email guests. You&rsquo;ll only hear from us about your own venue.
       </p>
     </form>
   );

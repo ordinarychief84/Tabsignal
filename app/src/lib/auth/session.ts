@@ -1,12 +1,30 @@
 import { cookies } from "next/headers";
 import { verifySessionTokenWithIat, type SessionClaims } from "./token";
+import { getAdminSession } from "./admin-auth";
 import { db } from "@/lib/db";
 
 export const SESSION_COOKIE = "tabsignal_session";
 
 /**
+ * Synthetic IDs used for platform-admin sessions. These don't match any
+ * row in StaffMember or Venue — admin sessions are venue-less by design.
+ * Code paths that need a real venue (e.g. /admin/v/[slug] layouts) will
+ * still reject these synthetic sessions because they check venueId
+ * against the requested venue's id. /operator and any global pages just
+ * need a session with `isOperatorAsync(session)` to return true.
+ */
+const PLATFORM_ADMIN_VENUE_ID = "platform";
+
+/**
  * Read the current staff session from the cookie. Returns null if
  * missing, invalid, or invalidated via "Sign out everywhere".
+ *
+ * Recognises TWO cookies:
+ *   - SESSION_COOKIE (staff magic-link auth) — returned as-is
+ *   - ADMIN_SESSION_COOKIE (platform-admin password auth) — returned as a
+ *     synthetic SessionClaims so /operator and other email-based gates
+ *     accept it. The synthetic claims use a placeholder venueId so
+ *     venue-scoped layouts continue to refuse cross-venue access.
  *
  * The sessionsValidAfter check happens here (one DB read per request)
  * rather than in verifySessionToken so the JWT module stays pure /
@@ -16,25 +34,41 @@ export const SESSION_COOKIE = "tabsignal_session";
  */
 export async function getStaffSession(): Promise<SessionClaims | null> {
   const token = cookies().get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const claims = await verifySessionTokenWithIat(token);
-  if (!claims) return null;
-
-  // Refuse JWTs minted before the user's "sign out everywhere" cutoff.
-  // iat is in seconds; sessionsValidAfter is a ms-precision Date.
-  const iat = typeof claims.iat === "number" ? claims.iat : 0;
-  if (iat > 0) {
-    const row = await db.staffMember.findUnique({
-      where: { id: claims.staffId },
-      select: { sessionsValidAfter: true },
-    }).catch(() => null);
-    if (row?.sessionsValidAfter && row.sessionsValidAfter.getTime() / 1000 > iat) {
-      return null;
+  if (token) {
+    const claims = await verifySessionTokenWithIat(token);
+    if (claims) {
+      // Refuse JWTs minted before the user's "sign out everywhere" cutoff.
+      const iat = typeof claims.iat === "number" ? claims.iat : 0;
+      if (iat > 0) {
+        const row = await db.staffMember.findUnique({
+          where: { id: claims.staffId },
+          select: { sessionsValidAfter: true },
+        }).catch(() => null);
+        if (row?.sessionsValidAfter && row.sessionsValidAfter.getTime() / 1000 > iat) {
+          return null;
+        }
+      }
+      const { staffId, venueId, email, role } = claims;
+      return { kind: "session", staffId, venueId, email, role };
     }
   }
-  // Strip the JWT-claim fields we don't expose on SessionClaims.
-  const { staffId, venueId, email, role } = claims;
-  return { kind: "session", staffId, venueId, email, role };
+
+  // Fall back to the admin session cookie. Platform admins use password
+  // sign-in at /admin/login; the resulting cookie is separate from the
+  // staff session, but every gate downstream checks getStaffSession() so
+  // we synthesize a staff-shaped session here.
+  const admin = await getAdminSession();
+  if (admin) {
+    return {
+      kind: "session",
+      staffId: `pa_${admin.adminId}`,
+      venueId: PLATFORM_ADMIN_VENUE_ID,
+      email: admin.email,
+      role: "OWNER",
+    };
+  }
+
+  return null;
 }
 
 export function sessionCookieOptions(maxAgeDays = 30) {

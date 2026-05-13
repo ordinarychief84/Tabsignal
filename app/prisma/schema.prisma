@@ -766,6 +766,11 @@ model PlatformAdmin {
   email         String         @unique
   name          String?
   notes         String?
+  // Password-based sign-in for the TabCall super-admin console.
+  // Magic-link auth remains the only path for StaffMember rows;
+  // password auth is platform-admin-only and gates /admin/login.
+  passwordHash      String?
+  passwordChangedAt DateTime?
   // Self-references for invite/suspend audit attribution.
   addedById     String?
   addedBy       PlatformAdmin? @relation("AdminAddedBy", fields: [addedById], references: [id])
