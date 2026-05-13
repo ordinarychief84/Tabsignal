@@ -16,16 +16,23 @@ export function isOperator(session: SessionClaims | null | undefined): boolean {
 }
 
 // Tier 3a: an operator is anyone on the platform OPERATOR_EMAILS list
-// (TabCall staff) OR any user with an OrgMember row anywhere (org
-// owners, admins, viewers). Org-scoped permission checks live in
-// lib/operator-rbac.ts.
+// (TabCall staff), any active PlatformAdmin (super admin who signed in
+// via password at /admin/login), or any user with an OrgMember row
+// anywhere (org owners, admins, viewers). Org-scoped permission checks
+// live in lib/operator-rbac.ts.
 export async function isOperatorAsync(
   session: SessionClaims | null | undefined,
 ): Promise<boolean> {
   if (!session) return false;
-  if (ALLOWLIST.includes(session.email.toLowerCase())) return true;
+  const email = session.email.toLowerCase();
+  if (ALLOWLIST.includes(email)) return true;
+  const admin = await db.platformAdmin.findUnique({
+    where: { email },
+    select: { id: true, suspendedAt: true },
+  });
+  if (admin && admin.suspendedAt === null) return true;
   const member = await db.orgMember.findFirst({
-    where: { email: session.email.toLowerCase() },
+    where: { email },
     select: { id: true },
   });
   return Boolean(member);
