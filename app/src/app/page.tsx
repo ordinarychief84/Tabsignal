@@ -305,84 +305,168 @@ function HeroVisual() {
 }
 
 function QRTent() {
+  // The QR tent is the platform's primary on-site touchpoint — guests see this
+  // before they ever see the app. Design rule: the QR is the hero. Everything
+  // else (brand, headline, trust copy) plays a supporting role.
   return (
-    <div className="relative w-[42%] max-w-[220px] -rotate-1 animate-float-slow rounded-2xl bg-white p-4 shadow-lift ring-1 ring-umber-soft/30 md:w-[44%]">
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate"
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
-          </svg>
-        </span>
-        <span className="text-[12px] font-semibold tracking-tight text-slate">TabCall</span>
-      </div>
+    <div className="relative w-[44%] max-w-[240px] -rotate-1 animate-float-slow md:w-[46%]">
+      {/* Soft cast shadow under the tent — suggests a physical card on a real
+          restaurant table, not a floating UI element. */}
+      <div
+        aria-hidden
+        className="absolute -bottom-2 left-3 right-3 -z-10 h-4 rounded-full bg-slate/15 blur-md"
+      />
 
-      <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.18em] text-umber">Scan to</p>
-      <p className="text-[15px] font-semibold leading-tight text-slate">Order &amp; Pay</p>
+      <div className="relative overflow-hidden rounded-[20px] bg-white p-4 shadow-lift ring-1 ring-umber-soft/30">
+        {/* Compact brand line — present, but compressed so it doesn't compete
+            with the QR. */}
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-slate"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14">
+                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2.2" strokeLinecap="round" />
+                <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+              </svg>
+            </span>
+            <span className="text-[11px] font-semibold tracking-tight text-slate">TabCall</span>
+          </span>
+          <span className="rounded-full bg-sea-soft/60 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-slate/75">
+            Table 12
+          </span>
+        </div>
 
-      <div className="mt-3 rounded-lg bg-oat p-2">
-        <QRCodePattern />
-      </div>
+        {/* Headline — eyebrow + H1 stacked tight. Reads as a single instruction. */}
+        <div className="mt-3">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-umber">
+            Scan to
+          </p>
+          <p className="text-[18px] font-semibold leading-[1.05] tracking-tight text-slate">
+            Order &amp; Pay
+          </p>
+        </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-1.5">
-        <TentIcon><PhoneIcon /></TentIcon>
-        <TentIcon><ForkKnifeIcon small /></TentIcon>
-        <TentIcon><CardIcon small /></TentIcon>
-        <TentIcon><StarIcon small /></TentIcon>
+        {/* QR centrepiece — sage halo behind, viewfinder brackets at the
+            corners, embedded TabCall mark in the centre. */}
+        <div className="relative mt-3">
+          <div
+            aria-hidden
+            className="absolute inset-0 -m-2 rounded-2xl"
+            style={{
+              background:
+                "radial-gradient(60% 60% at 50% 50%, rgba(199, 214, 207, 0.45) 0%, rgba(247, 245, 242, 0) 75%)",
+            }}
+          />
+          <div className="relative rounded-xl bg-white p-2 ring-1 ring-umber-soft/30">
+            {/* Scan viewfinder brackets — warm butter accents at corners,
+                signals "this is the scan target". */}
+            <ScanBracket pos="tl" />
+            <ScanBracket pos="tr" />
+            <ScanBracket pos="bl" />
+            <ScanBracket pos="br" />
+            <QRCodePattern />
+          </div>
+        </div>
+
+        {/* Trust line — minimal copy that confirms the action takes seconds. */}
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[9px] font-medium text-slate/55">
+          <CameraIcon />
+          Point camera · No app needed
+        </p>
       </div>
     </div>
   );
 }
 
-function TentIcon({ children }: { children: React.ReactNode }) {
+function ScanBracket({ pos }: { pos: "tl" | "tr" | "bl" | "br" }) {
+  const positions: Record<typeof pos, string> = {
+    tl: "left-0.5 top-0.5 border-l-2 border-t-2 rounded-tl-md",
+    tr: "right-0.5 top-0.5 border-r-2 border-t-2 rounded-tr-md",
+    bl: "left-0.5 bottom-0.5 border-l-2 border-b-2 rounded-bl-md",
+    br: "right-0.5 bottom-0.5 border-r-2 border-b-2 rounded-br-md",
+  };
   return (
     <span
       aria-hidden
-      className="flex aspect-square items-center justify-center rounded-md bg-oat text-slate/80 ring-1 ring-umber-soft/30"
-    >
-      {children}
-    </span>
+      className={`pointer-events-none absolute h-3 w-3 border-chartreuse ${positions[pos]}`}
+    />
+  );
+}
+
+function CameraIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
   );
 }
 
 function QRCodePattern() {
-  // Decorative QR-like grid (not a real scannable code). 11x11 modules with
-  // three locator squares at corners — recognisable as a QR at a glance.
-  const modules: boolean[][] = Array.from({ length: 11 }, (_, y) =>
-    Array.from({ length: 11 }, (_, x) => {
-      // Locator corners (3x3 squares at TL, TR, BL with 1px gap)
+  // Decorative QR-like grid. 13x13 modules with three locator squares at
+  // corners + a centre knockout where the TabCall mark sits embedded — same
+  // pattern Square / Apple / many hospitality QRs use to signal "this is
+  // OUR QR, not a generic one".
+  const SIZE = 13;
+  const CENTER_RADIUS = 1.5; // modules cleared around centre for the brand knockout
+  const modules: boolean[][] = Array.from({ length: SIZE }, (_, y) =>
+    Array.from({ length: SIZE }, (_, x) => {
+      // Three corner locators — TL, TR, BL — each 3x3 with a 1-module ring.
       const inLocator =
-        (y < 3 && (x < 3 || x > 7)) || (y > 7 && x < 3);
+        (y < 3 && (x < 3 || x > SIZE - 4)) || (y > SIZE - 4 && x < 3);
       if (inLocator) {
-        // Outer ring of each locator filled, inner core filled, gap white
-        const local = {
-          ly: y < 3 ? y : y - 8,
-          lx: x < 3 ? x : x > 7 ? x - 8 : x,
-        };
-        if (local.ly === 1 && local.lx === 1) return true; // core
-        return local.ly === 0 || local.ly === 2 || local.lx === 0 || local.lx === 2;
+        const ly = y < 3 ? y : y - (SIZE - 3);
+        const lx = x < 3 ? x : x > SIZE - 4 ? x - (SIZE - 3) : x;
+        if (ly === 1 && lx === 1) return true; // solid core
+        return ly === 0 || ly === 2 || lx === 0 || lx === 2; // outer ring
       }
-      // Pseudo-random pattern for body using bit hash
-      return ((x * 7 + y * 13 + x * y) % 3 === 0) || ((x + y) % 5 === 0);
+      // Centre knockout — leave a small square in the middle empty so the
+      // embedded brand mark reads cleanly. Real-world branded QRs can
+      // afford ~20% of the code area lost to error correction.
+      const cx = (SIZE - 1) / 2;
+      const cy = (SIZE - 1) / 2;
+      if (Math.abs(x - cx) <= CENTER_RADIUS && Math.abs(y - cy) <= CENTER_RADIUS) {
+        return false;
+      }
+      // Density pattern — looks denser than the 11x11 version, more
+      // photo-real.
+      return (
+        (x * 7 + y * 13 + x * y) % 3 === 0 ||
+        (x + y) % 5 === 0 ||
+        (x * y) % 7 === 1
+      );
     })
   );
   return (
-    <div
-      aria-hidden
-      className="grid aspect-square w-full gap-[2px]"
-      style={{ gridTemplateColumns: "repeat(11, minmax(0, 1fr))" }}
-    >
-      {modules.map((row, y) =>
-        row.map((on, x) => (
-          <span
-            key={`${x}-${y}`}
-            className={`block aspect-square rounded-[1px] ${on ? "bg-slate" : "bg-transparent"}`}
-          />
-        ))
-      )}
+    <div className="relative">
+      <div
+        aria-hidden
+        className="grid aspect-square w-full gap-[2px]"
+        style={{ gridTemplateColumns: `repeat(${SIZE}, minmax(0, 1fr))` }}
+      >
+        {modules.map((row, y) =>
+          row.map((on, x) => (
+            <span
+              key={`${x}-${y}`}
+              className={`block aspect-square rounded-[1px] ${on ? "bg-slate" : "bg-transparent"}`}
+            />
+          ))
+        )}
+      </div>
+      {/* Embedded brand mark in the centre knockout. */}
+      <span
+        aria-hidden
+        className="absolute left-1/2 top-1/2 inline-flex h-[22%] w-[22%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-md bg-white ring-1 ring-slate/10"
+      >
+        <span className="flex h-[70%] w-[70%] items-center justify-center rounded-[3px] bg-slate">
+          <svg viewBox="0 0 24 24" width="60%" height="60%">
+            <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2.6" strokeLinecap="round" />
+            <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+          </svg>
+        </span>
+      </span>
     </div>
   );
 }
