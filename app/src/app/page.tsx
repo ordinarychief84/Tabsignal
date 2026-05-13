@@ -752,45 +752,110 @@ function SpotlightPromos() {
 }
 
 function SpotlightPos() {
+  // POS terminal on a styled wooden counter, intended to read like a real
+  // photograph until a real screenshot is dropped into
+  // public/landing/features/pos-integration.{png,jpg,jpeg,webp}.
+  const rows = [
+    { item: "Truffle Pasta",  qty: "Add", price: "$24.00" },
+    { item: "Burrata Salad",  qty: "Add", price: "$14.00" },
+    { item: "Lemonade",       qty: "Add", price: "$3.00"  },
+    { item: "Grilled Salmon", qty: "Add", price: "$28.00" },
+  ];
   return (
     <div
-      className="relative flex h-full w-full items-end justify-end pr-3"
+      className="relative flex h-full w-full items-end justify-end overflow-hidden"
       style={{
         background:
-          "radial-gradient(50% 50% at 70% 60%, rgba(199, 214, 207, 0.4) 0%, rgba(251, 250, 247, 0) 65%)",
+          // Soft cream wall + a warm wood-counter band at the bottom — same
+          // palette feel as the other spotlight backgrounds (linen / sage),
+          // tilted toward warmer cafe tones for the POS scene.
+          "linear-gradient(180deg, rgba(247, 245, 242, 1) 0%, rgba(247, 245, 242, 1) 58%, rgba(183, 163, 154, 0.55) 58%, rgba(123, 92, 70, 0.55) 100%), radial-gradient(40% 40% at 80% 20%, rgba(199, 214, 207, 0.35) 0%, rgba(247, 245, 242, 0) 70%)",
       }}
     >
-      <div className="w-[200px] translate-y-6">
-        <div className="rounded-[14px] bg-slate p-1.5 shadow-lift">
-          <div className="rounded-[8px] bg-white p-2">
-            <div className="flex items-center justify-between text-[7px] text-slate/55">
+      {/* Soft plant silhouette in the back corner, mirrors the qr-orders
+          composition. Pure CSS, no asset. */}
+      <span
+        aria-hidden
+        className="absolute right-4 top-4 h-16 w-16 rounded-full bg-sea-soft/60 blur-md"
+      />
+
+      {/* POS rig: terminal + stand + base, sitting on the wood band */}
+      <div className="relative mx-auto mb-4 flex w-[78%] max-w-[280px] flex-col items-center">
+        {/* Terminal bezel */}
+        <div
+          className="w-full rounded-[14px] bg-slate p-2"
+          style={{ boxShadow: "0 18px 36px rgba(35, 33, 48, 0.18), 0 2px 6px rgba(35, 33, 48, 0.12)" }}
+        >
+          <div className="rounded-[8px] bg-white p-2.5">
+            {/* App chrome */}
+            <div className="flex items-center justify-between border-b border-slate/8 pb-1.5 text-[7px]">
               <span className="font-semibold text-slate">New Order</span>
-              <span>Table 12</span>
+              <span className="rounded-full bg-sea-soft/60 px-1.5 py-0.5 text-[6px] font-semibold uppercase tracking-wider text-slate/75">
+                Table 12
+              </span>
             </div>
-            <table className="mt-1.5 w-full text-[6.5px]">
-              <thead className="text-slate/55">
-                <tr>
-                  <th className="text-left font-medium">Item</th>
-                  <th className="text-right font-medium">Price</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate">
-                {["Truffle Pasta", "Burrata Salad", "Lemonade", "Grilled Salmon"].map((n) => (
-                  <tr key={n} className="border-t border-slate/8">
-                    <td className="py-1">{n}</td>
-                    <td className="py-1 text-right font-mono tabular-nums">$0.00</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button type="button" className="mt-2 w-full rounded bg-slate py-1 text-[7px] font-semibold text-oat">
-              Send
+
+            {/* Order rows — quantity + name + price */}
+            <ul className="mt-2 space-y-1">
+              {rows.map((r) => (
+                <li
+                  key={r.item}
+                  className="flex items-center justify-between rounded-md bg-oat px-1.5 py-1"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      aria-hidden
+                      className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-chartreuse/70 text-[6px] font-semibold text-slate"
+                    >
+                      +
+                    </span>
+                    <span className="text-[7px] font-semibold text-slate">{r.item}</span>
+                  </span>
+                  <span className="text-[7px] font-mono tabular-nums text-slate">{r.price}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Subtotal strip */}
+            <div className="mt-2 flex items-baseline justify-between border-t border-slate/8 pt-1.5 text-[7px]">
+              <span className="font-semibold text-slate">Subtotal</span>
+              <span className="font-mono tabular-nums font-semibold text-slate">$69.00</span>
+            </div>
+
+            <button
+              type="button"
+              className="mt-2 w-full rounded-md bg-slate py-1.5 text-[7px] font-semibold text-oat"
+            >
+              Send to kitchen
             </button>
           </div>
         </div>
-        {/* POS terminal stand */}
-        <div aria-hidden className="mx-auto mt-1 h-4 w-12 rounded-b-lg bg-slate" />
+
+        {/* Hinge between terminal and stand */}
+        <div aria-hidden className="mt-1 h-1.5 w-10 rounded-b bg-slate/85" />
+
+        {/* Stand neck */}
+        <div
+          aria-hidden
+          className="mt-0.5 h-3 w-3 rounded-sm bg-slate/85"
+          style={{ boxShadow: "0 6px 12px rgba(35, 33, 48, 0.12)" }}
+        />
+
+        {/* Base footprint on the counter */}
+        <div
+          aria-hidden
+          className="h-1.5 w-20 rounded-full bg-slate"
+          style={{ boxShadow: "0 8px 14px rgba(35, 33, 48, 0.18)" }}
+        />
       </div>
+
+      {/* "Real-time sync" status pill — visual cue that POS and TabCall are
+          two-way connected. Sits in the empty cream area to balance the
+          composition. */}
+      <span className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-[8px] font-medium text-slate/75 shadow-card ring-1 ring-umber-soft/30">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-sea" />
+        Synced with Toast · just now
+      </span>
     </div>
   );
 }
