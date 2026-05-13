@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TabCall · fix slow table service",
+  title: "TabCall · all-in-one hospitality platform",
   description:
     "TabCall sits on top of any POS. Guests scan, staff get alerted, service moves.",
 };
@@ -20,12 +20,23 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#232130",
+  themeColor: "#0d0b19",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        {/* Material Symbols Outlined — variable icon font used by the
+            landing redesign. preconnect is the next/font pattern for any
+            Google Fonts resource we load by hand. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-25..200&display=swap"
+        />
+      </head>
       <body className="bg-oat font-sans text-slate antialiased">{children}</body>
     </html>
   );
