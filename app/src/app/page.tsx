@@ -1,63 +1,65 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { NewsletterForm } from "./newsletter-form";
+
 /**
- * TabCall, landing page.
+ * TabCall landing page — hospitality SaaS direction (Toast / Resy / Square feel).
+ * Structure follows the design mockup:
+ *   1. Navbar
+ *   2. Hero (Delight guests. Empower staff.)
+ *   3. Trusted-by strip
+ *   4. Feature grid (6 cards)
+ *   5. How TabCall works
+ *   6. Metrics strip
+ *   7. Testimonials
+ *   8. Pricing  (kept because "Pricing" is in the nav)
+ *   9. Final CTA
+ *  10. Footer
  *
- * Visual language inspired by nory.ai's editorial pacing:
- *  - dark hero with a huge headline + floating product mockups
- *  - trust strip of brand cards on cream
- *  - big-stat row with vertical dividers ("Results you can take to the bank")
- *  - two-up feature cards with embedded UI fragments
- *  - massive bold sentence as a lead-in to CTA bands
- *
- * Brand palette (use ONLY these, see tailwind.config.ts):
- *   slate     #232130   dark surfaces, navbar, hero, footer
- *   slate.light #2F2D3E cards over slate
- *   oat       #F7F5F2   light surfaces
- *   chartreuse #F2E7B7  primary action + active signals
- *   coral     #C8634F   alerts + delays
- *   sea       #6F9586   secondary accents
- *   umber     #8B6F4E   warm CTA / divider accent
- *
- * Section rule: a single section uses one accent at most. No gradients.
- *
- * Copy rule: no em dashes. Use comma, period, parens, or colon.
+ * Palette is driven by Tailwind tokens (see tailwind.config.ts):
+ *   slate  = #232130  Deep Ink
+ *   oat    = #F7F5F2  Soft Linen
+ *   linen  = #FBFAF7
+ *   chartreuse.DEFAULT = #F2E7B7  Warm Butter
+ *   sea.soft = #C7D6CF Sage
+ *   umber.soft = #B7A39A Clay
+ *   coral.DEFAULT = #C8634F  / coral.soft = #E8B8B8 Soft Coral
  */
 
-import Link from "next/link";
+export const metadata: Metadata = {
+  title: "TabCall · all-in-one hospitality platform",
+  description:
+    "TabCall helps restaurants, bars, lounges, and cafés streamline service, increase revenue, and deliver exceptional guest experiences.",
+};
 
-export default function Landing() {
+export default function LandingPage() {
   return (
-    <>
+    <main className="bg-oat text-slate">
       <Navbar />
       <Hero />
-      <TrustStrip />
-      <SectionTitle />
-      <ResultsBand />
-      <OnePlatform />
-      <TwoUpFeatures />
+      <TrustedStrip />
+      <FeatureGrid />
       <HowItWorks />
+      <Metrics />
+      <Testimonials />
       <Pricing />
-      <Faq />
-      <CtaBand />
+      <FinalCta />
       <Footer />
-    </>
+    </main>
   );
 }
 
-/* ------------------------------ logo ------------------------------- */
+/* ---------------------------------------------------------------------- */
+/* Logo                                                                   */
+/* ---------------------------------------------------------------------- */
 
-function Logo({
-  variant = "light",
-  iconOnly = false,
-}: {
-  variant?: "light" | "dark";
-  iconOnly?: boolean;
-}) {
+function Logo({ variant = "dark" }: { variant?: "dark" | "light" }) {
   const wordColor = variant === "light" ? "#FFFFFF" : "#232130";
   return (
-    <span className="inline-flex items-center gap-2 leading-none">
+    <span className="inline-flex items-center gap-2 leading-none" aria-label="TabCall">
       <span
         aria-hidden
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate"
       >
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path
@@ -70,84 +72,37 @@ function Logo({
           <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
         </svg>
       </span>
-      {iconOnly ? null : (
-        <span
-          className="text-lg font-semibold tracking-tight"
-          style={{ color: wordColor }}
-        >
-          TabCall
-        </span>
-      )}
+      <span
+        className="text-lg font-semibold tracking-tight"
+        style={{ color: wordColor }}
+      >
+        TabCall
+      </span>
     </span>
   );
 }
 
-/* ------------------------------ navbar ----------------------------- */
+/* ---------------------------------------------------------------------- */
+/* Navbar                                                                 */
+/* ---------------------------------------------------------------------- */
 
-/**
- * Product dropdown groups. Every item links to #product on the landing page
- * because feature subsections are not yet split into their own routes. When
- * deeper pages ship, swap the href here. Labels are the canonical names used
- * in marketing copy and in the footer.
- */
-const PRODUCT_GROUPS: { title: string; items: { label: string; href: string }[] }[] = [
-  {
-    title: "Guest at the table",
-    items: [
-      { label: "Call waiter", href: "#product" },
-      { label: "Pay the bill", href: "#product" },
-      { label: "Split a bill", href: "#product" },
-      { label: "Pre-order from QR", href: "#product" },
-      { label: "Save a wishlist", href: "#product" },
-      { label: "Reservations and waitlist", href: "#product" },
-      { label: "Reviews and ratings", href: "#product" },
-    ],
-  },
-  {
-    title: "Staff and managers",
-    items: [
-      { label: "Live queue (live request feed)", href: "#product" },
-      { label: "Push notifications", href: "#product" },
-      { label: "Manager dashboard", href: "#product" },
-      { label: "Reviews inbox", href: "#product" },
-      { label: "Order and bill view", href: "#product" },
-    ],
-  },
-  {
-    title: "Owner and admin",
-    items: [
-      { label: "Branding (logo, banner, colors)", href: "#product" },
-      { label: "Promotions and banners", href: "#product" },
-      { label: "Staff and roles", href: "#product" },
-      { label: "QR codes and tables", href: "#product" },
-      { label: "Tip pool", href: "#product" },
-      { label: "POS integration (preview)", href: "#product" },
-      { label: "Loyalty regulars", href: "#product" },
-    ],
-  },
-  {
-    title: "Platform",
-    items: [
-      { label: "Multi-location console", href: "#product" },
-      { label: "Cross-venue benchmarks", href: "#product" },
-      { label: "Audit log", href: "#product" },
-      { label: "Security dashboard", href: "#product" },
-    ],
-  },
+const RESOURCES = [
+  { label: "Blog", href: "#" },
+  { label: "Help Center", href: "#" },
+  { label: "Guides", href: "#" },
+  { label: "Videos", href: "#" },
+  { label: "Careers", href: "#" },
 ];
 
-function ProductDropdown() {
-  // Pure CSS dropdown. The wrapper is `group`; the button keeps aria-expanded
-  // wired through CSS so screen readers see the change on focus-within.
+function ResourcesDropdown() {
   return (
     <div className="group relative">
       <button
         type="button"
-        aria-expanded="false"
         aria-haspopup="true"
-        className="inline-flex items-center gap-1 text-sm text-oat/80 transition-colors hover:text-oat focus:text-oat focus:outline-none group-focus-within:text-oat group-hover:text-oat"
+        className="inline-flex items-center gap-1 text-sm text-slate/75 transition-colors hover:text-slate focus:text-slate focus:outline-none"
       >
-        Product
+        Resources
         <svg
           aria-hidden
           width="10"
@@ -155,49 +110,27 @@ function ProductDropdown() {
           viewBox="0 0 12 12"
           className="transition-transform group-hover:rotate-180 group-focus-within:rotate-180"
         >
-          <path
-            d="M2 4l4 4 4-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-
-      {/* Hover bridge: keeps the panel open while moving cursor down. */}
       <div
         aria-hidden
         className="pointer-events-none invisible absolute left-0 right-0 top-full h-3 group-hover:pointer-events-auto group-hover:visible group-focus-within:pointer-events-auto group-focus-within:visible"
       />
-
       <div
         role="menu"
-        className="invisible absolute left-1/2 top-[calc(100%+0.75rem)] z-40 w-[min(960px,90vw)] -translate-x-1/2 translate-y-1 rounded-2xl bg-white p-8 opacity-0 shadow-2xl ring-1 ring-slate/10 transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+        className="invisible absolute right-0 top-[calc(100%+0.5rem)] z-40 w-56 -translate-y-1 rounded-2xl bg-white p-2 opacity-0 shadow-lift ring-1 ring-umber-soft/30 transition-all duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
       >
-        <div className="grid grid-cols-2 gap-x-8 gap-y-6 lg:grid-cols-4">
-          {PRODUCT_GROUPS.map((group) => (
-            <div key={group.title}>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
-                {group.title}
-              </p>
-              <ul className="mt-3 space-y-2">
-                {group.items.map((item) => (
-                  <li key={item.label}>
-                    <a
-                      href={item.href}
-                      role="menuitem"
-                      className="block rounded-md px-2 py-1 text-[13px] leading-snug text-slate/80 transition-colors hover:bg-oat hover:text-slate"
-                    >
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        {RESOURCES.map((r) => (
+          <a
+            key={r.label}
+            href={r.href}
+            role="menuitem"
+            className="block rounded-lg px-3 py-2 text-sm text-slate/80 hover:bg-oat hover:text-slate"
+          >
+            {r.label}
+          </a>
+        ))}
       </div>
     </div>
   );
@@ -205,228 +138,331 @@ function ProductDropdown() {
 
 function Navbar() {
   return (
-    <header className="sticky top-0 z-30 border-b border-umber-soft/40 bg-oat/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Logo variant="dark" />
-        <nav className="hidden items-center gap-8 text-sm text-slate/70 md:flex">
-          <ProductDropdown />
-          <a href="#how" className="hover:text-slate">How it works</a>
-          <a href="#pricing" className="hover:text-slate">Pricing</a>
-          <Link href="/staff/login" className="hover:text-slate">Login</Link>
-        </nav>
-        {/* Mobile: dropdown collapses to a plain anchor that scrolls to #product. */}
-        <nav className="flex items-center gap-5 text-sm text-slate/70 md:hidden">
-          <a href="#product" className="hover:text-slate">Product</a>
-          <a href="#pricing" className="hover:text-slate">Pricing</a>
-        </nav>
-        <Link
-          href="/signup"
-          className="rounded-full bg-chartreuse px-5 py-2 text-sm font-medium text-slate transition-colors hover:bg-chartreuse/85"
-        >
-          Start free
+    <header className="sticky top-0 z-30 border-b border-umber-soft/30 bg-oat/90 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
+        <Link href="/" aria-label="TabCall home">
+          <Logo variant="dark" />
         </Link>
+
+        <nav className="hidden items-center gap-8 text-sm text-slate/75 md:flex">
+          <a href="#features" className="hover:text-slate">Features</a>
+          <a href="#how" className="hover:text-slate">How It Works</a>
+          <a href="#pricing" className="hover:text-slate">Pricing</a>
+          <ResourcesDropdown />
+        </nav>
+
+        <div className="flex items-center gap-3 md:gap-5">
+          <Link
+            href="/staff/login"
+            className="hidden text-sm text-slate/75 hover:text-slate md:inline-block"
+          >
+            Login
+          </Link>
+          <Link
+            href="/signup"
+            className="inline-flex items-center justify-center rounded-full bg-chartreuse px-4 py-2 text-sm font-semibold text-slate shadow-soft transition-colors hover:bg-chartreuse/85 md:px-5"
+          >
+            Get Started Free
+          </Link>
+        </div>
       </div>
     </header>
   );
 }
 
-/* ------------------------------ hero ------------------------------- */
+/* ---------------------------------------------------------------------- */
+/* Hero                                                                   */
+/* ---------------------------------------------------------------------- */
 
 function Hero() {
   return (
     <section className="relative overflow-hidden bg-oat">
-      {/* Soft sage wash, evokes daylight hospitality without overwhelming
-          the typography. Two slow gradients only — no parallax, no motion. */}
+      {/* Soft hospitality wash — sage radial top-right, butter wash bottom-left.
+          Evokes daylit cafe/restaurant without overwhelming the typography. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+        className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(60% 60% at 80% 20%, rgba(199, 214, 207, 0.55) 0%, rgba(247, 245, 242, 0) 60%), radial-gradient(50% 50% at 10% 80%, rgba(242, 231, 183, 0.35) 0%, rgba(247, 245, 242, 0) 65%)",
+            "radial-gradient(60% 50% at 85% 15%, rgba(199, 214, 207, 0.45) 0%, rgba(247, 245, 242, 0) 60%), radial-gradient(45% 40% at 5% 90%, rgba(242, 231, 183, 0.32) 0%, rgba(247, 245, 242, 0) 65%)",
         }}
       />
-      <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:grid-cols-[1.05fr_1fr] md:py-28 lg:py-32">
-        {/* LEFT, headline column */}
-        <div className="text-slate">
-          <span className="inline-flex items-center gap-2 rounded-full border border-umber-soft/40 bg-white/70 px-3.5 py-1.5 text-[12px] text-slate/75 backdrop-blur">
-            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-[10px] font-bold text-slate">
-              ★
-            </span>
-            4.8 from Houston operators. No ad budget, just word of mouth.
-          </span>
 
-          <h1 className="mt-6 text-[52px] font-semibold leading-[0.98] tracking-[-0.025em] text-slate md:text-[68px] lg:text-[80px]">
-            <span className="block">The 1-star review</span>
-            <span className="block text-umber">that never went public.</span>
-          </h1>
-
-          <p className="mt-7 max-w-xl text-lg leading-relaxed text-slate/65">
-            TabCall sits on top of your POS. Guests scan a QR. The closest
-            server&rsquo;s phone buzzes. And the second a bad rating is
-            brewing, our AI routes it to your inbox instead of Google.
+      <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-10 md:grid-cols-[1fr_1fr] md:gap-10 md:px-8 md:pb-24 md:pt-16 lg:gap-16 lg:pb-28 lg:pt-20">
+        {/* LEFT: copy column */}
+        <div className="animate-fade-up">
+          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-umber">
+            All-in-one hospitality platform
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+          <h1 className="mt-5 text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] text-slate md:text-[44px] lg:text-[64px]">
+            Delight guests.
+            <br />
+            <span className="text-umber">Empower staff.</span>
+          </h1>
+
+          <p className="mt-5 max-w-lg text-base leading-relaxed text-slate/65 md:text-lg">
+            TabCall helps restaurants, bars, lounges, and cafés streamline
+            service, increase revenue, and deliver exceptional guest
+            experiences.
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center rounded-full bg-chartreuse px-6 py-3.5 text-[15px] font-semibold text-slate shadow-soft transition-colors hover:bg-chartreuse/85"
+              className="inline-flex items-center justify-center rounded-full bg-chartreuse px-6 py-3.5 text-[15px] font-semibold text-slate shadow-soft transition-all hover:-translate-y-0.5 hover:bg-chartreuse/85 hover:shadow-lift"
             >
-              Start free
+              Get Started Free
             </Link>
             <a
               href="#how"
-              className="inline-flex items-center gap-2 rounded-full border border-umber-soft/50 bg-white px-6 py-3.5 text-[15px] font-medium text-slate transition-colors hover:border-slate/30"
+              className="inline-flex items-center gap-2 rounded-full border border-umber-soft/50 bg-white px-5 py-3 text-[15px] font-medium text-slate transition-colors hover:border-slate/30"
             >
               <span
                 aria-hidden
-                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-sea-soft"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-chartreuse/40"
               >
                 <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
                   <path d="M2 1l5 3.5L2 8V1z" fill="#232130" />
                 </svg>
               </span>
-              See how it works
+              See How It Works
             </a>
           </div>
 
-          <p className="mt-5 text-[12px] text-slate/50">
-            Free Starter plan. No card to start. Cancel by text.
-          </p>
+          {/* Feature shortcuts */}
+          <ul className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <FeatureShortcut tone="butter" title="Call Waiter" sub="Instant service">
+              <BellIcon />
+            </FeatureShortcut>
+            <FeatureShortcut tone="butter" title="Order" sub="From the table">
+              <ForkKnifeIcon />
+            </FeatureShortcut>
+            <FeatureShortcut tone="butter" title="Pay" sub="Securely">
+              <CardIcon />
+            </FeatureShortcut>
+            <FeatureShortcut tone="butter" title="Review" sub="Share feedback">
+              <StarIcon />
+            </FeatureShortcut>
+          </ul>
         </div>
 
-        {/* RIGHT, layered hero mockup */}
-        <HeroMockup />
+        {/* RIGHT: visual column with QR tent + phone */}
+        <HeroVisual />
       </div>
     </section>
   );
 }
 
-function HeroMockup() {
+function FeatureShortcut({
+  tone,
+  title,
+  sub,
+  children,
+}: {
+  tone: "butter" | "sage";
+  title: string;
+  sub: string;
+  children: React.ReactNode;
+}) {
+  const tile =
+    tone === "butter"
+      ? "bg-chartreuse/55 text-slate"
+      : "bg-sea-soft/70 text-slate";
   return (
-    <div className="relative mx-auto w-full max-w-md">
-      {/* Floating tag, top-left */}
-      <div className="absolute -left-2 top-3 z-20 inline-flex items-center gap-2 rounded-full bg-slate px-3 py-1.5 text-[11px] text-oat/90 ring-1 ring-slate/10 shadow-soft md:-left-8">
-        <span className="h-1.5 w-1.5 rounded-full bg-sea-soft" />
-        Live floor, Otto&rsquo;s Lounge
+    <li className="text-left">
+      <span
+        aria-hidden
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${tile}`}
+      >
+        {children}
+      </span>
+      <p className="mt-3 text-sm font-semibold text-slate">{title}</p>
+      <p className="text-[12px] text-slate/55">{sub}</p>
+    </li>
+  );
+}
+
+function HeroVisual() {
+  return (
+    <div className="relative mx-auto w-full max-w-[520px]">
+      {/* Soft circular wash behind both mockups, mimics natural light. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 rounded-[40px]"
+        style={{
+          background:
+            "radial-gradient(50% 50% at 50% 50%, rgba(199, 214, 207, 0.35) 0%, rgba(247, 245, 242, 0) 75%)",
+        }}
+      />
+
+      <div className="relative flex items-end justify-center gap-3 md:gap-5">
+        <QRTent />
+        <PhoneMockup />
       </div>
+    </div>
+  );
+}
 
-      {/* Email card, main */}
-      <div className="rounded-3xl bg-white p-6 shadow-lift ring-1 ring-umber-soft/30">
-        <div className="flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
-            From: alerts@tab-call.com
-          </p>
-          <span className="font-mono text-[11px] text-slate/45">10:14 PM</span>
-        </div>
-
-        <p className="mt-4 text-[15px] font-medium text-slate">
-          Table 7 · 2 stars
-        </p>
-
-        <p className="mt-3 border-l-2 border-coral/60 pl-4 text-sm italic leading-relaxed text-slate/70">
-          &ldquo;Waited 8 min for second drink, server seemed annoyed when I
-          asked again.&rdquo;
-        </p>
-
-        <div className="mt-5 space-y-2 text-sm">
-          <Row k="Likely cause" v="Service speed" />
-          <Row k="Server on table" v="Marcus" />
-          <Row k="Suggested" v="Comp the next round. Talk to Marcus before close." last />
-        </div>
-
-        <p className="mt-5 inline-flex items-center gap-2 text-[11px] tracking-wide text-slate/50">
-          <span className="h-1.5 w-1.5 rounded-full bg-sea" />
-          Routed privately. We never email the guest.
-        </p>
-      </div>
-
-      {/* Floating "0% public" badge, bottom-right */}
-      <div className="absolute -bottom-5 right-2 z-20 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-slate shadow-lift ring-1 ring-umber-soft/30 md:-right-8">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-chartreuse">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M5 12l5 5L20 7"
-              stroke="#232130"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+function QRTent() {
+  return (
+    <div className="relative w-[42%] max-w-[220px] -rotate-1 animate-float-slow rounded-2xl bg-white p-4 shadow-lift ring-1 ring-umber-soft/30 md:w-[44%]">
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
           </svg>
         </span>
-        <div className="leading-tight">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-umber">
-            1★ this week
-          </p>
-          <p className="text-base font-semibold">3 caught · 0 public</p>
-        </div>
+        <span className="text-[12px] font-semibold tracking-tight text-slate">TabCall</span>
       </div>
 
-      {/* Floating "live request" pill, top-right */}
-      <div className="absolute -right-3 top-20 z-20 hidden rounded-2xl bg-white px-4 py-3 text-slate shadow-lift ring-1 ring-umber-soft/30 md:-right-12 md:block">
-        <p className="text-[10px] uppercase tracking-[0.16em] text-umber">
-          Avg bill close
-        </p>
-        <p className="mt-0.5 text-2xl font-semibold leading-none">
-          1<span className="text-base font-medium text-slate/55">m</span>32
-          <span className="text-base font-medium text-slate/55">s</span>
-        </p>
-        <p className="mt-1 text-[10px] text-sea">↓ 84% vs paper tab</p>
+      <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.18em] text-umber">Scan to</p>
+      <p className="text-[15px] font-semibold leading-tight text-slate">Order &amp; Pay</p>
+
+      <div className="mt-3 rounded-lg bg-oat p-2">
+        <QRCodePattern />
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
+        <TentIcon><PhoneIcon /></TentIcon>
+        <TentIcon><ForkKnifeIcon small /></TentIcon>
+        <TentIcon><CardIcon small /></TentIcon>
+        <TentIcon><StarIcon small /></TentIcon>
       </div>
     </div>
   );
 }
 
-function Row({ k, v, last = false }: { k: string; v: string; last?: boolean }) {
+function TentIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      aria-hidden
+      className="flex aspect-square items-center justify-center rounded-md bg-oat text-slate/80 ring-1 ring-umber-soft/30"
+    >
+      {children}
+    </span>
+  );
+}
+
+function QRCodePattern() {
+  // Decorative QR-like grid (not a real scannable code). 11x11 modules with
+  // three locator squares at corners — recognisable as a QR at a glance.
+  const modules: boolean[][] = Array.from({ length: 11 }, (_, y) =>
+    Array.from({ length: 11 }, (_, x) => {
+      // Locator corners (3x3 squares at TL, TR, BL with 1px gap)
+      const inLocator =
+        (y < 3 && (x < 3 || x > 7)) || (y > 7 && x < 3);
+      if (inLocator) {
+        // Outer ring of each locator filled, inner core filled, gap white
+        const local = {
+          ly: y < 3 ? y : y - 8,
+          lx: x < 3 ? x : x > 7 ? x - 8 : x,
+        };
+        if (local.ly === 1 && local.lx === 1) return true; // core
+        return local.ly === 0 || local.ly === 2 || local.lx === 0 || local.lx === 2;
+      }
+      // Pseudo-random pattern for body using bit hash
+      return ((x * 7 + y * 13 + x * y) % 3 === 0) || ((x + y) % 5 === 0);
+    })
+  );
   return (
     <div
-      className={[
-        "flex items-baseline justify-between gap-4",
-        last ? "" : "border-b border-slate/8 pb-2",
-      ].join(" ")}
+      aria-hidden
+      className="grid aspect-square w-full gap-[2px]"
+      style={{ gridTemplateColumns: "repeat(11, minmax(0, 1fr))" }}
     >
-      <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{k}</span>
-      <span className="text-right text-sm text-slate">{v}</span>
+      {modules.map((row, y) =>
+        row.map((on, x) => (
+          <span
+            key={`${x}-${y}`}
+            className={`block aspect-square rounded-[1px] ${on ? "bg-slate" : "bg-transparent"}`}
+          />
+        ))
+      )}
     </div>
   );
 }
 
-/* ------------------------- trust strip ----------------------------- */
+function PhoneMockup() {
+  return (
+    <div className="relative w-[58%] max-w-[270px] translate-y-2 animate-float rounded-[36px] bg-slate p-2 shadow-lift">
+      <div className="rounded-[28px] bg-white p-4">
+        {/* Status bar */}
+        <div className="flex items-center justify-between text-[10px] text-slate/55">
+          <span>9:41</span>
+          <span className="flex items-center gap-1">
+            <span className="h-1 w-3 rounded-sm bg-slate/55" />
+            <span className="h-1 w-3 rounded-sm bg-slate/55" />
+            <span className="h-1.5 w-4 rounded-sm bg-slate/55" />
+          </span>
+        </div>
 
-function TrustStrip() {
-  // Real Houston-flavoured venue names placed as wordmarks. When real partner
-  // logos arrive, swap each tile for an <Image>.
-  const tiles = [
-    { name: "Otto's Lounge", style: "italic" },
-    { name: "Bar Reyna", style: "uppercase" },
-    { name: "Anvil", style: "tracking-[0.3em]" },
-    { name: "Captain Foxheart's", style: "italic" },
-    { name: "Better Luck", style: "uppercase" },
-    { name: "Tongue-Cut Sparrow", style: "tracking-[0.3em]" },
-    { name: "Rudyard's", style: "italic" },
-    { name: "Notsuoh", style: "uppercase" },
+        <p className="mt-3 text-[10px] text-slate/50">Hello</p>
+        <p className="text-[18px] font-semibold leading-tight text-slate">Table 12</p>
+        <p className="mt-1 text-[10px] text-slate/55">What would you like to do?</p>
+
+        <ul className="mt-4 space-y-2">
+          <PhoneRow icon={<BellIcon />} title="Call Waiter" sub="Get the right help fast" />
+          <PhoneRow icon={<ForkKnifeIcon />} title="View Menu" sub="Browse and order" />
+          <PhoneRow icon={<ReceiptIcon />} title="Request Bill" sub="Bring me the tab" />
+          <PhoneRow icon={<CardIcon />} title="Pay Bill" sub="Pay securely" />
+          <PhoneRow icon={<StarIcon />} title="Leave Review" sub="Tell us about your experience" />
+        </ul>
+
+        <p className="mt-4 text-center text-[10px] text-umber">TabCall</p>
+      </div>
+    </div>
+  );
+}
+
+function PhoneRow({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
+  return (
+    <li className="flex items-center gap-3 rounded-xl bg-oat px-3 py-2">
+      <span
+        aria-hidden
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-chartreuse/60 text-slate"
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-semibold text-slate">{title}</span>
+        <span className="block text-[9px] text-slate/55">{sub}</span>
+      </span>
+    </li>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Trusted strip                                                          */
+/* ---------------------------------------------------------------------- */
+
+function TrustedStrip() {
+  const brands = [
+    { name: "LUNA", suffix: "LOUNGE", style: "tracking-[0.32em] font-medium" },
+    { name: "THE OAK & VINE", suffix: "", style: "italic font-semibold" },
+    { name: "URBAN", suffix: "BISTRO", style: "tracking-[0.28em] font-medium" },
+    { name: "NIGHTFALL", suffix: "CLUB", style: "tracking-[0.18em] font-semibold" },
+    { name: "harbor", suffix: "EATS", style: "lowercase font-light" },
   ];
   return (
-    <section className="bg-oat">
-      <div className="mx-auto max-w-7xl px-6 pb-8 pt-20 text-center md:pt-24">
-        <h2 className="mx-auto max-w-3xl text-[34px] font-semibold leading-[1.05] tracking-tight text-slate md:text-[52px]">
-          Trusted by the rooms that get loud after 10.
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-base text-slate/65">
-          Houston bars and lounges that don&rsquo;t want a new POS. They want
-          their floor to move faster.
+    <section className="bg-oat py-12 md:py-16">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <p className="text-center text-[11px] font-medium uppercase tracking-[0.24em] text-umber">
+          Trusted by modern hospitality brands
         </p>
-
-        <div className="mx-auto mt-12 grid max-w-6xl grid-cols-2 gap-3 md:grid-cols-4">
-          {tiles.map((t) => (
-            <div
-              key={t.name}
-              className="flex h-20 items-center justify-center rounded-2xl bg-white px-4 ring-1 ring-slate/5"
-            >
-              <span
-                className={`text-base font-semibold text-slate/70 ${t.style ?? ""}`}
-              >
-                {t.name}
-              </span>
+        <div className="mt-7 grid grid-cols-2 items-center gap-y-6 sm:grid-cols-3 md:flex md:justify-between">
+          {brands.map((b) => (
+            <div key={b.name} className="flex flex-col items-center text-slate/55">
+              <span className={`text-base ${b.style}`}>{b.name}</span>
+              {b.suffix ? (
+                <span className="mt-0.5 text-[10px] uppercase tracking-[0.28em] text-slate/45">
+                  {b.suffix}
+                </span>
+              ) : null}
             </div>
           ))}
         </div>
@@ -435,226 +471,70 @@ function TrustStrip() {
   );
 }
 
-/* ---------------------- centered section title --------------------- */
+/* ---------------------------------------------------------------------- */
+/* Feature grid                                                           */
+/* ---------------------------------------------------------------------- */
 
-function SectionTitle() {
+const FEATURES = [
+  {
+    icon: <QRIcon />,
+    tone: "butter" as const,
+    title: "QR Ordering",
+    body:
+      "Guests browse the digital menu, place orders, and send them directly to your kitchen, all from their table.",
+  },
+  {
+    icon: <SplitCardIcon />,
+    tone: "sage" as const,
+    title: "QR Payments & Bill Splitting",
+    body:
+      "Guests can view the bill, split it, add tips, and pay securely in seconds. Works with all major cards and wallets.",
+  },
+  {
+    icon: <BellIcon />,
+    tone: "butter" as const,
+    title: "Call Waiter",
+    body:
+      "One tap to call a waiter. Reduce wait times and improve guest satisfaction instantly.",
+  },
+  {
+    icon: <StarOutlineIcon />,
+    tone: "sage" as const,
+    title: "Reviews & Feedback",
+    body:
+      "Collect more reviews and feedback from happy guests to grow your reputation.",
+  },
+  {
+    icon: <ChartIcon />,
+    tone: "sage" as const,
+    title: "Analytics & Insights",
+    body:
+      "Track performance, response times, table turnover, and staff productivity in real time.",
+  },
+  {
+    icon: <PlugIcon />,
+    tone: "butter" as const,
+    title: "POS Integrations",
+    body:
+      "Seamlessly integrate with your POS system for real-time orders, menus, and payments.",
+  },
+];
+
+function FeatureGrid() {
   return (
-    <section className="bg-oat">
-      <div className="mx-auto max-w-3xl px-6 py-24 text-center md:py-32">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-          Why bars switch
-        </p>
-        <h2 className="mt-5 text-[40px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[64px]">
-          Why operators run TabCall.
-        </h2>
-        <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate/65">
-          We don&rsquo;t replace your POS, your printer, or your menu. We sit
-          on top, and free your floor to do what it&rsquo;s actually there for:
-          serve faster, save the rating, hold the regular.
-        </p>
-        <a
-          href="#product"
-          className="mt-8 inline-flex items-center gap-2 rounded-full border border-slate/20 bg-white px-6 py-3 text-sm font-medium text-slate transition-colors hover:border-slate/40"
-        >
-          See the product
-          <span aria-hidden>→</span>
-        </a>
-      </div>
-    </section>
-  );
-}
+    <section id="features" className="bg-oat py-20 md:py-28">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <SectionHeader
+          eyebrow="Built for hospitality"
+          title="Everything you need in one platform"
+          sub="TabCall brings every guest interaction into one seamless experience for your team and your customers."
+          pillEyebrow
+        />
 
-/* ------------------ results-you-can-take-to-the-bank --------------- */
-
-function ResultsBand() {
-  const stats = [
-    {
-      tag: "Bad-rating intercept",
-      dot: "bg-coral",
-      value: "3×",
-      label: "Fewer 1-star reviews landing on Google",
-    },
-    {
-      tag: "Floor speed",
-      dot: "bg-sea",
-      value: "1m 32s",
-      label: "Average bill close vs 8m on a paper tab",
-    },
-    {
-      tag: "Tip lift",
-      dot: "bg-chartreuse",
-      value: "+1.3%",
-      label: "Digital vs paper tip percentage, by server",
-    },
-  ];
-  return (
-    <section className="bg-oat">
-      <div className="mx-auto max-w-7xl px-6 pb-20 md:pb-28">
-        <h2 className="mx-auto max-w-3xl text-center text-[36px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[56px]">
-          Results you can take to the bank.
-        </h2>
-
-        <div className="mt-16 grid grid-cols-1 gap-y-12 md:grid-cols-3 md:gap-y-0">
-          {stats.map((s, i) => (
-            <div
-              key={s.tag}
-              className={[
-                "px-2 text-center md:px-8",
-                i > 0 ? "md:border-l md:border-slate/10" : "",
-              ].join(" ")}
-            >
-              <span className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-[11px] font-medium text-slate ring-1 ring-slate/5">
-                <span className={`h-2 w-2 rounded-full ${s.dot}`} />
-                {s.tag}
-              </span>
-              <p className="mt-8 text-[72px] font-semibold leading-[0.9] tracking-[-0.02em] text-slate md:text-[96px]">
-                {s.value}
-              </p>
-              <p className="mx-auto mt-6 max-w-[220px] text-sm leading-relaxed text-slate/65">
-                {s.label}
-              </p>
-            </div>
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f) => (
+            <FeatureCard key={f.title} {...f} />
           ))}
-        </div>
-
-        <p className="mx-auto mt-20 max-w-4xl text-center text-[36px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[56px]">
-          Thicken up the thinnest of margins.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* -------------------- the power of one platform -------------------- */
-
-function OnePlatform() {
-  return (
-    <section id="product" className="bg-oat">
-      <div className="mx-auto max-w-7xl px-6 pb-24">
-        <div className="overflow-hidden rounded-[32px] bg-white p-8 ring-1 ring-slate/5 md:p-14">
-          <div className="grid items-center gap-12 md:grid-cols-2">
-            {/* Left, copy */}
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-                One feed
-              </p>
-              <h3 className="mt-4 text-[36px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[48px]">
-                One quiet feed. Every signal.
-              </h3>
-              <p className="mt-5 max-w-md text-base leading-relaxed text-slate/65">
-                Every table, every signal, every server, ranked by age and
-                urgency. A request that has been waiting 3 minutes turns coral
-                on the PWA before the guest ever raises a hand.
-              </p>
-              <ul className="mt-7 space-y-3">
-                {[
-                  "Live request queue on a PWA, sub-second routing",
-                  "Acknowledge, hand off, resolve with a reason code",
-                  "Push notifications when the PWA is backgrounded (FCM)",
-                  "Bill view, kitchen view, reservations, waitlist, tip pool",
-                  "Manager dashboard: response time, completion, peak hours",
-                ].map((b) => (
-                  <li key={b} className="flex gap-3 text-[15px] text-slate/80">
-                    <span
-                      aria-hidden
-                      className="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-chartreuse"
-                    />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Right, venue stat panel */}
-            <VenuePanelMock />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function VenuePanelMock() {
-  return (
-    <div className="mx-auto w-full max-w-sm">
-      <div className="rounded-3xl bg-oat p-6 ring-1 ring-slate/5">
-        {/* Location pill */}
-        <div className="inline-flex items-center gap-2 rounded-2xl bg-sea/30 px-4 py-2.5 text-[13px] font-semibold text-slate">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 2C8 2 5 5 5 9c0 5.5 7 13 7 13s7-7.5 7-13c0-4-3-7-7-7z"
-              stroke="#232130"
-              strokeWidth="1.6"
-            />
-            <circle cx="12" cy="9" r="2.2" fill="#232130" />
-          </svg>
-          Otto&rsquo;s Lounge, Houston
-        </div>
-
-        {/* Sales card */}
-        <div className="mt-4 rounded-2xl bg-white p-5 ring-1 ring-slate/5">
-          <div className="flex items-center justify-between">
-            <span className="rounded-lg bg-slate/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate/70">
-              Tabs
-            </span>
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-chartreuse">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M7 17L17 7M17 7H9M17 7v8" stroke="#232130" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </span>
-          </div>
-          <p className="mt-4 text-[26px] font-semibold leading-none text-slate">
-            $4,712.40
-          </p>
-          <p className="mt-1 text-xs text-slate/55">
-            Friday · 21:42 · 47 served
-          </p>
-        </div>
-
-        {/* Rating intercept card */}
-        <div className="mt-3 rounded-2xl bg-white p-5 ring-1 ring-slate/5">
-          <div className="flex items-center justify-between">
-            <span className="rounded-lg bg-slate/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate/70">
-              1★ caught
-            </span>
-            <span className="rounded-full bg-coral/15 px-2.5 py-1 text-[11px] font-semibold text-coral">
-              ↗ −67%
-            </span>
-          </div>
-          <p className="mt-4 text-[26px] font-semibold leading-none text-slate">
-            3<span className="text-base font-medium text-slate/55"> /4</span>
-          </p>
-          <p className="mt-1 text-xs text-slate/55">
-            Routed to you before going public
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------------- two-up feature cards ----------------------- */
-
-function TwoUpFeatures() {
-  return (
-    <section className="bg-oat">
-      <div className="mx-auto max-w-7xl px-6 pb-24">
-        <div className="grid gap-6 md:grid-cols-2">
-          <FeatureCard
-            tag="AI intercept"
-            title="Save the bad review for your inbox."
-            body="After paying, every guest sees a star prompt. 4 to 5 stars route to Google. 1 to 3 stars route to you with an AI category (service speed, drink quality, staff attitude, wait time, food, noise) plus the table, the server, and a suggested action."
-          >
-            <NotificationStack />
-          </FeatureCard>
-
-          <FeatureCard
-            tag="Plays nice"
-            title="Sits on top of what you already pay for."
-            body="Stripe Connect for payments. A POS integration layer with providers planned for Toast, Square, and Clover. Apple Pay, Google Pay, card. No rip-out, no menu rebuild, no printer chain to redo."
-          >
-            <IntegrationOrbit />
-          </FeatureCard>
         </div>
       </div>
     </section>
@@ -662,212 +542,308 @@ function TwoUpFeatures() {
 }
 
 function FeatureCard({
-  tag,
+  icon,
+  tone,
   title,
   body,
-  children,
 }: {
-  tag: string;
+  icon: React.ReactNode;
+  tone: "butter" | "sage";
   title: string;
   body: string;
-  children: React.ReactNode;
 }) {
+  const tile =
+    tone === "butter" ? "bg-chartreuse/55 text-slate" : "bg-sea-soft/70 text-slate";
   return (
-    <article className="flex flex-col gap-8 rounded-[32px] bg-white p-8 ring-1 ring-slate/5 md:p-10">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-          {tag}
-        </p>
-        <h3 className="mt-3 text-[28px] font-semibold leading-[1.05] tracking-tight text-slate md:text-[34px]">
-          {title}
-        </h3>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-slate/65">
-          {body}
-        </p>
-      </div>
-      <div className="mt-auto rounded-3xl bg-oat p-6 md:p-8">{children}</div>
+    <article className="group rounded-2xl border border-umber-soft/30 bg-white p-6 shadow-card transition-all hover:-translate-y-0.5 hover:border-umber-soft/55 hover:shadow-soft md:p-7">
+      <span
+        aria-hidden
+        className={`inline-flex h-12 w-12 items-center justify-center rounded-xl ${tile}`}
+      >
+        {icon}
+      </span>
+      <h3 className="mt-5 text-[18px] font-semibold text-slate md:text-[20px]">{title}</h3>
+      <p className="mt-2 text-[14px] leading-relaxed text-slate/65 md:text-[15px]">{body}</p>
+      <p className="mt-5 text-sm font-medium text-slate transition-colors group-hover:text-umber">
+        Learn more
+        <span aria-hidden className="ml-1 inline-block transition-transform group-hover:translate-x-0.5">→</span>
+      </p>
     </article>
   );
 }
 
-function NotificationStack() {
-  const items = [
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path
-            d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"
-            fill="#232130"
-          />
-        </svg>
-      ),
-      bg: "bg-coral/20",
-      label: "Table 7 · 2★ before posting",
-    },
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <circle cx="12" cy="12" r="9" stroke="#232130" strokeWidth="1.8" />
-          <path d="M12 7v5l3 2" stroke="#232130" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      ),
-      bg: "bg-sea/30",
-      label: "Bar 2 · waited 4:12, escalate",
-    },
-    {
-      icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M3 12h18M12 3v18" stroke="#232130" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      ),
-      bg: "bg-chartreuse/40",
-      label: "Marcus, 2nd flag this shift",
-    },
-  ];
-  return (
-    <div className="space-y-3">
-      {items.map((it) => (
-        <div
-          key={it.label}
-          className="flex items-center gap-3 rounded-2xl bg-white p-3 pr-4 ring-1 ring-slate/5"
-        >
-          <span
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${it.bg}`}
-          >
-            {it.icon}
-          </span>
-          <span className="text-[14px] font-medium text-slate">{it.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+/* ---------------------------------------------------------------------- */
+/* How TabCall works                                                      */
+/* ---------------------------------------------------------------------- */
 
-function IntegrationOrbit() {
-  // 8 satellite tiles + 1 centre brand tile arranged on a 3-row grid.
-  const tiles: { label: string; tone: "white" | "sea" | "chartreuse" | "coral" | "umber" }[] = [
-    { label: "Toast", tone: "white" },
-    { label: "Square", tone: "sea" },
-    { label: "Stripe", tone: "white" },
-    { label: "Apple Pay", tone: "umber" },
-    { label: "·", tone: "white" }, // brand center placeholder, replaced below
-    { label: "Google Pay", tone: "chartreuse" },
-    { label: "Clover", tone: "white" },
-    { label: "Google", tone: "coral" },
-    { label: "FCM Push", tone: "white" },
-  ];
-  const tone = (t: string) => {
-    switch (t) {
-      case "sea":        return "bg-sea/30";
-      case "chartreuse": return "bg-chartreuse/40";
-      case "coral":      return "bg-coral/15";
-      case "umber":      return "bg-umber/20";
-      default:           return "bg-white";
-    }
-  };
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      {tiles.map((t, i) => {
-        if (i === 4) {
-          // Centre brand tile
-          return (
-            <div
-              key={i}
-              className="flex aspect-square items-center justify-center rounded-2xl bg-slate text-chartreuse ring-1 ring-slate/10"
-            >
-              <span className="text-base font-semibold lowercase tracking-tight">
-                tabcall
-              </span>
-            </div>
-          );
-        }
-        return (
-          <div
-            key={i}
-            className={`flex aspect-square items-center justify-center rounded-2xl text-center text-[12px] font-semibold text-slate/85 ring-1 ring-slate/5 ${tone(t.tone)}`}
-          >
-            {t.label}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ------------------------------ how it works ----------------------- */
+const STEPS = [
+  {
+    n: "1",
+    title: "Scan QR Code",
+    body: "Guests scan the QR code on their table to access the menu and services.",
+  },
+  {
+    n: "2",
+    title: "Order, Call or Pay",
+    body: "They can place orders, call a waiter, request the bill, or make payments.",
+  },
+  {
+    n: "3",
+    title: "We handle the rest",
+    body: "Your staff gets notified instantly and your operations run smoothly.",
+  },
+];
 
 function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      tone: "bg-sea/30",
-      title: "Guest scans. Closest server’s phone buzzes.",
-      body:
-        "Four buttons at the table: call waiter, request bill, ask for a refill, ask for help. No app to download. Sub-second delivery to the staff PWA. If nobody acknowledges in 3 minutes, the request turns coral and escalates.",
-    },
-    {
-      n: "02",
-      tone: "bg-chartreuse/30",
-      title: "Bill closes from the table. No card data stored.",
-      body:
-        "Stripe Connect, Apple Pay, Google Pay, card. Split by item or by share, two guests can pay different items without colliding. Pre-order from the QR menu before getting seated, pickup code on confirmation.",
-    },
-    {
-      n: "03",
-      tone: "bg-coral/20",
-      title: "1 to 3 stars? It comes to you. Not Google.",
-      body:
-        "Every guest rates after paying. 4 and 5 stars get nudged to your Google profile. 1 to 3 stars route to the manager with an AI-classified category: service speed, drink quality, staff attitude, wait time, food, or noise.",
-    },
-  ];
   return (
-    <section id="how" className="bg-linen">
-      <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-            How it works
-          </p>
-          <h2 className="mt-4 text-[40px] font-semibold leading-[1.05] tracking-tight text-slate md:text-[56px]">
-            Three steps, scan to served.
-          </h2>
-        </div>
+    <section id="how" className="bg-oat pb-20 md:pb-28">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <div className="overflow-hidden rounded-[32px] bg-linen p-6 ring-1 ring-umber-soft/30 md:p-12">
+          <div className="grid items-center gap-10 md:grid-cols-2">
+            <div>
+              <SectionHeader
+                eyebrow="Simple for everyone"
+                title="How TabCall works"
+                sub="Three simple steps to a better hospitality experience."
+                left
+                pillEyebrow
+              />
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {steps.map((s) => (
-            <article
-              key={s.n}
-              className="rounded-3xl bg-white p-8 ring-1 ring-umber-soft/30 shadow-card"
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold text-slate ${s.tone}`}
-                >
-                  {s.n}
-                </span>
-                <span className="text-[11px] uppercase tracking-[0.18em] text-umber">
-                  Step {Number(s.n)}
-                </span>
-              </div>
-              <h3 className="mt-7 text-[22px] font-semibold leading-snug text-slate">
-                {s.title}
-              </h3>
-              <p className="mt-3 text-[15px] leading-relaxed text-slate/65">
-                {s.body}
-              </p>
-            </article>
-          ))}
+              <ol className="mt-8 space-y-5">
+                {STEPS.map((s) => (
+                  <li key={s.n} className="flex gap-4">
+                    <span
+                      aria-hidden
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate ring-1 ring-umber-soft/40"
+                    >
+                      {s.n}
+                    </span>
+                    <div>
+                      <p className="text-[16px] font-semibold text-slate md:text-[18px]">{s.title}</p>
+                      <p className="mt-1 text-[14px] leading-relaxed text-slate/65">{s.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Right: menu phone mockup */}
+            <MenuPhoneMockup />
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-/* ------------------------------ pricing ---------------------------- */
+function MenuPhoneMockup() {
+  const items = [
+    { name: "Burrata Salad", sub: "Tomatoes & basil", price: "$14.00" },
+    { name: "Truffle Pasta", sub: "Hand-rolled", price: "$24.00" },
+    { name: "Grilled Salmon", sub: "Lemon butter", price: "$26.00" },
+    { name: "Golden Shrimp", sub: "Spiced rice", price: "$22.00" },
+  ];
+  return (
+    <div className="relative mx-auto w-full max-w-[300px]">
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 rounded-[40px]"
+        style={{
+          background:
+            "radial-gradient(60% 60% at 50% 40%, rgba(242, 231, 183, 0.35) 0%, rgba(247, 245, 242, 0) 70%)",
+        }}
+      />
+      <div className="rounded-[36px] bg-slate p-2 shadow-lift">
+        <div className="rounded-[28px] bg-white p-4">
+          <div className="flex items-center justify-between text-[10px] text-slate/55">
+            <span>9:41</span>
+            <span className="font-medium text-slate/70">Our Menu</span>
+            <span aria-hidden className="opacity-0">9:41</span>
+          </div>
 
-/**
- * Tier columns drive both the top cards and the matrix header. Order matters:
- * Starter, Growth, Pro, Founding. `key` is the lookup used by feature rows.
- */
+          <div className="mt-3 flex gap-2 text-[10px]">
+            {["Starters", "Mains", "Drinks", "Desserts"].map((t, i) => (
+              <span
+                key={t}
+                className={
+                  i === 1
+                    ? "rounded-full bg-slate px-2.5 py-1 font-semibold text-oat"
+                    : "rounded-full bg-oat px-2.5 py-1 text-slate/65"
+                }
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+
+          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-umber">Popular</p>
+
+          <ul className="mt-2 space-y-2">
+            {items.map((it) => (
+              <li key={it.name} className="flex items-center gap-3 rounded-2xl bg-oat p-2.5">
+                <span
+                  aria-hidden
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-chartreuse/60 text-slate"
+                >
+                  <PlateIcon />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-semibold text-slate">{it.name}</p>
+                  <p className="text-[9px] text-slate/55">{it.sub}</p>
+                </div>
+                <span className="text-[10px] font-semibold text-slate">{it.price}</span>
+                <button
+                  type="button"
+                  className="rounded-full bg-slate px-2.5 py-1 text-[9px] font-semibold text-oat"
+                >
+                  Add
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Metrics strip                                                          */
+/* ---------------------------------------------------------------------- */
+
+const METRICS = [
+  { icon: <TurnoverIcon />, value: "30%+", label: "Increase in table turnover" },
+  { icon: <TipIcon />, value: "20%+", label: "Increase in tips with in-table payments" },
+  { icon: <CostIcon />, value: "30%+", label: "Reduction in operational costs" },
+  { icon: <PeopleIcon />, value: "10K+", label: "Restaurants & venues trust TabCall" },
+];
+
+function Metrics() {
+  return (
+    <section className="bg-oat pb-20 md:pb-28">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <div className="rounded-[28px] bg-sea-soft/55 p-6 md:p-10">
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {METRICS.map((m) => (
+              <div key={m.label} className="text-center">
+                <span
+                  aria-hidden
+                  className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/80 text-slate ring-1 ring-white"
+                >
+                  {m.icon}
+                </span>
+                <p className="mt-4 text-[28px] font-semibold tracking-tight text-slate md:text-[36px]">
+                  {m.value}
+                </p>
+                <p className="mt-1 text-[12px] leading-snug text-slate/65 md:text-[13px]">
+                  {m.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Testimonials                                                           */
+/* ---------------------------------------------------------------------- */
+
+const TESTIMONIALS = [
+  {
+    quote:
+      "TabCall has completely transformed the way we serve our guests. The QR ordering and payments are so easy to use!",
+    name: "Maria Lopez",
+    role: "Owner, Luna Lounge",
+    initials: "ML",
+    tone: "butter" as const,
+  },
+  {
+    quote:
+      "Our staff is happier, guests are happier, and our table turnover increased significantly.",
+    name: "James Carter",
+    role: "Manager, Urban Bistro",
+    initials: "JC",
+    tone: "sage" as const,
+  },
+  {
+    quote:
+      "Bill splitting and instant payments have made a huge difference. Highly recommended!",
+    name: "Sophie Bennett",
+    role: "Owner, Harbor Eats",
+    initials: "SB",
+    tone: "butter" as const,
+  },
+];
+
+function Testimonials() {
+  return (
+    <section className="bg-oat pb-20 md:pb-28">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <SectionHeader
+          eyebrow="Loved by restaurants"
+          title="What our customers say"
+          pillEyebrow
+        />
+
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {TESTIMONIALS.map((t) => (
+            <article
+              key={t.name}
+              className="rounded-2xl border border-umber-soft/30 bg-white p-6 shadow-card md:p-7"
+            >
+              <Stars />
+              <p className="mt-4 text-[14px] leading-relaxed text-slate/80 md:text-[15px]">
+                &ldquo;{t.quote}&rdquo;
+              </p>
+              <div className="mt-6 flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className={
+                    "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-slate " +
+                    (t.tone === "butter" ? "bg-chartreuse/70" : "bg-sea-soft")
+                  }
+                >
+                  {t.initials}
+                </span>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate">{t.name}</p>
+                  <p className="text-[11px] text-umber">{t.role}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* Pagination dots — purely decorative */}
+        <div className="mt-8 flex items-center justify-center gap-2" aria-hidden>
+          <span className="h-1.5 w-6 rounded-full bg-slate" />
+          <span className="h-1.5 w-1.5 rounded-full bg-umber-soft/60" />
+          <span className="h-1.5 w-1.5 rounded-full bg-umber-soft/60" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stars() {
+  return (
+    <span aria-label="5 out of 5 stars" className="flex gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#F2C94C">
+          <path d="M12 2l2.9 6.3 6.9.6-5.2 4.7 1.6 6.8L12 17l-6.2 3.4 1.6-6.8L2.2 8.9l6.9-.6L12 2z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Pricing — preserved from prior build; trimmed visual treatment to fit  */
+/* ---------------------------------------------------------------------- */
+
 const PRICING_TIERS: {
   key: "starter" | "growth" | "pro" | "founding";
   name: string;
@@ -895,7 +871,8 @@ const PRICING_TIERS: {
     name: "Growth",
     price: "$99",
     sub: "per month, up to 25 tables",
-    tagline: "Full menu, pre-orders, splits, tip pool, reservations, waitlist, analytics.",
+    tagline:
+      "Full menu, pre-orders, splits, tip pool, reservations, waitlist, analytics.",
     trial: true,
     cta: "Start free trial",
     ctaHref: "/signup?plan=growth",
@@ -906,7 +883,8 @@ const PRICING_TIERS: {
     name: "Pro",
     price: "$299",
     sub: "per month, unlimited tables",
-    tagline: "Loyalty, promotions, branding, benchmarks, multi-location, POS layer.",
+    tagline:
+      "Loyalty, promotions, branding, benchmarks, multi-location, POS layer.",
     trial: true,
     cta: "Start free trial",
     ctaHref: "/signup?plan=pro",
@@ -917,7 +895,8 @@ const PRICING_TIERS: {
     name: "Founding",
     price: "On request",
     sub: "Concierge onboarding only",
-    tagline: "Everything in Pro, plus a TabCall-managed setup and a dedicated Slack channel.",
+    tagline:
+      "Everything in Pro, plus a TabCall-managed setup and a dedicated Slack channel.",
     trial: false,
     cta: "Talk to us",
     ctaHref: "mailto:hello@tab-call.com",
@@ -925,216 +904,52 @@ const PRICING_TIERS: {
   },
 ];
 
-type TierKey = (typeof PRICING_TIERS)[number]["key"];
-
-const MATRIX_GROUPS: {
-  title: string;
-  rows: { label: string; tiers: TierKey[] }[];
-}[] = [
-  {
-    title: "Guest table flow",
-    rows: [
-      { label: "Call waiter", tiers: ["starter", "growth", "pro", "founding"] },
-      { label: "Request bill", tiers: ["starter", "growth", "pro", "founding"] },
-      { label: "Pay from QR", tiers: ["starter", "growth", "pro", "founding"] },
-      { label: "Split bill", tiers: ["growth", "pro", "founding"] },
-      { label: "Pre-order", tiers: ["growth", "pro", "founding"] },
-      { label: "Wishlist", tiers: ["growth", "pro", "founding"] },
-      { label: "Reservations", tiers: ["growth", "pro", "founding"] },
-      { label: "Waitlist", tiers: ["growth", "pro", "founding"] },
-      { label: "Reviews", tiers: ["starter", "growth", "pro", "founding"] },
-    ],
-  },
-  {
-    title: "Staff tools",
-    rows: [
-      { label: "Live queue PWA", tiers: ["starter", "growth", "pro", "founding"] },
-      { label: "Push notifications", tiers: ["starter", "growth", "pro", "founding"] },
-      { label: "Auto-escalation", tiers: ["growth", "pro", "founding"] },
-      { label: "Hand off requests", tiers: ["growth", "pro", "founding"] },
-      { label: "Resolution reasons", tiers: ["growth", "pro", "founding"] },
-    ],
-  },
-  {
-    title: "Manager dashboard",
-    rows: [
-      { label: "Response time", tiers: ["growth", "pro", "founding"] },
-      { label: "Completion time", tiers: ["growth", "pro", "founding"] },
-      { label: "Peak hours", tiers: ["growth", "pro", "founding"] },
-      { label: "Staff performance", tiers: ["growth", "pro", "founding"] },
-      { label: "Audit log", tiers: ["pro", "founding"] },
-    ],
-  },
-  {
-    title: "Menu and ordering",
-    rows: [
-      { label: "Categories", tiers: ["growth", "pro", "founding"] },
-      { label: "Featured items", tiers: ["growth", "pro", "founding"] },
-      { label: "Image upload", tiers: ["growth", "pro", "founding"] },
-      { label: "Order state machine", tiers: ["growth", "pro", "founding"] },
-      { label: "Tip pool", tiers: ["growth", "pro", "founding"] },
-    ],
-  },
-  {
-    title: "Promotions",
-    rows: [
-      { label: "Happy hour", tiers: ["pro", "founding"] },
-      { label: "Banner", tiers: ["pro", "founding"] },
-      { label: "Business lunch", tiers: ["pro", "founding"] },
-      { label: "Limited time", tiers: ["pro", "founding"] },
-      { label: "New item", tiers: ["pro", "founding"] },
-      { label: "Discount highlight", tiers: ["pro", "founding"] },
-    ],
-  },
-  {
-    title: "Loyalty",
-    rows: [
-      { label: "Returning guest identify", tiers: ["pro", "founding"] },
-      { label: "Per-venue points", tiers: ["pro", "founding"] },
-      { label: "Visit history", tiers: ["pro", "founding"] },
-    ],
-  },
-  {
-    title: "Branding",
-    rows: [
-      { label: "Logo", tiers: ["pro", "founding"] },
-      { label: "Banner image", tiers: ["pro", "founding"] },
-      { label: "Brand colors", tiers: ["pro", "founding"] },
-      { label: "Font selection", tiers: ["pro", "founding"] },
-      { label: "Welcome message", tiers: ["pro", "founding"] },
-      { label: "Review prompt", tiers: ["pro", "founding"] },
-    ],
-  },
-  {
-    title: "POS",
-    rows: [
-      { label: "Toast (preview)", tiers: ["pro", "founding"] },
-      { label: "Square (preview)", tiers: ["pro", "founding"] },
-      { label: "Clover (preview)", tiers: ["pro", "founding"] },
-    ],
-  },
-  {
-    title: "Platform",
-    rows: [
-      { label: "Multi-location operator", tiers: ["pro", "founding"] },
-      { label: "Cross-venue benchmarks (k>=5)", tiers: ["pro", "founding"] },
-      { label: "Impersonation audit", tiers: ["pro", "founding"] },
-      { label: "Security dashboard", tiers: ["pro", "founding"] },
-    ],
-  },
-  {
-    title: "Support",
-    rows: [
-      { label: "Email response time", tiers: ["starter", "growth", "pro", "founding"] },
-      { label: "Concierge onboarding", tiers: ["founding"] },
-    ],
-  },
-];
-
-function CheckIcon() {
-  return (
-    <svg
-      aria-hidden
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      className="text-slate"
-    >
-      <circle cx="7" cy="7" r="7" fill="#F2E7B7" />
-      <path
-        d="M3.8 7.2l2.2 2.2 4.2-4.4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function AbsentDot() {
-  return (
-    <span
-      aria-hidden
-      className="inline-block h-1.5 w-1.5 rounded-full bg-slate/30"
-    />
-  );
-}
-
 function Pricing() {
   return (
-    <section id="pricing" className="bg-oat">
-      <div className="mx-auto max-w-7xl px-6 py-24 md:py-32">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-            Pricing
-          </p>
-          <h2 className="mt-4 text-[40px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[60px]">
-            Pick the plan that matches the floor.
-          </h2>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate/65">
-            Starter is free at 5 tables. Growth and Pro: start free, pay
-            nothing for 14 days, cancel anytime, no card needed to start.
-            Founding is concierge only.
-          </p>
-        </div>
+    <section id="pricing" className="bg-oat pb-20 md:pb-28">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <SectionHeader
+          eyebrow="Pricing"
+          title="Pick the plan that matches the floor"
+          sub="Starter is free at 5 tables. Growth and Pro start with a 14-day free trial. Founding is concierge only."
+          pillEyebrow
+        />
 
-        {/* Tier cards */}
-        <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {PRICING_TIERS.map((t) => (
             <article
               key={t.key}
               className={[
-                "flex flex-col rounded-3xl p-7",
+                "flex flex-col rounded-2xl p-6 transition-all hover:-translate-y-0.5",
                 t.highlight
-                  ? "bg-slate text-oat ring-1 ring-slate"
-                  : "bg-white text-slate ring-1 ring-slate/10",
+                  ? "border-2 border-chartreuse bg-white shadow-lift ring-1 ring-chartreuse/40"
+                  : "border border-umber-soft/30 bg-white shadow-card",
               ].join(" ")}
             >
               {t.trial ? (
                 <span className="inline-flex w-fit items-center rounded-full bg-chartreuse px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate">
-                  14-day free trial. No card to start.
+                  14-day free trial
                 </span>
               ) : (
                 <span className="inline-block h-[22px]" aria-hidden />
               )}
 
-              <h3 className="mt-4 text-xl font-semibold">{t.name}</h3>
+              <h3 className="mt-4 text-lg font-semibold text-slate">{t.name}</h3>
 
-              <p
-                className={[
-                  "mt-4 text-[40px] font-semibold leading-none tracking-tight",
-                  t.highlight ? "text-oat" : "text-slate",
-                ].join(" ")}
-              >
+              <p className="mt-3 text-[34px] font-semibold leading-none tracking-tight text-slate">
                 {t.price}
               </p>
-              <p
-                className={[
-                  "mt-1 text-xs",
-                  t.highlight ? "text-oat/55" : "text-slate/55",
-                ].join(" ")}
-              >
-                {t.sub}
-              </p>
+              <p className="mt-1 text-xs text-slate/55">{t.sub}</p>
 
-              <p
-                className={[
-                  "mt-4 text-sm leading-relaxed",
-                  t.highlight ? "text-oat/70" : "text-slate/70",
-                ].join(" ")}
-              >
-                {t.tagline}
-              </p>
+              <p className="mt-4 text-sm leading-relaxed text-slate/70">{t.tagline}</p>
 
               <Link
                 href={t.ctaHref}
                 className={[
-                  "mt-6 inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition-colors",
+                  "mt-6 inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition-colors",
                   t.highlight
-                    ? "bg-chartreuse text-slate hover:bg-chartreuse/90"
-                    : "bg-slate text-oat hover:bg-slate/90",
+                    ? "bg-chartreuse text-slate hover:bg-chartreuse/85"
+                    : "border border-slate/15 bg-white text-slate hover:border-slate/30",
                 ].join(" ")}
               >
                 {t.cta}
@@ -1143,234 +958,450 @@ function Pricing() {
           ))}
         </div>
 
-        {/* Feature matrix */}
-        <div className="mt-16 overflow-hidden rounded-3xl bg-white ring-1 ring-slate/10">
-          {/* Sticky tier header row */}
-          <div
-            className="sticky top-16 z-10 grid items-center gap-2 border-b border-slate/10 bg-white px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate/60"
-            style={{ gridTemplateColumns: "minmax(0,1.6fr) repeat(4, minmax(0,1fr))" }}
-          >
-            <span>Feature</span>
-            {PRICING_TIERS.map((t) => (
-              <span key={t.key} className="text-center text-slate">
-                {t.name}
-              </span>
-            ))}
-          </div>
+        <p className="mt-10 text-center text-xs text-slate/55">
+          Growth and Pro start with a 14-day free trial. No card needed to
+          start. All plans run month to month. Stripe processing (2.9% + 30¢)
+          is passed through at cost.
+        </p>
+      </div>
+    </section>
+  );
+}
 
-          {MATRIX_GROUPS.map((group) => (
-            <div key={group.title} className="border-b border-slate/10 last:border-b-0">
-              <p className="bg-oat/60 px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-umber">
-                {group.title}
+/* ---------------------------------------------------------------------- */
+/* Final CTA                                                              */
+/* ---------------------------------------------------------------------- */
+
+function FinalCta() {
+  return (
+    <section className="bg-oat pb-20 md:pb-28">
+      <div className="mx-auto max-w-7xl px-5 md:px-8">
+        <div className="overflow-hidden rounded-[28px] bg-white ring-1 ring-umber-soft/30 shadow-card">
+          <div className="grid items-center gap-8 md:grid-cols-[1.4fr_1fr]">
+            <div className="p-8 md:p-12">
+              <h2 className="text-[28px] font-semibold leading-tight tracking-tight text-slate md:text-[40px]">
+                Ready to elevate your guest experience?
+              </h2>
+              <p className="mt-4 max-w-md text-[14px] leading-relaxed text-slate/65 md:text-[15px]">
+                Join thousands of hospitality businesses using TabCall to
+                deliver exceptional service every day.
               </p>
-              <ul>
-                {group.rows.map((row) => (
-                  <li
-                    key={row.label}
-                    className="grid items-center gap-2 border-t border-slate/5 px-6 py-3 text-[14px] text-slate/80 first:border-t-0"
-                    style={{ gridTemplateColumns: "minmax(0,1.6fr) repeat(4, minmax(0,1fr))" }}
-                  >
-                    <span>{row.label}</span>
-                    {PRICING_TIERS.map((t) => (
-                      <span
-                        key={t.key}
-                        className="flex items-center justify-center"
-                      >
-                        {row.tiers.includes(t.key) ? <CheckIcon /> : <AbsentDot />}
-                      </span>
-                    ))}
-                  </li>
-                ))}
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center justify-center rounded-full bg-chartreuse px-6 py-3 text-sm font-semibold text-slate shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-lift"
+                >
+                  Get Started Free
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center justify-center rounded-full border border-umber-soft/50 bg-white px-6 py-3 text-sm font-medium text-slate transition-colors hover:border-slate/30"
+                >
+                  Book a Demo
+                </Link>
+              </div>
+
+              <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-slate/65">
+                <li className="inline-flex items-center gap-1.5">
+                  <CheckDot /> Free 14-day trial
+                </li>
+                <li className="inline-flex items-center gap-1.5">
+                  <CheckDot /> No credit card required
+                </li>
+                <li className="inline-flex items-center gap-1.5">
+                  <CheckDot /> Setup in minutes
+                </li>
               </ul>
             </div>
-          ))}
-        </div>
 
-        <p className="mt-10 text-center text-xs text-slate/45">
-          Growth and Pro: start free, pay nothing for 14 days, cancel anytime,
-          no card needed to start. All plans run month to month. Stripe
-          processing (2.9% + 30¢) is passed through at cost.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------ faq -------------------------------- */
-
-function Faq() {
-  const qs = [
-    {
-      q: "Do I need to replace my POS?",
-      a: "No. TabCall runs on top. We don’t touch your menu, your tax setup, or your printer chain. The POS integration layer has providers planned for Toast, Square, and Clover. If you have no POS, we work standalone.",
-    },
-    {
-      q: "How does the 14-day free trial work?",
-      a: "Start free, pay nothing for 14 days, cancel anytime, no card needed to start. Growth and Pro both ship with the trial. On day 15, add a card if you want to keep paid features. If you don’t, you drop to Starter. No auto-charge.",
-    },
-    {
-      q: "How long until we’re live?",
-      a: "Starter is self-serve: magic-link sign-in, name your tables (bulk-create works), print the QR tents, finish Stripe Connect onboarding. Most owners are taking real payments inside an hour.",
-    },
-    {
-      q: "What about staff who don’t have phones?",
-      a: "Buy an $80 Android off Amazon and clip it behind the bar. The staff PWA installs in one tap, no app store. Push notifications work when the PWA is backgrounded. Most venues run one shared phone for the bar and let servers use their own.",
-    },
-    {
-      q: "Will guests have to download an app?",
-      a: "Never. The QR opens a regular webpage. Guests scan, pick a category, pay, and rate. No install, no account. Returning guests can identify by phone number to collect loyalty points per venue.",
-    },
-    {
-      q: "What actually happens to bad reviews?",
-      a: "After payment, every guest sees a star prompt. 4 and 5 stars get a one-tap link to your Google profile. 1 to 3 stars stay private: our AI tags it (service speed, drink quality, staff attitude, wait time, food, noise) and routes the table, the server, and a suggested action to the manager. Mark it seen, flag for follow-up, comp the next round.",
-    },
-    {
-      q: "What do staff and managers see?",
-      a: "A live queue PWA. Acknowledge a request, hand it off, mark resolved with a reason code. Delayed requests escalate automatically (coral when delayed, chartreuse when active). Managers get a dashboard with response time, completion time, peak hours, and per-server performance. Every staff action is in the audit log.",
-    },
-    {
-      q: "Can I run multiple locations?",
-      a: "Yes. Pro and Founding include the multi-org operator console: cross-venue search, anonymized benchmarks (peer group of at least 5), security dashboard, and the ability to impersonate a venue’s staff for support (fully audited).",
-    },
-    {
-      q: "Is my guest data safe?",
-      a: "Yes. Guests opt in by phone number only, no name harvesting, no email scraping. Each venue’s data is isolated. We never sell, broker, or train on your floor data. Stripe handles card data, we never see or store it. If you cancel, we hand your data over and delete our copy.",
-    },
-  ];
-
-  return (
-    <section id="faq" className="bg-oat">
-      <div className="mx-auto max-w-3xl px-6 pb-24 md:pb-32">
-        <div className="text-center">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-umber">
-            FAQ
-          </p>
-          <h2 className="mt-4 text-[36px] font-semibold leading-[1.02] tracking-tight text-slate md:text-[52px]">
-            The questions every owner asks on the call.
-          </h2>
-        </div>
-
-        <div className="mt-12 divide-y divide-slate/10 rounded-3xl bg-white ring-1 ring-slate/5">
-          {qs.map((item) => (
-            <details
-              key={item.q}
-              className="group px-6 py-5 [&_summary::-webkit-details-marker]:hidden"
+            <div
+              aria-hidden
+              className="relative hidden h-full min-h-[280px] md:block"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(199, 214, 207, 0.6) 0%, rgba(242, 231, 183, 0.5) 100%)",
+              }}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-left">
-                <span className="text-[15px] font-semibold text-slate">
-                  {item.q}
-                </span>
-                <span
-                  aria-hidden
-                  className="ml-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate/20 text-slate/60 transition-transform group-open:rotate-45"
-                >
-                  <svg width="10" height="10" viewBox="0 0 12 12">
-                    <path
-                      d="M6 1v10M1 6h10"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-              </summary>
-              <p className="mt-3 text-[15px] leading-relaxed text-slate/70">
-                {item.a}
-              </p>
-            </details>
-          ))}
+              {/* Decorative dining vignette: stylised plates + cutlery so we
+                  do not depend on an image asset. */}
+              <DiningVignette />
+            </div>
+          </div>
         </div>
-
-        <p className="mt-8 text-center text-sm text-umber">
-          Still have a question?{" "}
-          <Link href="/signup" className="underline-offset-4 hover:underline">
-            Start free
-          </Link>{" "}
-          and ask us during setup, or email hello@tab-call.com.
-        </p>
       </div>
     </section>
   );
 }
 
-/* ------------------------------ CTA band --------------------------- */
-
-function CtaBand() {
+function DiningVignette() {
   return (
-    <section className="bg-oat">
-      <div className="mx-auto max-w-5xl px-6 py-24 text-center md:py-32">
-        <h2 className="text-[44px] font-semibold leading-[1.02] tracking-[-0.02em] text-slate md:text-[72px]">
-          Be the bar that gets the email at <span className="text-sea">10:14</span>,
-          <br className="hidden md:inline" /> not the public 1-star at <span className="text-coral">10:42</span>.
-        </h2>
-        <p className="mx-auto mt-6 max-w-xl text-base text-slate/65">
-          Free Starter plan. Growth $99/mo, Pro $299/mo. Both include a 14-day
-          free trial. No card needed to start. Cancel by text.
-        </p>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-full bg-chartreuse px-7 py-3.5 text-[15px] font-semibold text-slate shadow-soft transition-colors hover:bg-chartreuse/85"
+    <div className="absolute inset-0 flex items-center justify-center p-8">
+      <div className="grid w-full max-w-[260px] grid-cols-2 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className="flex aspect-square items-center justify-center rounded-2xl bg-white/80 ring-1 ring-white"
           >
-            Start free
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-full border border-umber-soft/50 bg-white px-7 py-3.5 text-[15px] font-medium text-slate transition-colors hover:border-slate/30"
-          >
-            Talk to us first
-          </Link>
-        </div>
+            <span className="block h-3/5 w-3/5 rounded-full bg-oat ring-1 ring-umber-soft/40" />
+          </span>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
 
-/* ------------------------------ footer ----------------------------- */
+function CheckDot() {
+  return (
+    <span
+      aria-hidden
+      className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-chartreuse text-slate"
+    >
+      <svg width="9" height="9" viewBox="0 0 12 12">
+        <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Footer                                                                 */
+/* ---------------------------------------------------------------------- */
+
+const FOOTER_COLUMNS = [
+  {
+    title: "Product",
+    links: [
+      { label: "Features", href: "#features" },
+      { label: "How It Works", href: "#how" },
+      { label: "Pricing", href: "#pricing" },
+      { label: "Integrations", href: "#features" },
+      { label: "Updates", href: "#" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Blog", href: "#" },
+      { label: "Help Center", href: "#" },
+      { label: "Guides", href: "#" },
+      { label: "Videos", href: "#" },
+      { label: "Careers", href: "#" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About Us", href: "#" },
+      { label: "Contact Us", href: "mailto:hello@tab-call.com" },
+      { label: "Privacy Policy", href: "/terms" },
+      { label: "Terms of Service", href: "/terms" },
+    ],
+  },
+];
 
 function Footer() {
   return (
-    <footer className="bg-slate text-oat/70">
-      <div className="mx-auto grid max-w-7xl gap-12 px-6 py-16 md:grid-cols-3">
+    <footer className="border-t border-umber-soft/40 bg-oat">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr_1.4fr] md:gap-8 md:px-8 md:py-16">
         <div>
-          <Logo variant="light" />
-          <p className="mt-4 max-w-xs text-sm text-oat/55">
-            Built for the bars that respect the floor. Houston first.
+          <Logo variant="dark" />
+          <p className="mt-4 max-w-xs text-[13px] leading-relaxed text-slate/65">
+            The all-in-one hospitality platform for restaurants, bars,
+            lounges, and cafés.
           </p>
+          <div className="mt-5 flex items-center gap-3">
+            <SocialIcon label="Facebook"><FacebookIcon /></SocialIcon>
+            <SocialIcon label="Instagram"><InstagramIcon /></SocialIcon>
+            <SocialIcon label="LinkedIn"><LinkedInIcon /></SocialIcon>
+          </div>
         </div>
 
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-oat/40">
-            Product
-          </p>
-          <ul className="mt-4 space-y-3 text-sm">
-            <li><a href="#product" className="hover:text-oat">Call waiter</a></li>
-            <li><a href="#product" className="hover:text-oat">Pay the bill</a></li>
-            <li><a href="#product" className="hover:text-oat">Live queue</a></li>
-            <li><a href="#product" className="hover:text-oat">Manager dashboard</a></li>
-            <li><a href="#product" className="hover:text-oat">Multi-location console</a></li>
-          </ul>
-        </div>
+        {FOOTER_COLUMNS.map((col) => (
+          <div key={col.title}>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-umber">
+              {col.title}
+            </p>
+            <ul className="mt-4 space-y-2.5">
+              {col.links.map((l) => (
+                <li key={l.label}>
+                  {l.href.startsWith("/") ? (
+                    <Link
+                      href={l.href}
+                      className="text-[13px] text-slate/70 hover:text-slate"
+                    >
+                      {l.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={l.href}
+                      className="text-[13px] text-slate/70 hover:text-slate"
+                    >
+                      {l.label}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
 
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-oat/40">
-            Contact
+          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-umber">
+            Stay in the loop
           </p>
-          <ul className="mt-4 space-y-3 text-sm">
-            <li>hello@tab-call.com</li>
-            <li>Houston, TX</li>
-            <li><Link href="/staff/login" className="hover:text-oat">Staff sign in</Link></li>
-            <li><Link href="/terms" className="hover:text-oat">Terms</Link></li>
-          </ul>
+          <p className="mt-4 text-[13px] leading-relaxed text-slate/65">
+            Get the latest updates, tips, and insights for modern hospitality.
+          </p>
+          <NewsletterForm />
         </div>
       </div>
 
-      <div className="border-t border-white/5">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-3 px-6 py-6 text-xs text-oat/40 md:flex-row md:items-center">
-          <p>© {new Date().getFullYear()} TabCall.</p>
-          <p>Built for restaurants, lounges, and clubs that respect their guests&rsquo; time.</p>
+      <div className="border-t border-umber-soft/30">
+        <div className="mx-auto max-w-7xl px-5 py-6 text-center text-[12px] text-slate/55 md:px-8">
+          © {new Date().getFullYear()} TabCall. All rights reserved.
         </div>
       </div>
     </footer>
+  );
+}
+
+function SocialIcon({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <a
+      href="#"
+      aria-label={label}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate ring-1 ring-umber-soft/40 hover:bg-oat"
+    >
+      {children}
+    </a>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Shared SectionHeader                                                   */
+/* ---------------------------------------------------------------------- */
+
+function SectionHeader({
+  eyebrow,
+  title,
+  sub,
+  left = false,
+  pillEyebrow = false,
+}: {
+  eyebrow: string;
+  title: string;
+  sub?: string;
+  left?: boolean;
+  pillEyebrow?: boolean;
+}) {
+  const wrap = left ? "" : "mx-auto max-w-2xl text-center";
+  return (
+    <header className={wrap}>
+      {pillEyebrow ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-umber-soft/40 bg-white px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-umber">
+          {eyebrow}
+        </span>
+      ) : (
+        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-umber">
+          {eyebrow}
+        </p>
+      )}
+      <h2 className={`mt-4 text-[28px] font-semibold leading-[1.1] tracking-tight text-slate md:text-[36px] lg:text-[40px] ${left ? "" : ""}`}>
+        {title}
+      </h2>
+      {sub ? (
+        <p className={`mt-4 text-[14px] leading-relaxed text-slate/65 md:text-[15px] ${left ? "max-w-md" : "mx-auto max-w-2xl"}`}>
+          {sub}
+        </p>
+      ) : null}
+    </header>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* Icons                                                                  */
+/* ---------------------------------------------------------------------- */
+
+function BellIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10 21a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+function ForkKnifeIcon({ small = false }: { small?: boolean }) {
+  const s = small ? 14 : 18;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M7 3v8a2 2 0 0 0 2 2v8" />
+      <path d="M5 3v6a2 2 0 0 0 2 2" />
+      <path d="M11 3v6a2 2 0 0 1-2 2" />
+      <path d="M17 3c-1.5 0-3 1.5-3 4v5a2 2 0 0 0 2 2h1v7" />
+    </svg>
+  );
+}
+
+function CardIcon({ small = false }: { small?: boolean }) {
+  const s = small ? 14 : 18;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="5" width="20" height="14" rx="2.5" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4" />
+    </svg>
+  );
+}
+
+function StarIcon({ small = false }: { small?: boolean }) {
+  const s = small ? 14 : 18;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2l2.9 6.3 6.9.6-5.2 4.7 1.6 6.8L12 17l-6.2 3.4 1.6-6.8L2.2 8.9l6.9-.6L12 2z" />
+    </svg>
+  );
+}
+
+function StarOutlineIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 2l2.9 6.3 6.9.6-5.2 4.7 1.6 6.8L12 17l-6.2 3.4 1.6-6.8L2.2 8.9l6.9-.6L12 2z" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 16.92V19a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3 5.18 2 2 0 0 1 5 3h2.09a2 2 0 0 1 2 1.72c.13.9.36 1.78.7 2.6a2 2 0 0 1-.45 2.11l-1 1a16 16 0 0 0 6 6l1-1a2 2 0 0 1 2.11-.45c.82.34 1.7.57 2.6.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z" />
+      <path d="M9 7h6M9 11h6M9 15h4" />
+    </svg>
+  );
+}
+
+function QRIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3zM20 14h1v1h-1zM14 20h1v1h-1zM18 17h3M17 17v3M20 20h1v1h-1z" />
+    </svg>
+  );
+}
+
+function SplitCardIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="5" width="13" height="11" rx="2" />
+      <path d="M3 9h13" />
+      <rect x="9" y="11" width="12" height="9" rx="2" />
+      <path d="M9 14h12" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 20V8" />
+      <path d="M10 20V4" />
+      <path d="M16 20v-8" />
+      <path d="M22 20V14" />
+      <path d="M2 20h22" />
+    </svg>
+  );
+}
+
+function PlugIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 2v6M15 2v6" />
+      <path d="M6 8h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8z" />
+      <path d="M12 17v5" />
+    </svg>
+  );
+}
+
+function PlateIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5.5" />
+    </svg>
+  );
+}
+
+function TurnoverIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a9 9 0 1 1-3-6.7" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  );
+}
+
+function TipIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3v18" />
+      <path d="M17 6.5C17 4.6 14.8 3 12 3S7 4.6 7 6.5c0 4.5 10 3.5 10 8 0 1.9-2.2 3.5-5 3.5S7 16.4 7 14.5" />
+    </svg>
+  );
+}
+
+function CostIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 17h18M3 12h12M3 7h6" />
+      <path d="M21 9l-3 3 3 3" />
+    </svg>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20c0-3 2.7-5.5 6-5.5s6 2.5 6 5.5" />
+      <circle cx="17" cy="10" r="2.6" />
+      <path d="M15 20c0-2 1.5-4 4-4s4 2 4 4" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M13 22v-9h3l1-4h-4V6.5c0-1 .3-1.7 1.7-1.7H17V1.4C16.6 1.3 15.4 1.2 14 1.2c-3 0-5 1.8-5 5.1V9H6v4h3v9h4z" />
+    </svg>
+  );
+}
+
+function InstagramIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function LinkedInIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM0 24h5V8H0v16zm7.5-16v16h5v-8.4c0-2.2.4-4.3 3.1-4.3 2.7 0 2.7 2.5 2.7 4.5V24h5V13c0-5-1.1-8.6-6.4-8.6-2.6 0-4.3 1.4-5 2.7H12V8H7.5z" />
+    </svg>
   );
 }
