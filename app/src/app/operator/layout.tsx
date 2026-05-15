@@ -60,6 +60,12 @@ export default async function OperatorLayout({ children }: { children: React.Rea
           </nav>
           <div className="flex items-center gap-3 text-[12px] text-slate/55">
             <span className="hidden font-mono md:inline">{session.email}</span>
+            <Link
+              href="/admin/account/password"
+              className="rounded-lg border border-slate/15 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
+            >
+              Change password
+            </Link>
             <form action="/api/auth/logout" method="post">
               <button
                 type="submit"
