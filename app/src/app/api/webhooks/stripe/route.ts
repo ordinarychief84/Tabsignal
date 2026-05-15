@@ -101,6 +101,29 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
         const split = await tx.billSplitV2.findUnique({ where: { id: v2SplitId } });
         if (!split || split.paidAt) return; // idempotent — already processed
 
+        // Defensive cross-check: if the originating PaymentIntent metadata
+        // claims a venue, it must match the split's parent bill. The
+        // Stripe signature already prevents external forgery (the
+        // metadata is signed), but this catches OUR-side mis-issuance
+        // (e.g. a stale split intent paired with the wrong venue claim).
+        // Audit Finding #11.
+        const claimedVenueId = intent.metadata?.tabcall_venue_id;
+        if (claimedVenueId) {
+          const parentBill = await tx.bill.findUnique({
+            where: { id: split.billId },
+            select: { venueId: true },
+          });
+          if (parentBill && parentBill.venueId !== claimedVenueId) {
+            console.warn("[webhook] v2 split venue mismatch — refusing", {
+              splitId: split.id,
+              billVenueId: parentBill.venueId,
+              claimedVenueId,
+              intentId: intent.id,
+            });
+            return;
+          }
+        }
+
         await tx.billSplitV2.update({
           where: { id: split.id },
           data: {

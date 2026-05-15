@@ -24,10 +24,17 @@ export default async function GuestQrPayPage({
     return <InvalidScan reason={code} />;
   }
 
+  // The secret was historically passed via `?secret=` in the URL.
+  // Per audit Finding #6, the new flow stores it in sessionStorage
+  // keyed by splitId on the producer side — PayScreen reads it back
+  // on mount. We still accept `?secret=` here as a one-revision
+  // fallback for private-browsing mode where sessionStorage refused
+  // the write; the new flow drops it the moment Stripe Elements
+  // mounts so it never lingers.
   const splitId = searchParams.split ?? "";
-  const clientSecret = searchParams.secret ?? "";
+  const fallbackSecret = searchParams.secret;
 
-  if (!splitId || !clientSecret) {
+  if (!splitId) {
     return (
       <main className="text-slate">
         <div className="mx-auto max-w-md px-6 py-10">
@@ -71,7 +78,11 @@ export default async function GuestQrPayPage({
           <p className="mt-1 text-sm text-slate/60">{resolved.tableLabel}</p>
         </header>
 
-        <PayScreen clientSecret={clientSecret} returnUrl={returnUrl} />
+        <PayScreen
+          splitId={splitId}
+          fallbackClientSecret={fallbackSecret}
+          returnUrl={returnUrl}
+        />
 
         <p className="mt-6 text-center text-[11px] text-slate/40">
           Encrypted by Stripe. Apple Pay and Google Pay supported.

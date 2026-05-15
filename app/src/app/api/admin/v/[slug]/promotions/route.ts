@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 const PROMOTION_TYPES = [
   "HAPPY_HOUR",
@@ -25,6 +26,15 @@ const Body = z.object({
 export async function GET(_req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateAdminRoute(ctx.params.slug, "free", "promotions.manage");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
+
+  // Per-venue read cap. Audit Finding #14.
+  const gateRl = await rateLimitAsync(`admin-get:promotions:${gate.venueId}`, {
+    windowMs: 60_000,
+    max: 120,
+  });
+  if (!gateRl.ok) {
+    return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
+  }
 
   const promotions = await db.promotion.findMany({
     where: { venueId: gate.venueId },

@@ -93,8 +93,22 @@ export function BillSplitScreen({
       if (!splitId || !clientSecret) {
         throw new Error("Split created but Stripe client secret missing");
       }
-      const qs = new URLSearchParams({ split: splitId, secret: clientSecret });
-      window.location.href = `/guest/${encodeURIComponent(qrToken)}/pay?${qs.toString()}`;
+      // Stash the Stripe client secret in sessionStorage rather than in
+      // the URL — URLs leak via referrer headers, browser history, chat
+      // paste-ins, and extensions. Audit Finding #6. Key is scoped by
+      // splitId so multiple in-flight splits don't collide. The pay
+      // page reads it back on mount.
+      try {
+        sessionStorage.setItem(`tabcall:split-secret:${splitId}`, clientSecret);
+      } catch {
+        // Private-mode browsers can refuse sessionStorage. Fall back
+        // to the legacy URL handoff so a partial deploy doesn't strand
+        // anyone mid-payment.
+        const qs = new URLSearchParams({ split: splitId, secret: clientSecret });
+        window.location.href = `/guest/${encodeURIComponent(qrToken)}/pay?${qs.toString()}`;
+        return;
+      }
+      window.location.href = `/guest/${encodeURIComponent(qrToken)}/pay?split=${encodeURIComponent(splitId)}`;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start payment");
       setSubmitting(false);
