@@ -129,6 +129,9 @@ export function SignupForm() {
           zipCode: rawZip.trim(),
           tableCount: Number(rawTables || 6),
           timezone: String(fd.get("timezone") ?? "America/Chicago"),
+          // The schema requires literal true; we already gated the
+          // submit handler at line 78 if `agreed` was false.
+          agreeTerms: true,
         }),
       });
       const body = await res.json().catch(() => ({}));

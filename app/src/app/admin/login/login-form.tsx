@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { safeNext } from "@/lib/auth/redirect";
 
 type Status = "idle" | "submitting" | "error";
 
@@ -36,8 +37,11 @@ export function AdminLoginForm({ nextUrl }: { nextUrl?: string }) {
         setError(`Sign-in failed (HTTP ${res.status}).`);
         return;
       }
-      const target = nextUrl?.startsWith("/") ? nextUrl : "/operator";
-      window.location.href = target;
+      // safeNext rejects protocol-relative URLs (//evil.com), backslash
+      // hosts (/\evil.com), and javascript:/data: schemes. Without this
+      // any attacker-controlled ?next= param phished the admin straight
+      // off the site post-sign-in.
+      window.location.href = safeNext(nextUrl, "/operator");
     } catch (e) {
       setStatus("error");
       setError(e instanceof Error ? e.message : "Network error");

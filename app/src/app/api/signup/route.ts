@@ -30,6 +30,16 @@ const Body = z.object({
   // than the operator setup (10) because self-serve venues skew smaller.
   tableCount: z.number().int().min(1).max(60).default(6),
   timezone: z.string().min(1).default("America/Chicago"),
+  // Server-side terms-of-service gate. The /signup form has a required
+  // checkbox, but the checkbox is client-only without this — a direct
+  // POST to /api/signup with no `agreeTerms` field would still create
+  // the Org+Venue+Staff. Require literal `true` so neither false nor
+  // missing satisfies it.
+  agreeTerms: z.literal(true, {
+    errorMap: () => ({
+      message: "You must agree to the Terms of Service and Privacy Policy",
+    }),
+  }),
 });
 
 // Spam guard: limit signups per IP. Upstash-backed via rateLimitAsync so
