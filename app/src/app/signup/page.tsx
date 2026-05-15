@@ -7,7 +7,7 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen bg-oat text-slate">
       <header className="border-b border-slate/10 bg-white">
-        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="inline-flex items-center gap-2">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
               <svg width="20" height="20" viewBox="0 0 24 24">
@@ -17,8 +17,8 @@ export default function SignupPage() {
             </span>
             <span className="text-lg font-medium tracking-tight">TabCall</span>
           </Link>
-          <p className="text-xs tracking-wide text-slate/50">
-            Already have a venue?{" "}
+          <p className="text-[11px] tracking-wide text-slate/50 sm:text-xs">
+            Have a venue?{" "}
             <Link href="/staff/login" className="text-umber underline-offset-4 hover:underline">
               Sign in
             </Link>
@@ -26,10 +26,10 @@ export default function SignupPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-6 py-12">
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Start free</p>
-        <h1 className="mt-2 text-4xl font-medium tracking-tight">Live on your bar tonight.</h1>
-        <p className="mt-3 max-w-md text-base leading-relaxed text-slate/65">
+        <h1 className="mt-2 text-[28px] font-medium leading-tight tracking-tight sm:text-4xl">Live on your bar tonight.</h1>
+        <p className="mt-3 max-w-md text-[15px] leading-relaxed text-slate/65 sm:text-base">
           One email, one venue, one magic-link sign-in. On the next screen
           you&rsquo;ll bulk-create tables, generate printable QR sheets, and
           finish Stripe Connect onboarding. About three minutes total.
