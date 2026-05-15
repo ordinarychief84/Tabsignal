@@ -1,121 +1,100 @@
 "use client";
 
-import { useId, useState } from "react";
+import Link from "next/link";
+import { useState } from "react";
 
 type Status = "idle" | "submitting" | "sent" | "error";
 
-type FieldName = "email" | "ownerName" | "venueName" | "zipCode" | "tableCount";
+type FieldName = "fullName" | "email" | "venueName";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
-const ZIP_RE = /^\d{5}(-\d{4})?$/;
-// Loose email check for inline UX feedback. Server still authoritatively validates.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function validateField(name: FieldName, raw: string): string | undefined {
-  const v = raw.trim();
-  switch (name) {
-    case "email":
-      if (!v) return "Email is required.";
-      if (!EMAIL_RE.test(v)) return "Enter a valid email address.";
-      return;
-    case "ownerName":
-      if (!v) return "Your name is required.";
-      return;
-    case "venueName":
-      if (!v) return "Venue name is required.";
-      return;
-    case "zipCode":
-      if (!v) return "ZIP code is required.";
-      if (!ZIP_RE.test(v)) return "Use 5 digits (or 5+4).";
-      return;
-    case "tableCount": {
-      if (!v) return;
-      const n = Number(v);
-      if (!Number.isFinite(n) || !Number.isInteger(n)) return "Whole number of tables.";
-      if (n < 1 || n > 60) return "Between 1 and 60.";
-      return;
-    }
-  }
-}
-
+/**
+ * Modern, polished signup form.
+ *
+ * Asks the minimum to provision an account: full name, work email,
+ * venue name. The rest of the venue setup (ZIP, table count, brand,
+ * features) happens on the onboarding wizard at
+ * /admin/v/[slug]/onboarding after the magic-link click.
+ *
+ * Auth model: email-based magic link. Same model as Notion, Linear,
+ * Slack — no password to remember. We're explicit about this in the
+ * footer copy so users understand what arrives in their inbox.
+ *
+ * Backend defaults applied here so we don't have to relax the
+ * /api/signup Zod schema:
+ *   - zipCode: "00000" (sentinel; onboarding step 1 forces correction)
+ *   - tableCount: 6 (the default the schema already carries)
+ *   - timezone: "America/Chicago" (US-centric default; onboarding can change)
+ */
 export function SignupForm() {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [venueName, setVenueName] = useState("");
+  const [agreed, setAgreed] = useState(false);
+
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [devLink, setDevLink] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [devLink, setDevLink] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [resendError, setResendError] = useState<string | null>(null);
 
-  function onBlur(name: FieldName, value: string) {
-    const msg = validateField(name, value);
-    setErrors(prev => ({ ...prev, [name]: msg }));
+  function validate(name: FieldName, value: string): string | undefined {
+    const v = value.trim();
+    if (name === "fullName") return v.length >= 1 ? undefined : "Tell us your name.";
+    if (name === "email") {
+      if (!v) return "Email is required.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Use a real email address.";
+    }
+    if (name === "venueName") return v.length >= 1 ? undefined : "What's the venue called?";
+    return undefined;
   }
 
-  function onChangeClearError(name: FieldName) {
-    if (errors[name]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[name];
-        return next;
-      });
-    }
+  function onBlur(name: FieldName, value: string) {
+    const msg = validate(name, value);
+    setFieldErrors(prev => ({ ...prev, [name]: msg }));
+  }
+
+  function clearFieldError(name: FieldName) {
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (status === "submitting") return;
 
-    const fd = new FormData(e.currentTarget);
-    const rawEmail = String(fd.get("email") ?? "");
-    const rawOwner = String(fd.get("ownerName") ?? "");
-    const rawVenue = String(fd.get("venueName") ?? "");
-    const rawZip = String(fd.get("zipCode") ?? "");
-    const rawTables = String(fd.get("tableCount") ?? "");
-    const agreed = fd.get("agreeTerms") === "on";
-
-    // Terms gate: required before we'll even open the network. Mirrors
-    // the on-submit HTML5 `required` attribute, but enforces it here
-    // too in case JS reaches submit handler without the checkbox checked
-    // (e.g. browser autofill quirks).
     if (!agreed) {
       setStatus("error");
       setError("Please agree to the Terms of Service and Privacy Policy before continuing.");
       return;
     }
 
-    // Client-side gate: if any required field is invalid, show inline errors
-    // and bail before hitting the network.
-    const nextErrors: FieldErrors = {};
-    const checks: Array<[FieldName, string]> = [
-      ["email", rawEmail],
-      ["ownerName", rawOwner],
-      ["venueName", rawVenue],
-      ["zipCode", rawZip],
-      ["tableCount", rawTables],
-    ];
-    for (const [name, val] of checks) {
-      const m = validateField(name, val);
-      if (m) nextErrors[name] = m;
-    }
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
+    const errs: FieldErrors = {};
+    (["fullName", "email", "venueName"] as FieldName[]).forEach(n => {
+      const v = n === "fullName" ? fullName : n === "email" ? email : venueName;
+      const m = validate(n, v);
+      if (m) errs[n] = m;
+    });
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       setStatus("error");
-      setError("Please fix the highlighted fields.");
+      setError("Check the highlighted fields and try again.");
       return;
     }
 
     setStatus("submitting");
     setError(null);
-    setErrors({});
+    setFieldErrors({});
     setDevLink(null);
     setAlreadyRegistered(false);
     setEmailDeliveryFailed(false);
 
-    // Trim + lowercase the email for UX clarity (server already does this too).
-    const payloadEmail = rawEmail.trim().toLowerCase();
+    const payloadEmail = email.trim().toLowerCase();
     setEmail(payloadEmail);
 
     try {
@@ -124,13 +103,14 @@ export function SignupForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: payloadEmail,
-          ownerName: rawOwner.trim(),
-          venueName: rawVenue.trim(),
-          zipCode: rawZip.trim(),
-          tableCount: Number(rawTables || 6),
-          timezone: String(fd.get("timezone") ?? "America/Chicago"),
-          // The schema requires literal true; we already gated the
-          // submit handler at line 78 if `agreed` was false.
+          ownerName: fullName.trim(),
+          venueName: venueName.trim(),
+          // ZIP is captured during onboarding step 1. Sentinel passes the
+          // 5-digit regex; the onboarding wizard forces a real value
+          // before the venue is considered set up.
+          zipCode: "00000",
+          tableCount: 6,
+          timezone: "America/Chicago",
           agreeTerms: true,
         }),
       });
@@ -149,44 +129,40 @@ export function SignupForm() {
   async function resend() {
     if (resendStatus === "sending") return;
     setResendStatus("sending");
-    setResendError(null);
     try {
       const res = await fetch("/api/auth/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
-      }
       const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
       if (body?.devLink) setDevLink(body.devLink);
       setResendStatus("sent");
-    } catch (e) {
+    } catch {
       setResendStatus("error");
-      setResendError(e instanceof Error ? e.message : "Could not resend");
     }
   }
+
+  /* -------------------------- success states ------------------------- */
 
   if (status === "sent") {
     if (emailDeliveryFailed) {
       return (
         <div
-          className="rounded-2xl border border-coral/40 bg-coral/10 p-6"
+          className="rounded-2xl border border-coral/40 bg-coral/10 p-5"
           role="status"
           aria-live="polite"
         >
-          <p className="text-base font-medium text-coral">Account created, but the email didn&rsquo;t go out</p>
-          <p className="mt-2 text-sm text-slate/75">
-            Your venue is set up, but our email provider couldn&rsquo;t
-            deliver the sign-in link to <span className="font-mono text-xs">{email}</span>.
-            This is on our side, not yours.
-          </p>
-          <p className="mt-3 text-sm text-slate/75">
-            Email <a className="text-umber underline-offset-4 hover:underline" href="mailto:support@tab-call.com">support@tab-call.com</a>{" "}
-            from this address and we&rsquo;ll re-issue your sign-in link
-            within an hour.
+          <p className="text-base font-semibold text-coral">Account created — but the email didn&rsquo;t go out</p>
+          <p className="mt-2 text-[14px] leading-relaxed text-slate/75">
+            Your venue is set up. Our email provider couldn&rsquo;t deliver the
+            sign-in link to <span className="font-mono text-xs">{email}</span>.
+            Email{" "}
+            <a className="text-umber underline-offset-4 hover:underline" href="mailto:support@tab-call.com">
+              support@tab-call.com
+            </a>{" "}
+            from this address and we&rsquo;ll re-issue your link within an hour.
           </p>
           {devLink ? (
             <p className="mt-4 break-all rounded bg-slate/5 px-3 py-2 text-[11px] text-slate/55">
@@ -198,55 +174,48 @@ export function SignupForm() {
       );
     }
     return (
-      <div
-        className="rounded-2xl border border-chartreuse/30 bg-chartreuse/15 p-6"
-        role="status"
-        aria-live="polite"
-      >
-        <p className="text-base font-medium">Check your email</p>
-        {alreadyRegistered ? (
-          <p className="mt-1 text-sm text-slate/70">
-            If <span className="font-mono text-xs">{email}</span> is
-            registered with us, we&rsquo;ve sent a sign-in link. Open it from
-            this device.
+      <div className="space-y-5" role="status" aria-live="polite">
+        <div className="rounded-2xl bg-chartreuse/20 p-5">
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-chartreuse text-slate">
+              <svg width="14" height="14" viewBox="0 0 12 12">
+                <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <p className="text-base font-semibold text-slate">Check your email</p>
+          </div>
+          <p className="mt-2 text-[14px] leading-relaxed text-slate/75">
+            {alreadyRegistered ? (
+              <>
+                If <span className="font-mono text-xs">{email}</span> is registered, we&rsquo;ve sent
+                a sign-in link. Open it from this device.
+              </>
+            ) : (
+              <>
+                We sent a sign-in link to <span className="font-mono text-xs">{email}</span>.
+                Tap it from this device to finish setup.
+              </>
+            )}
           </p>
-        ) : (
-          <p className="mt-1 text-sm text-slate/70">
-            We sent a sign-in link to <span className="font-mono text-xs">{email}</span>.
-            Tap it from this device and you&rsquo;ll land on a quick
-            three-step setup. The link expires in 15 minutes.
-          </p>
-        )}
+        </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <a
-            href="mailto:"
-            className="inline-flex items-center rounded-full border border-slate/20 bg-white px-4 py-1.5 text-xs text-slate hover:border-slate/40"
-          >
-            Open email app
-          </a>
-          <button
-            type="button"
-            onClick={resend}
-            disabled={resendStatus === "sending"}
-            className="inline-flex items-center rounded-full border border-slate/20 bg-white px-4 py-1.5 text-xs text-slate hover:border-slate/40 disabled:opacity-60"
-          >
-            {resendStatus === "sending"
-              ? "Resending…"
-              : resendStatus === "sent"
-                ? "Sent again"
-                : "Resend link"}
-          </button>
-          {resendStatus === "sent" ? (
-            <span className="text-[11px] text-slate/55">Check your inbox (and spam).</span>
-          ) : null}
-          {resendStatus === "error" && resendError ? (
-            <span className="text-[11px] text-coral">{resendError}</span>
-          ) : null}
+        <div className="rounded-xl border border-slate/10 bg-white p-4 text-[12px] text-slate/65">
+          <p>
+            Didn&rsquo;t get it? Check your spam folder, or{" "}
+            <button
+              type="button"
+              onClick={resend}
+              disabled={resendStatus === "sending"}
+              className="font-semibold text-umber underline-offset-4 hover:underline disabled:opacity-60"
+            >
+              {resendStatus === "sending" ? "resending…" : resendStatus === "sent" ? "resent" : "resend the link"}
+            </button>
+            .
+          </p>
         </div>
 
         {devLink ? (
-          <p className="mt-4 break-all rounded bg-slate/5 px-3 py-2 text-[11px] text-slate/55">
+          <p className="break-all rounded bg-slate/5 px-3 py-2 text-[11px] text-slate/55">
             <span className="uppercase tracking-wider">Dev:</span>{" "}
             <a className="underline" href={devLink}>{devLink}</a>
           </p>
@@ -255,232 +224,150 @@ export function SignupForm() {
     );
   }
 
-  const submitting = status === "submitting";
+  /* --------------------------- form view ----------------------------- */
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-6"
-      noValidate
-      aria-busy={submitting}
-    >
-      <Section title="About you">
-        <Field
-          label="Your email"
-          name="email"
-          type="email"
-          required
-          autoFocus
-          placeholder="you@yourbar.com"
-          autoComplete="email"
-          inputMode="email"
-          spellCheck={false}
-          autoCapitalize="none"
-          disabled={submitting}
-          error={errors.email}
-          onBlur={(e) => onBlur("email", e.currentTarget.value)}
-          onChange={() => onChangeClearError("email")}
-        />
-        <Field
-          label="Your name"
-          name="ownerName"
-          required
-          maxLength={120}
-          placeholder="Emeka"
-          autoComplete="name"
-          disabled={submitting}
-          error={errors.ownerName}
-          onBlur={(e) => onBlur("ownerName", e.currentTarget.value)}
-          onChange={() => onChangeClearError("ownerName")}
-        />
-      </Section>
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <Field
+        id="fullName"
+        label="Full name"
+        autoComplete="name"
+        value={fullName}
+        onChange={(v) => {
+          setFullName(v);
+          if (fieldErrors.fullName) clearFieldError("fullName");
+        }}
+        onBlur={(v) => onBlur("fullName", v)}
+        error={fieldErrors.fullName}
+        placeholder="Maria Lopez"
+      />
+      <Field
+        id="email"
+        type="email"
+        label="Work email"
+        autoComplete="email"
+        inputMode="email"
+        value={email}
+        onChange={(v) => {
+          setEmail(v);
+          if (fieldErrors.email) clearFieldError("email");
+        }}
+        onBlur={(v) => onBlur("email", v)}
+        error={fieldErrors.email}
+        placeholder="maria@luna-lounge.com"
+      />
+      <Field
+        id="venueName"
+        label="Venue name"
+        autoComplete="organization"
+        value={venueName}
+        onChange={(v) => {
+          setVenueName(v);
+          if (fieldErrors.venueName) clearFieldError("venueName");
+        }}
+        onBlur={(v) => onBlur("venueName", v)}
+        error={fieldErrors.venueName}
+        placeholder="Luna Lounge"
+      />
 
-      <Section title="Your venue">
-        <Field
-          label="Venue name"
-          name="venueName"
-          required
-          maxLength={120}
-          placeholder="Otto's Lounge"
-          disabled={submitting}
-          error={errors.venueName}
-          onBlur={(e) => onBlur("venueName", e.currentTarget.value)}
-          onChange={() => onChangeClearError("venueName")}
-        />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field
-            label="ZIP code"
-            name="zipCode"
-            required
-            pattern="[0-9]{5}(-[0-9]{4})?"
-            inputMode="numeric"
-            placeholder="77006"
-            autoComplete="postal-code"
-            disabled={submitting}
-            error={errors.zipCode}
-            onBlur={(e) => onBlur("zipCode", e.currentTarget.value)}
-            onChange={() => onChangeClearError("zipCode")}
-          />
-          <Field
-            label="Tables (rough)"
-            name="tableCount"
-            type="number"
-            min={1}
-            max={60}
-            defaultValue="6"
-            inputMode="numeric"
-            disabled={submitting}
-            error={errors.tableCount}
-            onBlur={(e) => onBlur("tableCount", e.currentTarget.value)}
-            onChange={() => onChangeClearError("tableCount")}
-          />
-        </div>
-        <Select
-          label="Timezone"
-          name="timezone"
-          defaultValue="America/Chicago"
-          disabled={submitting}
-          options={[
-            { value: "America/Chicago", label: "Central (Houston)" },
-            { value: "America/New_York", label: "Eastern (NYC, ATL, MIA)" },
-            { value: "America/Denver", label: "Mountain (DEN)" },
-            { value: "America/Phoenix", label: "Arizona (no DST)" },
-            { value: "America/Los_Angeles", label: "Pacific (LA, SF, SEA)" },
-            { value: "America/Anchorage", label: "Alaska" },
-            { value: "Pacific/Honolulu", label: "Hawaii" },
-            { value: "America/Puerto_Rico", label: "Puerto Rico" },
-          ]}
-        />
-      </Section>
-
-      {error ? (
-        <p
-          className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : null}
-
-      <label className="flex items-start gap-3 rounded-2xl border border-slate/10 bg-white px-5 py-4 text-sm text-slate/75">
+      <label className="mt-1 flex items-start gap-3 rounded-xl bg-slate/[0.03] p-3 text-[13px] text-slate/75">
         <input
-          name="agreeTerms"
           type="checkbox"
-          required
-          className="mt-1 h-4 w-4 shrink-0 rounded border-slate/30 text-slate accent-slate focus:ring-2 focus:ring-chartreuse"
+          checked={agreed}
+          onChange={e => setAgreed(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate/30 accent-slate"
         />
         <span className="leading-relaxed">
           I agree to TabCall&rsquo;s{" "}
-          <a
-            href="/terms"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-umber underline underline-offset-4 hover:text-slate"
-          >
+          <Link href="/terms" target="_blank" className="text-umber underline-offset-4 hover:underline">
             Terms of Service
-          </a>{" "}
+          </Link>{" "}
           and{" "}
-          <a
-            href="/terms#privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-umber underline underline-offset-4 hover:text-slate"
-          >
+          <Link href="/terms#privacy" target="_blank" className="text-umber underline-offset-4 hover:underline">
             Privacy Policy
-          </a>
+          </Link>
           .
         </span>
       </label>
 
+      {error ? (
+        <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral" role="alert">
+          {error}
+        </p>
+      ) : null}
+
       <button
         type="submit"
-        disabled={submitting}
-        className="w-full rounded-xl bg-chartreuse py-4 text-base font-medium text-slate disabled:opacity-60"
+        disabled={status === "submitting" || !agreed}
+        className="min-h-[48px] w-full rounded-xl bg-chartreuse text-[15px] font-semibold text-slate shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
       >
-        {submitting ? "Setting up…" : "Email me a sign-in link"}
+        {status === "submitting" ? "Sending sign-in link…" : "Create account"}
       </button>
 
-      <p className="text-center text-[11px] text-slate/45">
-        We never email guests. You&rsquo;ll only hear from us about your own venue.
+      <p className="text-center text-[11px] leading-relaxed text-slate/55">
+        We use passwordless sign-in. Submit your email and we&rsquo;ll send a
+        single-use link that signs you in straight to onboarding.
       </p>
     </form>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-slate/10 bg-white px-4 py-5 sm:px-6">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{title}</p>
-      <div className="mt-4 space-y-4">{children}</div>
-    </section>
-  );
-}
+/* ---------------------------------------------------------------------- */
+/* Field — single source for label + input + error + focus styling        */
+/* ---------------------------------------------------------------------- */
 
-type FieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
+function Field({
+  id,
+  label,
+  type = "text",
+  value,
+  onChange,
+  onBlur,
+  error,
+  placeholder,
+  autoComplete,
+  inputMode,
+}: {
+  id: string;
   label: string;
-  unit?: string;
+  type?: "text" | "email";
+  value: string;
+  onChange: (v: string) => void;
+  onBlur: (v: string) => void;
   error?: string;
-};
-
-function Field(props: FieldProps) {
-  const { label, unit, error, id, name, ...rest } = props;
-  const generatedId = useId();
-  const inputId = id ?? `f-${name}-${generatedId}`;
-  const errorId = `${inputId}-err`;
-  const invalid = Boolean(error);
+  placeholder?: string;
+  autoComplete?: string;
+  inputMode?: "email" | "text";
+}) {
   return (
-    <label htmlFor={inputId} className="block">
-      <span className="flex items-baseline justify-between">
-        <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{label}</span>
-        {unit ? (
-          <span className="text-[10px] uppercase tracking-[0.14em] text-slate/45">{unit}</span>
-        ) : null}
-      </span>
+    <div>
+      <label htmlFor={id} className="block text-[12px] font-medium text-slate/70">
+        {label}
+      </label>
       <input
-        {...rest}
-        id={inputId}
-        name={name}
-        aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? errorId : undefined}
+        id={id}
+        type={type}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => onBlur(e.target.value)}
+        placeholder={placeholder}
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         className={[
-          "mt-2 block w-full rounded-xl border bg-white px-4 py-3 text-base text-slate placeholder-slate/35 outline-none focus:ring-1",
-          invalid
-            ? "border-coral focus:border-coral focus:ring-coral"
-            : "border-slate/15 focus:border-sea focus:ring-sea",
+          "mt-1.5 block w-full rounded-xl border bg-white px-3.5 py-3 text-[15px] text-slate placeholder-slate/35 outline-none transition-shadow",
+          "focus:ring-4",
+          error
+            ? "border-coral/60 focus:border-coral focus:ring-coral/15"
+            : "border-slate/15 focus:border-slate/40 focus:ring-slate/[0.08]",
         ].join(" ")}
       />
-      {invalid ? (
-        <span id={errorId} className="mt-1 block text-xs text-coral">
+      {error ? (
+        <p id={`${id}-error`} className="mt-1.5 text-[12px] text-coral" role="alert">
           {error}
-        </span>
+        </p>
       ) : null}
-    </label>
-  );
-}
-
-function Select(props: {
-  label: string;
-  name: string;
-  defaultValue?: string;
-  disabled?: boolean;
-  options: { value: string; label: string }[];
-}) {
-  const generatedId = useId();
-  const inputId = `f-${props.name}-${generatedId}`;
-  return (
-    <label htmlFor={inputId} className="block">
-      <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{props.label}</span>
-      <select
-        id={inputId}
-        name={props.name}
-        defaultValue={props.defaultValue}
-        disabled={props.disabled}
-        className="mt-2 block w-full rounded-xl border border-slate/15 bg-white px-4 py-3 text-base text-slate outline-none focus:border-sea focus:ring-1 focus:ring-sea disabled:opacity-60"
-      >
-        {props.options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    </label>
+    </div>
   );
 }
