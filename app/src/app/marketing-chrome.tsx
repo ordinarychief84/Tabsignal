@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NewsletterForm } from "./newsletter-form";
+import { MarketingMobileNav } from "./marketing-mobile-nav";
 
 /**
  * Shared marketing-page chrome (nav + footer + brand logo). Used by:
@@ -56,10 +57,12 @@ export function Logo({ variant = "dark" }: { variant?: "dark" | "light" }) {
 
 export function MarketingNav() {
   return (
-    <header className="fixed top-0 z-50 w-full bg-surface-warm/80 shadow-sm backdrop-blur-md">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-10">
+    <header className="fixed top-0 z-50 w-full bg-surface-warm/85 shadow-sm backdrop-blur-md">
+      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-10">
         <Logo variant="dark" />
 
+        {/* Desktop nav row. On mobile this is replaced by the hamburger
+            + slide-down drawer below. */}
         <div className="hidden items-center gap-8 md:flex">
           <Link href="/features" className="font-medium text-on-surface-variant transition-colors hover:text-primary-deep">
             Features
@@ -75,19 +78,21 @@ export function MarketingNav() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1.5 md:gap-4">
           <Link
             href="/staff/login"
-            className="hidden font-semibold text-primary-deep transition-opacity hover:opacity-80 sm:inline-block"
+            className="hidden font-semibold text-primary-deep transition-opacity hover:opacity-80 md:inline-block"
           >
             Login
           </Link>
           <Link
             href="/signup"
-            className="rounded-lg bg-primary-deep px-5 py-2.5 font-semibold text-white transition-all hover:opacity-90 active:scale-95 md:px-6 md:py-3"
+            className="rounded-lg bg-primary-deep px-3.5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 md:px-6 md:py-3 md:text-base"
           >
             Get Started
           </Link>
+          {/* Hamburger renders only on < md and owns the slide-down drawer */}
+          <MarketingMobileNav />
         </div>
       </nav>
     </header>
@@ -115,9 +120,9 @@ const COMPANY_LINKS = [
 export function MarketingFooter() {
   return (
     <footer className="border-t border-outline-variant/40 bg-surface-container-lowest">
-      <div className="mx-auto max-w-7xl px-5 py-16 md:px-10 md:py-20">
-        <div className="mb-16 grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-5 lg:gap-8">
-          <div className="space-y-6 lg:col-span-2">
+      <div className="mx-auto max-w-7xl px-4 py-12 md:px-10 md:py-20">
+        <div className="mb-10 grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-10 md:mb-16 md:grid-cols-2 md:gap-12 lg:grid-cols-5 lg:gap-8">
+          <div className="col-span-2 space-y-5 lg:col-span-2 lg:space-y-6">
             <Logo variant="dark" />
             <p className="max-w-xs text-[14px] leading-relaxed text-on-surface-variant">
               Operationally smart hospitality. We build the tools that help
@@ -133,20 +138,20 @@ export function MarketingFooter() {
           <FooterColumn title="Product" links={PRODUCT_LINKS} />
           <FooterColumn title="Company" links={COMPANY_LINKS} />
 
-          <div className="space-y-5">
+          <div className="col-span-2 space-y-4 md:col-span-2 lg:col-span-1 lg:space-y-5">
             <h5 className="font-bold text-primary-deep">Join our Newsletter</h5>
-            <p className="text-sm text-on-surface-variant">
+            <p className="text-[13px] text-on-surface-variant md:text-sm">
               Stay updated with the latest in hospitality tech and trends.
             </p>
             <NewsletterForm />
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-between gap-6 border-t border-outline-variant/40 pt-10 md:flex-row">
-          <p className="text-sm text-on-surface-variant">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-outline-variant/40 pt-6 text-center md:flex-row md:gap-6 md:pt-10 md:text-left">
+          <p className="text-[12px] text-on-surface-variant md:text-sm">
             © {new Date().getFullYear()} TabCall. Operationally smart hospitality.
           </p>
-          <div className="flex gap-8 text-sm text-on-surface-variant">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[12px] text-on-surface-variant md:gap-8 md:text-sm">
             <Link href="/terms" className="hover:underline">Terms of Service</Link>
             <a href="#" className="hover:underline">Security</a>
             <a href="#" className="hover:underline">Cookies</a>

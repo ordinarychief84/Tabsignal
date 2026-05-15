@@ -63,42 +63,42 @@ function Hero() {
   const heroImage = findLandingImage("hero");
   return (
     <section className="hero-gradient relative overflow-hidden">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-16 px-5 py-16 md:px-10 lg:flex-row lg:py-28">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-10 px-4 pb-12 pt-10 sm:px-6 md:gap-12 md:px-10 md:pt-16 md:pb-20 lg:flex-row lg:gap-14 lg:py-28">
         {/* LEFT: copy column */}
-        <div className="flex-1 space-y-7">
-          <div className="inline-flex items-center gap-2 rounded-full bg-brand-lime/20 px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.05em] text-on-secondary-fixed-variant">
+        <div className="w-full flex-1 space-y-6 md:space-y-7">
+          <div className="inline-flex items-center gap-2 rounded-full bg-brand-lime/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-on-secondary-fixed-variant md:text-[12px]">
             <span aria-hidden className="h-2 w-2 rounded-full bg-brand-lime" />
-            New: Multi-level dining analytics
+            New · Multi-level dining analytics
           </div>
 
-          <h1 className="max-w-xl text-4xl font-semibold leading-tight tracking-tight text-primary-deep md:text-5xl lg:text-[56px]">
+          <h1 className="max-w-xl text-[32px] font-semibold leading-[1.05] tracking-tight text-primary-deep sm:text-4xl md:text-5xl lg:text-[56px]">
             Delight guests.
             <br />
             <span className="text-on-primary-container">Empower staff.</span>
           </h1>
 
-          <p className="max-w-xl text-base leading-relaxed text-on-surface-variant md:text-lg">
+          <p className="max-w-xl text-[15px] leading-relaxed text-on-surface-variant md:text-lg">
             The all-in-one hospitality operating system that bridges the gap
             between digital convenience and human hospitality. Scale your
             operations without losing the personal touch.
           </p>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
             <Link
               href="/signup"
-              className="rounded-lg bg-primary-deep px-7 py-3.5 text-base font-semibold text-white transition-all hover:shadow-lift active:scale-95"
+              className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-primary-deep px-6 text-[15px] font-semibold text-white transition-all hover:shadow-lift active:scale-95 sm:px-7 sm:text-base"
             >
               Book a Demo
             </Link>
             <Link
               href="/pricing"
-              className="rounded-lg border border-outline-variant/60 bg-white px-7 py-3.5 text-base font-semibold text-primary-deep transition-all hover:bg-surface-container-low"
+              className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-outline-variant/60 bg-white px-6 text-[15px] font-semibold text-primary-deep transition-all hover:bg-surface-container-low sm:px-7 sm:text-base"
             >
               View Pricing
             </Link>
           </div>
 
-          <ul className="grid grid-cols-2 gap-6 border-t border-outline-variant/40 pt-10 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-4 border-t border-outline-variant/40 pt-8 sm:grid-cols-4 sm:gap-6 md:pt-10">
             <ShortcutTile icon="person_raised_hand" label="Call Waiter" href="/features/call-waiter" />
             <ShortcutTile icon="restaurant_menu" label="Digital Order" href="/features/qr-orders" />
             <ShortcutTile icon="payments" label="Fast Pay" href="/features/qr-payments" />
@@ -106,16 +106,19 @@ function Hero() {
           </ul>
         </div>
 
-        {/* RIGHT: visual column */}
-        <div className="relative flex-1">
-          <div className="relative z-10 overflow-hidden rounded-3xl shadow-lift">
+        {/* RIGHT: visual column. On mobile the floating "Request resolved"
+            card is hidden (it overflowed the 360px viewport with its
+            -left-10 offset), and the hero image is squat enough to leave
+            room for the copy + CTAs above the fold. */}
+        <div className="relative w-full flex-1">
+          <div className="relative z-10 overflow-hidden rounded-2xl shadow-lift md:rounded-3xl">
             {heroImage ? (
               <Image
                 src={heroImage}
                 alt="A brightly lit modern restaurant with a QR table tent and a phone displaying the TabCall menu"
                 width={640}
                 height={600}
-                className="h-[480px] w-full object-cover md:h-[560px]"
+                className="h-[280px] w-full object-cover sm:h-[360px] md:h-[480px] lg:h-[560px]"
                 priority
               />
             ) : (
@@ -123,8 +126,7 @@ function Hero() {
             )}
           </div>
 
-          {/* Floating "Request resolved" card */}
-          <div className="absolute -bottom-8 left-[-10px] z-20 max-w-[260px] rounded-2xl bg-white p-5 shadow-lift md:-left-10">
+          <div className="absolute -bottom-6 left-2 z-20 hidden max-w-[260px] rounded-2xl bg-white p-5 shadow-lift sm:left-[-10px] sm:block md:-left-10 md:-bottom-8">
             <div className="mb-3 flex items-center gap-3">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-tertiary-sage text-tertiary">
                 <span aria-hidden className="material-symbols-outlined fill">done_all</span>
@@ -322,22 +324,22 @@ function QRPattern() {
 
 function TrustedBy() {
   return (
-    <section className="border-y border-outline-variant/30 bg-surface-container-lowest py-12">
-      <div className="mx-auto max-w-7xl px-5 md:px-10">
-        <p className="mb-9 text-center text-[12px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+    <section className="border-y border-outline-variant/30 bg-surface-container-lowest py-9 md:py-12">
+      <div className="mx-auto max-w-7xl px-4 md:px-10">
+        <p className="mb-6 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant md:mb-9 md:text-[12px] md:tracking-[0.2em]">
           Trusted by the world&rsquo;s finest venues
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 text-primary-deep opacity-70 transition-all hover:opacity-100 lg:gap-x-24">
-          <span className="text-xl font-bold italic md:text-2xl">Luna Lounge</span>
-          <span className="text-xl font-bold tracking-wider md:text-2xl">URBAN BISTRO</span>
-          <span className="flex items-center gap-1.5 text-xl font-bold md:text-2xl">
-            <span aria-hidden className="material-symbols-outlined">anchor</span>
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 text-primary-deep opacity-70 transition-all hover:opacity-100 sm:gap-x-10 md:gap-x-12 lg:gap-x-24">
+          <span className="text-base font-bold italic sm:text-lg md:text-2xl">Luna Lounge</span>
+          <span className="text-base font-bold tracking-wider sm:text-lg md:text-2xl">URBAN BISTRO</span>
+          <span className="flex items-center gap-1.5 text-base font-bold sm:text-lg md:text-2xl">
+            <span aria-hidden className="material-symbols-outlined text-[18px] md:text-[24px]">anchor</span>
             Harbor Eats
           </span>
-          <span className="text-xl font-bold md:text-2xl" style={{ fontFamily: "Georgia, serif" }}>
+          <span className="text-base font-bold sm:text-lg md:text-2xl" style={{ fontFamily: "Georgia, serif" }}>
             Oak &amp; Vine
           </span>
-          <span className="text-xl font-bold tracking-[0.2em] md:text-2xl">NIGHTFALL</span>
+          <span className="text-base font-bold tracking-[0.2em] sm:text-lg md:text-2xl">NIGHTFALL</span>
         </div>
       </div>
     </section>
@@ -395,34 +397,34 @@ const FEATURE_CARDS = [
 
 function FeaturesGrid() {
   return (
-    <section id="features" className="bg-surface-warm py-24">
-      <div className="mx-auto max-w-7xl px-5 md:px-10">
-        <div className="mb-14 space-y-4 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-primary-deep md:text-4xl">
+    <section id="features" className="bg-surface-warm py-16 md:py-24">
+      <div className="mx-auto max-w-7xl px-4 md:px-10">
+        <div className="mb-10 space-y-3 text-center md:mb-14 md:space-y-4">
+          <h2 className="text-[26px] font-semibold tracking-tight text-primary-deep sm:text-3xl md:text-4xl">
             Everything you need in one platform
           </h2>
-          <p className="mx-auto max-w-2xl text-base leading-relaxed text-on-surface-variant md:text-lg">
+          <p className="mx-auto max-w-2xl text-[15px] leading-relaxed text-on-surface-variant md:text-lg">
             Powerful tools designed for the rigorous demands of busy dining
             floors and professional kitchens.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
           {FEATURE_CARDS.map((f) => (
             <Link
               key={f.title}
               href={f.href}
-              className="group rounded-xl border border-outline-variant/30 bg-white p-8 shadow-card transition-colors hover:border-brand-lime/60"
+              className="group rounded-xl border border-outline-variant/30 bg-white p-5 shadow-card transition-colors hover:border-brand-lime/60 sm:p-6 md:p-8"
             >
               <span
                 aria-hidden
-                className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-surface-container-low text-primary-deep transition-colors group-hover:bg-brand-lime"
+                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-surface-container-low text-primary-deep transition-colors group-hover:bg-brand-lime md:mb-6 md:h-12 md:w-12"
               >
                 <span className="material-symbols-outlined">{f.icon}</span>
               </span>
-              <h3 className="mb-3 text-xl font-semibold text-primary-deep">{f.title}</h3>
+              <h3 className="mb-2 text-lg font-semibold text-primary-deep md:mb-3 md:text-xl">{f.title}</h3>
               <p
-                className="leading-relaxed text-on-surface-variant"
+                className="text-[14px] leading-relaxed text-on-surface-variant md:text-base"
                 dangerouslySetInnerHTML={{ __html: f.body }}
               />
             </Link>
@@ -460,24 +462,24 @@ const HOW_STEPS = [
 
 function HowItWorks() {
   return (
-    <section id="how" className="bg-primary-deep py-24 text-white">
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-16 px-5 md:px-10 lg:flex-row lg:gap-20">
-        <div className="flex-1 space-y-10">
-          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl lg:text-[44px]">
+    <section id="how" className="bg-primary-deep py-16 text-white md:py-24">
+      <div className="mx-auto flex max-w-7xl flex-col items-center gap-10 px-4 md:px-10 md:gap-14 lg:flex-row lg:gap-20">
+        <div className="w-full flex-1 space-y-7 md:space-y-10">
+          <h2 className="text-[26px] font-semibold tracking-tight sm:text-3xl md:text-4xl lg:text-[44px]">
             How TabCall works
           </h2>
-          <ol className="space-y-10">
+          <ol className="space-y-6 md:space-y-10">
             {HOW_STEPS.map((s) => (
-              <li key={s.n} className="flex gap-6">
+              <li key={s.n} className="flex gap-4 md:gap-6">
                 <span
                   aria-hidden
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-brand-lime font-bold text-brand-lime"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-brand-lime text-sm font-bold text-brand-lime md:h-12 md:w-12 md:text-base"
                 >
                   {s.n}
                 </span>
                 <div>
-                  <h4 className="text-xl font-bold">{s.title}</h4>
-                  <p className="mt-2 leading-relaxed text-on-primary-container">{s.body}</p>
+                  <h4 className="text-lg font-bold md:text-xl">{s.title}</h4>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-on-primary-container md:mt-2 md:text-base">{s.body}</p>
                 </div>
               </li>
             ))}
@@ -490,8 +492,8 @@ function HowItWorks() {
           </Link>
         </div>
 
-        <div className="flex-1">
-          <div className="relative mx-auto max-w-sm">
+        <div className="w-full flex-1">
+          <div className="relative mx-auto max-w-[260px] sm:max-w-xs md:max-w-sm">
             <div aria-hidden className="absolute -inset-4 rounded-full bg-brand-lime/20 blur-3xl" />
             <HowItWorksPhone />
           </div>
@@ -580,15 +582,15 @@ const METRICS = [
 
 function Metrics() {
   return (
-    <section className="bg-secondary-container-warm py-20">
-      <div className="mx-auto max-w-7xl px-5 md:px-10">
-        <div className="grid grid-cols-2 gap-12 text-center lg:grid-cols-4">
+    <section className="bg-secondary-container-warm py-12 md:py-20">
+      <div className="mx-auto max-w-7xl px-4 md:px-10">
+        <div className="grid grid-cols-2 gap-y-8 gap-x-4 text-center sm:gap-x-8 md:gap-12 lg:grid-cols-4">
           {METRICS.map((m) => (
             <div key={m.label}>
-              <p className="text-[40px] font-semibold tracking-tight text-primary-deep md:text-[48px]">
+              <p className="text-[28px] font-semibold tracking-tight text-primary-deep sm:text-[36px] md:text-[48px]">
                 {m.value}
               </p>
-              <p className="mt-2 text-[12px] font-semibold uppercase tracking-wider text-on-secondary-container">
+              <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-on-secondary-container md:mt-2 md:text-[12px]">
                 {m.label}
               </p>
             </div>
@@ -632,32 +634,32 @@ const TESTIMONIALS = [
 
 function Testimonials() {
   return (
-    <section className="bg-white py-24">
-      <div className="mx-auto max-w-7xl px-5 md:px-10">
-        <div className="mb-14 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-primary-deep md:text-4xl">
+    <section className="bg-white py-16 md:py-24">
+      <div className="mx-auto max-w-7xl px-4 md:px-10">
+        <div className="mb-10 text-center md:mb-14">
+          <h2 className="text-[26px] font-semibold tracking-tight text-primary-deep sm:text-3xl md:text-4xl">
             Loved by restaurateurs everywhere
           </h2>
         </div>
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
           {TESTIMONIALS.map((t) => (
             <article
               key={t.name}
-              className="rounded-xl border border-outline-variant/30 bg-surface-warm p-8"
+              className="rounded-xl border border-outline-variant/30 bg-surface-warm p-5 sm:p-6 md:p-8"
             >
-              <div className="mb-6 flex gap-1 text-brand-lime">
+              <div className="mb-4 flex gap-1 text-brand-lime md:mb-6">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} aria-hidden className="material-symbols-outlined fill">grade</span>
+                  <span key={i} aria-hidden className="material-symbols-outlined fill text-[20px] md:text-[24px]">grade</span>
                 ))}
               </div>
-              <p className="mb-8 italic leading-relaxed text-on-surface">
+              <p className="mb-6 text-[14px] italic leading-relaxed text-on-surface md:mb-8 md:text-base">
                 &ldquo;{t.quote}&rdquo;
               </p>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 md:gap-4">
                 <span
                   aria-hidden
                   className={
-                    "flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-primary-deep " +
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-primary-deep md:h-12 md:w-12 " +
                     (t.tone === "lime"
                       ? "bg-brand-lime/60"
                       : t.tone === "sage"
@@ -667,9 +669,9 @@ function Testimonials() {
                 >
                   {t.initials}
                 </span>
-                <div>
-                  <p className="font-bold text-primary-deep">{t.name}</p>
-                  <p className="text-sm text-on-surface-variant">{t.role}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-primary-deep">{t.name}</p>
+                  <p className="truncate text-[13px] text-on-surface-variant md:text-sm">{t.role}</p>
                 </div>
               </div>
             </article>
@@ -687,7 +689,7 @@ function Testimonials() {
 function FinalCta() {
   const ctaImage = findLandingImage("cta-kitchen");
   return (
-    <section className="relative overflow-hidden py-28 md:py-32">
+    <section className="relative overflow-hidden py-16 md:py-28 lg:py-32">
       <div className="absolute inset-0 z-0">
         {ctaImage ? (
           <Image
@@ -710,24 +712,24 @@ function FinalCta() {
         <div aria-hidden className="absolute inset-0 bg-primary-deep/90" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-3xl px-5 text-center md:px-10">
-        <h2 className="mb-7 text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-[44px]">
+      <div className="relative z-10 mx-auto max-w-3xl px-4 text-center md:px-10">
+        <h2 className="mb-5 text-[26px] font-semibold tracking-tight text-white sm:text-3xl md:mb-7 md:text-4xl lg:text-[44px]">
           Ready to elevate your guest experience?
         </h2>
-        <p className="mx-auto mb-10 max-w-2xl text-base text-primary-fixed opacity-90 md:text-lg">
+        <p className="mx-auto mb-8 max-w-2xl text-[15px] text-primary-fixed opacity-90 md:mb-10 md:text-lg">
           Join thousands of venues that are already growing their revenue
           and streamlining operations with TabCall.
         </p>
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
           <Link
             href="/signup"
-            className="rounded-lg bg-brand-lime px-9 py-4 text-base font-bold text-primary-deep transition-transform hover:scale-105"
+            className="inline-flex min-h-[48px] items-center justify-center rounded-lg bg-brand-lime px-7 text-[15px] font-bold text-primary-deep transition-transform hover:scale-105 sm:px-9 sm:text-base"
           >
             Start Your Free Trial
           </Link>
           <Link
             href="/signup"
-            className="rounded-lg border border-white/30 px-9 py-4 text-base font-bold text-white transition-colors hover:bg-white/10"
+            className="inline-flex min-h-[48px] items-center justify-center rounded-lg border border-white/30 px-7 text-[15px] font-bold text-white transition-colors hover:bg-white/10 sm:px-9 sm:text-base"
           >
             Talk to an Expert
           </Link>

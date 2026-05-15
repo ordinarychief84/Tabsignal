@@ -307,7 +307,7 @@ export function SignupForm() {
           onBlur={(e) => onBlur("venueName", e.currentTarget.value)}
           onChange={() => onChangeClearError("venueName")}
         />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field
             label="ZIP code"
             name="zipCode"
@@ -409,7 +409,7 @@ export function SignupForm() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-slate/10 bg-white px-6 py-5">
+    <section className="rounded-2xl border border-slate/10 bg-white px-4 py-5 sm:px-6">
       <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{title}</p>
       <div className="mt-4 space-y-4">{children}</div>
     </section>
