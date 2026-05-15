@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import type { OrderStatus } from "@prisma/client";
 
 const VALID_STATUSES = new Set<OrderStatus>([
@@ -20,6 +21,17 @@ const DEFAULT_WINDOW_DAYS = 30;
 export async function GET(req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateAdminRoute(ctx.params.slug, "free", "orders.manage");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
+
+  // Per-venue read cap. Audit Finding #14. The kitchen queue polls
+  // frequently (every 2-5s) so 120/min is the lower bound that keeps
+  // legitimate dashboards working while blocking runaway clients.
+  const gateRl = await rateLimitAsync(`admin-get:orders:${gate.venueId}`, {
+    windowMs: 60_000,
+    max: 120,
+  });
+  if (!gateRl.ok) {
+    return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
+  }
 
   const url = new URL(req.url);
   const statusParam = url.searchParams.get("status");

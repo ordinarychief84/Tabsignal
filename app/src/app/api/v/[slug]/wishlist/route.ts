@@ -26,7 +26,11 @@ function tokensEqual(a: string, b: string): boolean {
 
 const slugParam = z.object({ slug: z.string().min(1) });
 
-const GetBody = z.object({
+// GET reads session credentials from the URL query string. Earlier
+// revisions parsed `req.json()`, but RFC 9110 makes GET bodies
+// ill-defined, browsers' `fetch(..., { method: "GET", body: ... })`
+// throws, and intermediate proxies / CDNs may strip them. Audit Finding #8.
+const GetQuery = z.object({
   sessionId: z.string().min(1),
   sessionToken: z.string().min(1),
 });
@@ -97,9 +101,19 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
   try { parsedSlug = slugParam.parse(ctx.params); }
   catch { return NextResponse.json({ error: "INVALID_PARAMS" }, { status: 400 }); }
 
+  // Session credentials come from the query string (sessionId + sessionToken).
+  // The previous incarnation read JSON from the GET body, which is
+  // problematic for browser fetch + intermediate proxies (audit Finding #8).
+  const url = new URL(req.url);
   let parsed;
-  try { parsed = GetBody.parse(await req.json()); }
-  catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }
+  try {
+    parsed = GetQuery.parse({
+      sessionId: url.searchParams.get("sessionId"),
+      sessionToken: url.searchParams.get("sessionToken"),
+    });
+  } catch {
+    return NextResponse.json({ error: "INVALID_PARAMS" }, { status: 400 });
+  }
 
   const auth = await authorize(parsedSlug.slug, parsed.sessionId, parsed.sessionToken);
   if (!auth.ok) return auth.res;

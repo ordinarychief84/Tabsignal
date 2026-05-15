@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import type { BillStatus } from "@prisma/client";
 
 const VALID_STATUSES = new Set<BillStatus>([
@@ -16,6 +17,17 @@ const DEFAULT_WINDOW_DAYS = 30;
 export async function GET(req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateAdminRoute(ctx.params.slug, "free", "bills.view");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
+
+  // Per-venue cap so a compromised staff account can't hammer the DB
+  // via this endpoint. 120/min is generous — a dashboard polling at
+  // 1s intervals stays well under. Audit Finding #14.
+  const gateRl = await rateLimitAsync(`admin-get:bills:${gate.venueId}`, {
+    windowMs: 60_000,
+    max: 120,
+  });
+  if (!gateRl.ok) {
+    return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
+  }
 
   const url = new URL(req.url);
   const statusParam = url.searchParams.get("status");

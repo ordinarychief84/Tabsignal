@@ -18,11 +18,51 @@ function getStripe() {
 }
 
 type Props = {
-  clientSecret: string;
+  splitId: string;
+  /** Optional fallback if the user reached the page via the legacy
+   *  `?secret=...` URL handoff (private-browsing-mode fallback). */
+  fallbackClientSecret?: string;
   returnUrl: string;
 };
 
-export function PayScreen({ clientSecret, returnUrl }: Props) {
+/**
+ * Hydrates the Stripe client secret from sessionStorage first (audit
+ * Finding #6 — secrets MUST NOT travel in URLs). Falls back to the
+ * legacy `?secret=` URL param when sessionStorage refused the write
+ * upstream (e.g. some private-browsing modes).
+ */
+export function PayScreen({ splitId, fallbackClientSecret, returnUrl }: Props) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(`tabcall:split-secret:${splitId}`);
+      if (stored) {
+        setClientSecret(stored);
+        return;
+      }
+    } catch {
+      // sessionStorage refused — drop to fallback below.
+    }
+    if (fallbackClientSecret) {
+      setClientSecret(fallbackClientSecret);
+      return;
+    }
+    setMissing(true);
+  }, [splitId, fallbackClientSecret]);
+
+  // Once we've handed the secret to Stripe, drop it from sessionStorage.
+  // No replays, no lingering tokens in storage that other tabs could read.
+  useEffect(() => {
+    if (!clientSecret) return;
+    try {
+      sessionStorage.removeItem(`tabcall:split-secret:${splitId}`);
+    } catch {
+      // No-op.
+    }
+  }, [clientSecret, splitId]);
+
   if (!PUBLISHABLE_KEY) {
     return (
       <ErrorPanel
@@ -30,6 +70,20 @@ export function PayScreen({ clientSecret, returnUrl }: Props) {
         body="NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing. Paste it into .env.local and restart the dev server."
       />
     );
+  }
+
+  if (missing) {
+    return (
+      <ErrorPanel
+        title="Payment session not found"
+        body="Open this page from your bill — Pay selected will bring you here with the secure session attached."
+      />
+    );
+  }
+
+  if (!clientSecret) {
+    // Brief mounting tick while sessionStorage is read.
+    return null;
   }
 
   return (

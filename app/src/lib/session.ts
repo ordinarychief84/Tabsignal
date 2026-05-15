@@ -1,5 +1,21 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { db } from "./db";
+
+/**
+ * Constant-time string compare. Same shape as the helpers inlined in
+ * /api/requests, /api/realtime/token, and /api/v/[slug]/bills/[billId]/splits.
+ *
+ * The qrToken lookup that uses this is already behind an indexed
+ * `findFirst`, so the timing window is small — but a `!==` short-circuit
+ * still leaks prefix-match microseconds and the audit flagged it
+ * (Finding #7, SECURITY_AUDIT_2026_05_13.md).
+ */
+function tokensEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
 
@@ -94,7 +110,7 @@ export async function resolveGuestSession(
   });
   if (!table) throw new Error("TABLE_NOT_FOUND");
 
-  if (!qrToken || qrToken !== table.qrToken) {
+  if (!qrToken || !tokensEqual(qrToken, table.qrToken)) {
     throw new Error("INVALID_TOKEN");
   }
 
