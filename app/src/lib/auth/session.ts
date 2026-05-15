@@ -39,17 +39,24 @@ export async function getStaffSession(): Promise<SessionClaims | null> {
     if (claims) {
       // Refuse JWTs minted before the user's "sign out everywhere" cutoff.
       const iat = typeof claims.iat === "number" ? claims.iat : 0;
+      let revoked = false;
       if (iat > 0) {
         const row = await db.staffMember.findUnique({
           where: { id: claims.staffId },
           select: { sessionsValidAfter: true },
         }).catch(() => null);
         if (row?.sessionsValidAfter && row.sessionsValidAfter.getTime() / 1000 > iat) {
-          return null;
+          revoked = true;
         }
       }
-      const { staffId, venueId, email, role } = claims;
-      return { kind: "session", staffId, venueId, email, role };
+      if (!revoked) {
+        const { staffId, venueId, email, role } = claims;
+        return { kind: "session", staffId, venueId, email, role };
+      }
+      // Revoked staff session: don't return early. Fall through to the
+      // admin cookie check below. Otherwise an operator who hit "sign
+      // out everywhere" on a stale staff session would be locked out of
+      // /operator even though they have a valid admin cookie.
     }
   }
 

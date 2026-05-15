@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/admin-auth";
+import { safeNext } from "@/lib/auth/redirect";
 import { AdminLoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +20,12 @@ export default async function AdminLoginPage({
   searchParams: { err?: string; next?: string };
 }) {
   // Already signed in? Skip the form, go to the operator console.
+  // `safeNext` blocks protocol-relative URLs, backslash-host injection,
+  // and javascript:/data: schemes — without it, ?next=//evil.com would
+  // bounce a freshly authenticated super admin straight to evil.com.
   const existing = await getAdminSession();
   if (existing) {
-    redirect(searchParams.next?.startsWith("/") ? searchParams.next : "/operator");
+    redirect(safeNext(searchParams.next, "/operator"));
   }
 
   return (

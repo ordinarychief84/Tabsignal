@@ -158,6 +158,7 @@ describe("POST /api/signup", () => {
         ownerName: "Sam Owner",
         venueName: "Test Venue",
         zipCode: "77002",
+        agreeTerms: true,
       }),
     );
     expect(res.status).toBe(201);
@@ -198,6 +199,7 @@ describe("POST /api/signup", () => {
         ownerName: "Sam Owner",
         venueName: "Test Venue",
         zipCode: "77002",
+        agreeTerms: true,
       }),
     );
     expect(res.status).toBe(429);
@@ -215,6 +217,7 @@ describe("POST /api/signup", () => {
         ownerName: "Sam Owner",
         venueName: "Different Name",
         zipCode: "77002",
+        agreeTerms: true,
       }),
     );
     expect(res.status).toBe(200);
@@ -236,6 +239,7 @@ describe("POST /api/signup", () => {
         ownerName: "Fresh Owner",
         venueName: "Test Venue",
         zipCode: "77002",
+        agreeTerms: true,
       }),
     );
     expect(res.status).toBe(201);
@@ -245,6 +249,42 @@ describe("POST /api/signup", () => {
     // (alphabet: a-z, 0-9, underscore, dash).
     expect(body.slug).toMatch(/^test-venue-[a-z0-9_-]{4}$/);
     expect(state.createdVenueSlug).toBe(body.slug);
+  });
+
+  test("rejects when agreeTerms is missing (server-side terms gate)", async () => {
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(
+      makeReq({
+        email: "owner@new.com",
+        ownerName: "Sam Owner",
+        venueName: "Test Venue",
+        zipCode: "77002",
+        // agreeTerms intentionally omitted — server must refuse.
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; detail: string };
+    expect(body.error).toBe("INVALID_BODY");
+    expect(body.detail).toContain("agreeTerms");
+    // Nothing was committed.
+    expect(state.createdVenueSlug).toBeNull();
+    expect(state.emailSends.length).toBe(0);
+  });
+
+  test("rejects when agreeTerms is literally false", async () => {
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(
+      makeReq({
+        email: "owner@new.com",
+        ownerName: "Sam Owner",
+        venueName: "Test Venue",
+        zipCode: "77002",
+        agreeTerms: false,
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(state.createdVenueSlug).toBeNull();
+    expect(state.emailSends.length).toBe(0);
   });
 
   test("email send failure surfaces emailDeliveryFailed (and devLink in dev)", async () => {
@@ -257,6 +297,7 @@ describe("POST /api/signup", () => {
         ownerName: "Fresh Owner",
         venueName: "Test Venue",
         zipCode: "77002",
+        agreeTerms: true,
       }),
     );
     expect(res.status).toBe(201);
