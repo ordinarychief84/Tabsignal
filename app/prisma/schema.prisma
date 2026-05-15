@@ -151,6 +151,11 @@ model Venue {
   guestWelcomeMessage    String?          @db.Text
   guestConfirmationMessage String?        @db.Text
   reviewPrompt           String?          @db.Text
+  // Onboarding feature toggles. Persists the user's choices from Step 4
+  // of the wizard. Null means defaults (everything on). JSON shape:
+  //   { qr_ordering: bool, qr_payments: bool, call_waiter: bool,
+  //     reviews: bool, pos_integration: bool }
+  enabledFeatures        Json?
   createdAt              DateTime         @default(now())
   org                    Organization     @relation(fields: [orgId], references: [id])
   tables                 Table[]
@@ -295,6 +300,17 @@ model StaffMember {
   // alongside TableAssignment for venues that group staff by zone rather
   // than per-table. Pure metadata — display + filter only.
   section            String?
+  // Optional password sign-in. Magic-link remains the default path;
+  // password is an opt-in upgrade. Nullable so every existing row
+  // keeps working unchanged. passwordChangedAt mirrors the
+  // sessionsValidAfter pattern — rotating the password invalidates
+  // every JWT minted before the change.
+  passwordHash      String?
+  passwordChangedAt DateTime?
+  // Stamped on first successful magic-link sign-in. Password sign-in
+  // refuses to mint a session until this is set. Null means the user
+  // signed up but never clicked their magic link.
+  emailVerifiedAt   DateTime?
   // Self-referential audit: who invited this row, who suspended it.
   // Both nullable so the original venue OWNER (created by signup)
   // doesn't need a phantom inviter.

@@ -56,6 +56,11 @@ export async function GET(req: Request) {
         lastSeenAt: new Date(),
         // Promote INVITED → ACTIVE on first successful sign-in.
         ...(staff.status === "INVITED" ? { status: "ACTIVE" as const } : {}),
+        // Stamp email verification the first time a user clicks their
+        // magic link. The password-sign-in path refuses to mint a
+        // session until this is set, so this is what flips a brand-
+        // new password-only account into "can use password to sign in".
+        ...(staff.emailVerifiedAt ? {} : { emailVerifiedAt: new Date() }),
       },
     })
     .catch(err => console.warn("[auth/callback] lastSeenAt update failed", err));

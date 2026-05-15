@@ -82,7 +82,7 @@ export function OnboardingWizard(props: Props) {
           {step === 1 && <Step1Venue state={state} setState={setState} slug={props.slug} onContinue={next} />}
           {step === 2 && <Step2Branding state={state} setState={setState} slug={props.slug} onContinue={next} onBack={back} />}
           {step === 3 && <Step3Tables state={state} setState={setState} slug={props.slug} initialCount={props.tableCount} onContinue={next} onBack={back} />}
-          {step === 4 && <Step4Features state={state} setState={setState} onContinue={next} onBack={back} />}
+          {step === 4 && <Step4Features state={state} setState={setState} slug={props.slug} onContinue={next} onBack={back} />}
           {step === 5 && <Step5Ready
               slug={props.slug}
               venueName={state.venueName}
@@ -649,16 +649,43 @@ function Step3Tables({
 function Step4Features({
   state,
   setState,
+  slug,
   onContinue,
   onBack,
 }: {
   state: WizardState;
   setState: (p: Partial<WizardState>) => void;
+  slug: string;
   onContinue: () => void;
   onBack: () => void;
 }) {
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
   function toggle(id: string) {
     setState({ features: { ...state.features, [id]: !state.features[id] } });
+  }
+
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/admin/v/${slug}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabledFeatures: state.features }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.detail || body?.error || `HTTP ${res.status}`);
+      }
+      onContinue();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -707,9 +734,13 @@ function Step4Features({
 
       <p className="text-[12px] text-slate/55">You can change these later.</p>
 
+      {err ? <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{err}</p> : null}
+
       <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <BackBtn onClick={onBack}>Back</BackBtn>
-        <ContinueBtn onClick={onContinue}>Continue</ContinueBtn>
+        <ContinueBtn disabled={saving} onClick={save}>
+          {saving ? "Saving…" : "Continue"}
+        </ContinueBtn>
       </div>
     </div>
   );
