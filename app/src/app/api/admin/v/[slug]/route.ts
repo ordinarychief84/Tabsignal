@@ -57,6 +57,13 @@ const Body = z.object({
   requestsEnabled: z.boolean().optional(),
   preorderEnabled: z.boolean().optional(),
   reservationsEnabled: z.boolean().optional(),
+  // Onboarding Step 4 toggles. Saved as a JSON blob on the Venue row.
+  // Schema is permissive — adding a new feature key doesn't require a
+  // migration. Null clears all.
+  enabledFeatures: z
+    .record(z.string(), z.boolean())
+    .nullable()
+    .optional(),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
@@ -93,7 +100,9 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   // Distinguish "field absent in body" (don't change) from "explicit null"
   // (clear it). `parsed.x !== undefined` is precise; the previous `"x" in
   // parsed` form was brittle if Zod ever emitted undefined-valued keys.
-  const data: Record<string, string | boolean | null> = {};
+  // Prisma Json typing accepts undefined to skip the column, so the
+  // record value type widens for the enabledFeatures JSON column.
+  const data: Record<string, string | boolean | null | Record<string, boolean>> = {};
   if (parsed.name !== undefined) data.name = parsed.name;
   if (parsed.address !== undefined) data.address = parsed.address;
   if (parsed.zipCode !== undefined) data.zipCode = parsed.zipCode;
@@ -109,6 +118,7 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   if (parsed.requestsEnabled !== undefined) data.requestsEnabled = parsed.requestsEnabled;
   if (parsed.preorderEnabled !== undefined) data.preorderEnabled = parsed.preorderEnabled;
   if (parsed.reservationsEnabled !== undefined) data.reservationsEnabled = parsed.reservationsEnabled;
+  if (parsed.enabledFeatures !== undefined) data.enabledFeatures = parsed.enabledFeatures;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "NOTHING_TO_UPDATE" }, { status: 400 });
