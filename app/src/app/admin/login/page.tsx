@@ -17,7 +17,7 @@ export const metadata = { title: "TabCall · Super-admin sign-in" };
 export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams: { err?: string; next?: string };
+  searchParams: { err?: string; next?: string; changed?: string };
 }) {
   // Already signed in? Skip the form, go to the operator console.
   // `safeNext` blocks protocol-relative URLs, backslash-host injection,
@@ -54,6 +54,16 @@ export default async function AdminLoginPage({
             </Link>{" "}
             by magic link.
           </p>
+
+          {searchParams.changed === "1" ? (
+            <div
+              className="mt-4 rounded-2xl border border-chartreuse/40 bg-chartreuse/15 p-3 text-sm text-slate"
+              role="status"
+              aria-live="polite"
+            >
+              Password updated. Sign in with the new one.
+            </div>
+          ) : null}
 
           <div className="mt-6">
             <AdminLoginForm nextUrl={searchParams.next} />
