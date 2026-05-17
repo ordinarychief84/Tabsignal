@@ -5,6 +5,7 @@ import { slugify } from "@/lib/slug";
 import { newQrToken } from "@/lib/qr";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
+import { hashStaffPassword } from "@/lib/auth/staff-password";
 import { appOrigin } from "@/lib/origin";
 import { rateLimitAsync } from "@/lib/rate-limit";
 
@@ -30,6 +31,12 @@ const Body = z.object({
   // than the operator setup (10) because self-serve venues skew smaller.
   tableCount: z.number().int().min(1).max(60).default(6),
   timezone: z.string().min(1).default("America/Chicago"),
+  // Optional password. If provided, the row's passwordHash is set during
+  // the same transaction so the user can sign in with email+password
+  // after their first magic-link verification. emailVerifiedAt stamps
+  // when they click the link the signup email sends — password sign-in
+  // refuses to mint a session until that happens.
+  password: z.string().min(12).max(128).optional(),
   // Server-side terms-of-service gate. The /signup form has a required
   // checkbox, but the checkbox is client-only without this — a direct
   // POST to /api/signup with no `agreeTerms` field would still create
@@ -116,6 +123,23 @@ export async function POST(req: Request) {
     slug = `${slug}-${newQrToken().slice(0, 4).toLowerCase()}`;
   }
 
+  // Hash the optional password OUTSIDE the transaction. bcrypt takes
+  // ~250ms at cost 12 — running it inside the tx would hold the DB
+  // connection idle. Validation already enforced 12-128 chars in the
+  // Zod schema; we surface the helper's throw as INVALID_BODY in case
+  // an edge slipped through.
+  let passwordHash: string | null = null;
+  if (parsed.password) {
+    try {
+      passwordHash = await hashStaffPassword(parsed.password);
+    } catch (err) {
+      return NextResponse.json(
+        { error: "INVALID_BODY", detail: err instanceof Error ? err.message : "password failed validation" },
+        { status: 400 },
+      );
+    }
+  }
+
   // Single transaction: org + venue + tables + owner staff. If anything
   // fails we don't want a partial venue with no manager.
   const result = await db.$transaction(async tx => {
@@ -155,6 +179,13 @@ export async function POST(req: Request) {
         email,
         name: parsed.ownerName,
         role: "OWNER",
+        // Set the password hash if the form passed a password. The user
+        // can still sign in with the magic link until they verify their
+        // email — password sign-in requires emailVerifiedAt to be set
+        // (stamped on the first magic-link click).
+        ...(passwordHash
+          ? { passwordHash, passwordChangedAt: new Date() }
+          : {}),
       },
     });
     await tx.orgMember.create({
