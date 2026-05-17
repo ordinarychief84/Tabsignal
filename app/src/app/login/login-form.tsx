@@ -247,6 +247,17 @@ export function LoginForm() {
         </span>
       </div>
 
+      {/* Forgot-password link is visible in BOTH modes, not just
+          password mode — a user who lost access to their email needs
+          the recovery path regardless of which auth they're trying. */}
+      {mode === "magic-link" ? (
+        <p className="text-center text-[12px]">
+          <Link href="/forgot-password" className="text-umber underline-offset-4 hover:underline">
+            Lost access to your email?
+          </Link>
+        </p>
+      ) : null}
+
       <button
         type="button"
         onClick={() => {

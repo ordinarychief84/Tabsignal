@@ -34,6 +34,7 @@ type StubState = {
   existingSlugTaken: boolean;
   createdVenueSlug: string | null;
   createdStaffEmail: string | null;
+  createdStaffWithPassword: boolean;
   emailSends: Array<{ to: string; link: string; venueName: string }>;
   emailShouldFail: boolean;
   rateLimitOk: boolean;
@@ -48,6 +49,7 @@ function resetState() {
     existingSlugTaken: false,
     createdVenueSlug: null,
     createdStaffEmail: null,
+    createdStaffWithPassword: false,
     emailSends: [],
     emailShouldFail: false,
     rateLimitOk: true,
@@ -99,8 +101,13 @@ beforeEach(() => {
             },
           },
           staffMember: {
-            create: async ({ data }: { data: { email: string; name: string; role: string } }) => {
+            create: async ({
+              data,
+            }: {
+              data: { email: string; name: string; role: string; passwordHash?: string; passwordChangedAt?: Date };
+            }) => {
               state.createdStaffEmail = data.email;
+              state.createdStaffWithPassword = Boolean(data.passwordHash);
               return { id: "stf_new", email: data.email, name: data.name, role: data.role };
             },
           },
@@ -285,6 +292,40 @@ describe("POST /api/signup", () => {
     expect(res.status).toBe(400);
     expect(state.createdVenueSlug).toBeNull();
     expect(state.emailSends.length).toBe(0);
+  });
+
+  test("with optional password: hashes + writes passwordHash to the new staff row", async () => {
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(
+      makeReq({
+        email: "pwd@new.com",
+        ownerName: "Sam Owner",
+        venueName: "Pwd Venue",
+        zipCode: "00000",
+        agreeTerms: true,
+        password: "StrongPassword-2026",
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(state.createdStaffWithPassword).toBe(true);
+  });
+
+  test("rejects password shorter than 12 chars with INVALID_BODY", async () => {
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(
+      makeReq({
+        email: "short@new.com",
+        ownerName: "Sam Owner",
+        venueName: "Short Pwd",
+        zipCode: "00000",
+        agreeTerms: true,
+        password: "short",
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("INVALID_BODY");
+    expect(state.createdVenueSlug).toBeNull();
   });
 
   test("email send failure surfaces emailDeliveryFailed (and devLink in dev)", async () => {

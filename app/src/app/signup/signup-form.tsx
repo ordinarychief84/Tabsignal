@@ -30,6 +30,8 @@ export function SignupForm() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [venueName, setVenueName] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
   const [status, setStatus] = useState<Status>("idle");
@@ -39,6 +41,9 @@ export function SignupForm() {
   const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
   const [devLink, setDevLink] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  // Password is optional. If the user typed any password we require >= 12 chars.
+  const passwordTooShort = password.length > 0 && password.length < 12;
 
   function validate(name: FieldName, value: string): string | undefined {
     const v = value.trim();
@@ -86,6 +91,11 @@ export function SignupForm() {
       setError("Check the highlighted fields and try again.");
       return;
     }
+    if (passwordTooShort) {
+      setStatus("error");
+      setError("Password must be at least 12 characters (or leave it blank to use magic-link only).");
+      return;
+    }
 
     setStatus("submitting");
     setError(null);
@@ -112,6 +122,7 @@ export function SignupForm() {
           tableCount: 6,
           timezone: "America/Chicago",
           agreeTerms: true,
+          ...(password ? { password } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -270,6 +281,39 @@ export function SignupForm() {
         placeholder="Luna Lounge"
       />
 
+      {/* Optional password. Users coming from any modern SaaS expect a
+          password field. Leaving it blank keeps the magic-link flow. */}
+      <div>
+        <div className="flex items-baseline justify-between">
+          <label htmlFor="signup-password" className="block text-[12px] font-medium text-slate/70">
+            Password <span className="text-slate/45">(optional)</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowPassword(s => !s)}
+            className="text-[11px] text-slate/55 underline-offset-4 hover:underline"
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
+        <input
+          id="signup-password"
+          type={showPassword ? "text" : "password"}
+          autoComplete="new-password"
+          minLength={12}
+          maxLength={128}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="At least 12 characters"
+          className="mt-1.5 block w-full rounded-xl border border-slate/15 bg-white px-3.5 py-3 text-[15px] text-slate placeholder-slate/35 outline-none transition-shadow focus:border-slate/40 focus:ring-4 focus:ring-slate/[0.08]"
+        />
+        <p className="mt-1.5 text-[11px] text-slate/55">
+          {passwordTooShort
+            ? <span className="text-umber">12 characters minimum.</span>
+            : "Leave blank to use magic-link sign-in only. You can add a password later from Account."}
+        </p>
+      </div>
+
       <label className="mt-1 flex items-start gap-3 rounded-xl bg-slate/[0.03] p-3 text-[13px] text-slate/75">
         <input
           type="checkbox"
@@ -298,16 +342,28 @@ export function SignupForm() {
 
       <button
         type="submit"
-        disabled={status === "submitting" || !agreed}
+        disabled={status === "submitting" || !agreed || passwordTooShort}
         className="min-h-[48px] w-full rounded-xl bg-chartreuse text-[15px] font-semibold text-slate shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
+        title={!agreed ? "Tick the terms checkbox to continue" : undefined}
       >
-        {status === "submitting" ? "Sending sign-in link…" : "Create account"}
+        {status === "submitting"
+          ? password
+            ? "Creating account…"
+            : "Sending sign-in link…"
+          : "Create account"}
       </button>
 
-      <p className="text-center text-[11px] leading-relaxed text-slate/55">
-        We use passwordless sign-in. Submit your email and we&rsquo;ll send a
-        single-use link that signs you in straight to onboarding.
-      </p>
+      {!agreed ? (
+        <p className="text-center text-[11px] leading-relaxed text-umber">
+          Tick the Terms of Service checkbox above to continue.
+        </p>
+      ) : (
+        <p className="text-center text-[11px] leading-relaxed text-slate/55">
+          {password
+            ? "We'll email you a one-tap verification link. Click it once to activate password sign-in."
+            : "We'll email you a single-use sign-in link that signs you in straight to onboarding."}
+        </p>
+      )}
     </form>
   );
 }
