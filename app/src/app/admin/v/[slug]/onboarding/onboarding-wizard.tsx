@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   STEPS,
   TOTAL_STEPS,
@@ -155,16 +155,22 @@ export function OnboardingWizard(props: Props) {
           )}
           {step === 4 && (
             <Step4Team
-              slug={props.slug}
               solo={serverState.solo}
-              setSolo={solo => {
-                const next = { ...serverState, solo };
-                setServerState(next);
-                void persistState.current(next);
-              }}
               staffCount={props.staffCount}
               onBack={() => goTo(3)}
               onContinue={() => advance(4)}
+              onChooseSolo={() => {
+                // Mark complete with solo:true in a SINGLE state dispatch
+                // so the follow-up advance() can't read a stale closure
+                // and clobber the solo flag back to false.
+                const next = recordStepComplete(
+                  { ...serverState, solo: true },
+                  4,
+                );
+                setServerState(next);
+                void persistState.current(next);
+                goTo(5);
+              }}
             />
           )}
           {step === 5 && (
@@ -627,24 +633,22 @@ function Step3Tables({
 }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [confirmRemove, setConfirmRemove] = useState(false);
 
+  // The /tables POST endpoint is add-only — the bulk-create body
+  // schema rejects count < 1. Removing tables lives on the QR-tents
+  // page where the destructive-delete confirmation belongs. The
+  // input below lets the user PREVIEW a smaller floor, but Continue
+  // only POSTs when delta > 0; a smaller count is a no-op + pointer
+  // to QR tents in the helper copy.
   const delta = form.tableCount - initialCount;
-  const wantsMore = delta > 0;
   const wantsFewer = delta < 0;
 
   async function save() {
     if (saving) return;
-    if (wantsFewer && !confirmRemove) {
-      // Decrement requires explicit confirmation — destructive even though
-      // the API soft-handles historical session data.
-      setConfirmRemove(true);
-      return;
-    }
     setSaving(true);
     setErr(null);
     try {
-      if (delta !== 0) {
+      if (delta > 0) {
         const res = await fetch(`/api/admin/v/${slug}/tables`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -652,14 +656,6 @@ function Step3Tables({
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          // 400 NOT_SUPPORTED hints the server doesn't accept negative deltas
-          // yet — push the user to /qr-tents and continue with the read-only
-          // table count.
-          if (res.status === 400 && wantsFewer) {
-            setForm({ ...form, tableCount: initialCount });
-            setErr("Removing tables isn't supported here yet — adjust them from QR tents after onboarding.");
-            return;
-          }
           throw new Error(body?.detail || body?.error || `HTTP ${res.status}`);
         }
       }
@@ -689,10 +685,7 @@ function Step3Tables({
         <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => {
-              setForm({ ...form, tableCount: Math.max(1, form.tableCount - 1) });
-              setConfirmRemove(false);
-            }}
+            onClick={() => setForm({ ...form, tableCount: Math.max(1, form.tableCount - 1) })}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate/15 bg-white text-slate hover:border-slate/30"
             aria-label="Decrease tables"
           >
@@ -706,16 +699,12 @@ function Step3Tables({
             onChange={e => {
               const v = Math.max(1, Math.min(120, Number(e.target.value) || 1));
               setForm({ ...form, tableCount: v });
-              setConfirmRemove(false);
             }}
             className="w-20 rounded-xl border border-slate/15 bg-white px-3 py-2 text-center text-[16px] tabular-nums text-slate outline-none focus:border-slate/40 focus:ring-4 focus:ring-slate/[0.08]"
           />
           <button
             type="button"
-            onClick={() => {
-              setForm({ ...form, tableCount: Math.min(120, form.tableCount + 1) });
-              setConfirmRemove(false);
-            }}
+            onClick={() => setForm({ ...form, tableCount: Math.min(120, form.tableCount + 1) })}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate/15 bg-white text-slate hover:border-slate/30"
             aria-label="Increase tables"
           >
@@ -725,8 +714,8 @@ function Step3Tables({
 
         <p className="mt-3 text-[12px] leading-relaxed text-slate/60">
           {wantsFewer
-            ? `Removing ${Math.abs(delta)} table${Math.abs(delta) === 1 ? "" : "s"}. Their QR codes stop accepting new guest sessions — historical data is preserved.`
-            : wantsMore
+            ? `Want fewer than ${initialCount}? Continue with what's here, then remove tables from QR tents after launch — that's where the destructive confirmation lives.`
+            : delta > 0
             ? `We'll add ${delta} new table${delta === 1 ? "" : "s"} labelled in sequence.`
             : `No changes — your existing ${initialCount} tables are good to go.`}
         </p>
@@ -751,16 +740,10 @@ function Step3Tables({
 
       {err ? <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{err}</p> : null}
 
-      {confirmRemove ? (
-        <div className="rounded-xl border border-coral/40 bg-coral/10 p-3 text-[13px] text-slate">
-          Removing tables disables their QR codes for new guests. Tap Continue to confirm, or adjust the count.
-        </div>
-      ) : null}
-
       <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <BackBtn onClick={onBack}>Back</BackBtn>
         <ContinueBtn disabled={saving} onClick={save}>
-          {saving ? "Saving…" : confirmRemove ? "Confirm & continue" : "Continue"}
+          {saving ? "Saving…" : "Continue"}
         </ContinueBtn>
       </div>
     </div>
@@ -772,19 +755,17 @@ function Step3Tables({
 /* ---------------------------------------------------------------------- */
 
 function Step4Team({
-  slug,
   solo,
-  setSolo,
   staffCount,
   onBack,
   onContinue,
+  onChooseSolo,
 }: {
-  slug: string;
   solo: boolean;
-  setSolo: (v: boolean) => void;
   staffCount: number;
   onBack: () => void;
   onContinue: () => void;
+  onChooseSolo: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -831,9 +812,10 @@ function Step4Team({
     }
   }
 
+  // No local writes — the parent's onChooseSolo does the merged
+  // setState+PATCH+goTo in one shot so we can't race the solo flag.
   function chooseSolo() {
-    setSolo(true);
-    onContinue();
+    onChooseSolo();
   }
 
   return (
