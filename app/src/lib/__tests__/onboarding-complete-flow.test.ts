@@ -21,6 +21,10 @@ beforeAll(() => {
 afterAll(() => {
   if (PREV_SECRET === undefined) delete (process.env as Record<string, string>).NEXTAUTH_SECRET;
   else (process.env as Record<string, string>).NEXTAUTH_SECRET = PREV_SECRET;
+  // Bun's mock.module is process-wide. Restore our @/lib/db and
+  // @/lib/auth/session mocks so they don't leak into sibling tests
+  // that get loaded after us in CI's readdir order.
+  mock.restore();
 });
 
 type SessionShape = {
