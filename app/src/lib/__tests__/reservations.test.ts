@@ -7,27 +7,43 @@
  * keep `bun test` fast and Postgres-free.
  */
 
-import { beforeAll, describe, expect, mock, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
-// Bun's `mock.module(...)` is process-wide and persistent — once a
-// sibling test file (signup-flow, staff-invite-flow, etc.) stubs
-// `@/lib/rate-limit`, the stub leaks into every subsequent file unless
-// it cleans up. On macOS readdir is alphabetical so those files run
-// AFTER reservations and we never notice; on Linux CI readdir hands
-// them to Bun BEFORE us, the stubbed `rateLimitAsync` always returns
-// `{ ok: true }`, and both rateCheck assertions silently break.
+// Sibling test files (signup-flow, staff-invite-flow, etc.) stub
+// `@/lib/rate-limit` with a closure-bound `rateLimitAsync` that
+// always returns `{ ok: true }`. Bun's `mock.module(...)` is
+// process-wide; on macOS readdir is alphabetical so those files run
+// AFTER us and nothing leaks, but on Linux CI readdir hands them to
+// Bun BEFORE us and the always-ok stub silently breaks both rateCheck
+// assertions ("4th call should refuse").
 //
-// Fix: call mock.restore() THEN dynamic-import `../reservations`.
-// A static top-level import would have already captured the stubbed
-// rateLimitAsync at file-load time, so restoring afterwards wouldn't
-// help — the module's binding is already poisoned. The dynamic
-// import re-evaluates `../reservations` against the real rate-limit
-// module that mock.restore() just brought back.
-let rateCheck!: (slug: string, phone: string) => Promise<boolean>;
+// Bun's docs are explicit: `mock.restore()` does NOT clear
+// `mock.module()` overrides — only re-calling `mock.module()`
+// undoes them. So we re-install our own controlled stub. What this
+// test actually verifies is rateCheck's *key composition* (per-
+// (slug,phone) isolation + per-key 4th-call refusal); the production
+// rate-limit logic itself is covered by stripe-helpers.test.ts and
+// integration tests. A faithful counting mock here exercises the
+// same wrapper-level behaviour and is immune to upstream pollution.
+type LimitOpts = { windowMs: number; max: number };
+let calls: Array<{ key: string; opts: LimitOpts }> = [];
 
+mock.module("@/lib/rate-limit", () => ({
+  rateLimitAsync: async (key: string, opts: LimitOpts) => {
+    calls.push({ key, opts });
+    const count = calls.filter(c => c.key === key).length;
+    return count <= opts.max
+      ? { ok: true }
+      : { ok: false, retryAfterMs: opts.windowMs };
+  },
+}));
+
+let rateCheck!: (slug: string, phone: string) => Promise<boolean>;
 beforeAll(async () => {
-  mock.restore();
   ({ rateCheck } = await import("../reservations"));
+});
+beforeEach(() => {
+  calls = [];
 });
 
 describe("rateCheck (Upstash-backed; falls back to in-memory in test)", () => {
