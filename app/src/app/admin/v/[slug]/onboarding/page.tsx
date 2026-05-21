@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
+import { readState } from "@/lib/onboarding/wizard-state";
 import { OnboardingWizard } from "./onboarding-wizard";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
       brandColor: true,
       logoUrl: true,
       guestWelcomeMessage: true,
+      venueType: true,
+      onboardingState: true,
+      onboardingCompletedAt: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
       stripePayoutsEnabled: true,
@@ -36,9 +40,15 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
   });
   if (!venue || venue.id !== session.venueId) return null;
 
+  // If the user already clicked "Launch" once, send them straight to the
+  // dashboard instead of re-entering the wizard — they can always
+  // re-open it via Settings.
+  if (venue.onboardingCompletedAt) redirect(`/admin/v/${venue.slug}`);
+
   const stripeReady = Boolean(
     venue.stripeAccountId && venue.stripeChargesEnabled && venue.stripePayoutsEnabled,
   );
+  const state = readState(venue.onboardingState);
 
   return (
     <main className="min-h-screen bg-surface-warm text-slate">
@@ -71,10 +81,12 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
         brandColor={venue.brandColor}
         logoUrl={venue.logoUrl}
         welcomeMessage={venue.guestWelcomeMessage}
+        venueType={venue.venueType}
         tableCount={venue._count.tables}
         staffCount={venue._count.staff}
         stripeReady={stripeReady}
         stripeAttached={Boolean(venue.stripeAccountId)}
+        state={state}
       />
     </main>
   );

@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import {
+  isOnboardingComplete,
+  progressPercent,
+  readState,
+  stepByNumber,
+} from "@/lib/onboarding/wizard-state";
 import { ManagerFloor } from "./manager-floor";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +20,36 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       timezone: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
+      // Onboarding-resume snapshot — feeds the banner that nudges venue
+      // owners who started signing up but never clicked "Launch venue".
+      zipCode: true,
+      brandColor: true,
+      logoUrl: true,
+      guestWelcomeMessage: true,
+      venueType: true,
+      onboardingState: true,
+      onboardingCompletedAt: true,
+      _count: { select: { tables: true, staff: true } },
     },
   });
   if (!venue) return null;
   const stripeReady = !!venue.stripeAccountId && venue.stripeChargesEnabled;
+
+  const onboardingState = readState(venue.onboardingState);
+  const onboardingDone = isOnboardingComplete({
+    zipCode: venue.zipCode,
+    brandColor: venue.brandColor,
+    logoUrl: venue.logoUrl,
+    welcomeMessage: venue.guestWelcomeMessage,
+    venueType: venue.venueType,
+    tableCount: venue._count.tables,
+    staffCount: venue._count.staff,
+    solo: onboardingState.solo,
+    state: venue.onboardingState ? onboardingState : null,
+    onboardingCompletedAt: venue.onboardingCompletedAt,
+  });
+  const resumeStep = stepByNumber(onboardingState.currentStep);
+  const resumePct = progressPercent(onboardingState);
 
   // Day window in venue's local timezone — fall back to UTC if Intl can't parse.
   const start = startOfTodayUTC(venue.timezone);
@@ -91,6 +123,35 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
 
   return (
     <>
+      {!onboardingDone ? (
+        <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-chartreuse/40 bg-chartreuse/10 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
+                Finish setting up
+              </p>
+              <span className="rounded-full bg-chartreuse px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate">
+                {resumePct}%
+              </span>
+            </div>
+            <p className="mt-1 text-sm font-medium text-slate">
+              {resumeStep
+                ? `Pick back up on step ${resumeStep.n} of 5 — ${resumeStep.label}.`
+                : "Pick back up where you left off."}
+            </p>
+            <p className="mt-1 text-xs text-slate/65">
+              Your venue is browsable, but a few setup steps make the launch experience cleaner for guests.
+            </p>
+          </div>
+          <Link
+            href={`/admin/v/${params.slug}/onboarding`}
+            className="shrink-0 self-center rounded-full bg-slate px-4 py-2 text-xs font-medium text-oat hover:bg-slate/90"
+          >
+            Resume setup →
+          </Link>
+        </div>
+      ) : null}
+
       {!stripeReady ? (
         <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-coral/40 bg-coral/10 px-5 py-4">
           <div className="min-w-0">
