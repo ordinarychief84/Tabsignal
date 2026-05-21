@@ -21,15 +21,27 @@ export async function POST(req: Request) {
 
   const raw = await req.text();
   let event: Stripe.Event | null = null;
+  let lastVerifyError: unknown = null;
   for (const secret of secrets) {
     try {
       event = stripe().webhooks.constructEvent(raw, sig, secret);
+      lastVerifyError = null;
       break;
-    } catch {
-      // try next secret (live vs test mode)
+    } catch (err) {
+      // Try next secret (live vs test mode). Capture the last error so
+      // we can log it if both attempts fail — a silent 400 makes a real
+      // Stripe outage indistinguishable from a misconfigured secret.
+      lastVerifyError = err;
     }
   }
   if (!event) {
+    // Log enough context to root-cause from Vercel logs: Stripe's
+    // verification errors include the failing condition (timestamp out
+    // of tolerance, signature header malformed, no matching v1 signature).
+    console.error("[stripe/webhook] signature verification failed", {
+      secretsTried: secrets.length,
+      error: lastVerifyError instanceof Error ? lastVerifyError.message : String(lastVerifyError),
+    });
     return NextResponse.json({ error: "INVALID_SIGNATURE" }, { status: 400 });
   }
 
