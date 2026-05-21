@@ -15,8 +15,15 @@ export async function POST(req: Request) {
   let parsed;
   try {
     parsed = Body.parse(await req.json());
-  } catch {
-    return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
+  } catch (err) {
+    // Surface a short Zod detail so clients can fix the bad field
+    // without us also losing it from server logs. Field path + first
+    // message is enough for the form to show inline + for ops to
+    // root-cause "all our requests are 400ing" incidents.
+    const detail = err instanceof z.ZodError
+      ? err.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+      : "unparsable JSON";
+    return NextResponse.json({ error: "INVALID_BODY", detail }, { status: 400 });
   }
   const email = parsed.email.toLowerCase().trim();
 
