@@ -37,4 +37,18 @@
 
 import * as realRateLimit from "@/lib/rate-limit";
 
-(globalThis as Record<string, unknown>).__realRateLimit = realRateLimit;
+// Copy the function references into a PLAIN OBJECT before any sibling
+// has a chance to call mock.module(). The Bun docs are explicit that
+// "mocked ESM modules maintain live bindings, so changing the mock
+// will update all existing imports" — including the namespace object
+// (`realRateLimit.rateLimitAsync` re-points when a polluter overrides
+// the module). A plain object property holding a direct function
+// reference is NOT a live binding; Bun's mock layer can't reach in
+// and replace it. That's what we need to hand consumers a stable
+// snapshot they can restore via `mock.module(path, () => snapshot)`.
+const snapshot = {
+  rateLimit: realRateLimit.rateLimit,
+  rateLimitAsync: realRateLimit.rateLimitAsync,
+};
+
+(globalThis as Record<string, unknown>).__realRateLimit = snapshot;
