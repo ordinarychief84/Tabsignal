@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSocket, joinRoom } from "@/lib/socket";
+import { computeMultiCall, formatAge as formatAgeMs } from "@/lib/staff/multi-call";
+
+const MULTI_CALL_MUTE_KEY = "tabcall:queue:multi-call-mute";
+const MULTI_CALL_CHIME_DEBOUNCE_MS = 5_000;
 
 type Item = {
   id: string;
@@ -33,6 +37,44 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
 // Safety-net poll interval — covers socket reconnect gaps. Real-time pushes
 // (new_request / request_acknowledged / request_resolved) carry the load.
 const POLL_INTERVAL_MS = 30_000;
+
+/**
+ * Synth a quick two-beep chime for the multi-call alert. WebAudio +
+ * a couple of oscillators — no asset to ship, works on any modern
+ * browser. Browsers require a user gesture before AudioContext starts;
+ * the first chime may be silent if no interaction has happened yet,
+ * which is fine — the visual banner still fires.
+ */
+async function playMultiCallChime() {
+  try {
+    const Ctx = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch { /* needs user gesture */ }
+    }
+    const tone = (freq: number, start: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + start + 0.02);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration + 0.05);
+    };
+    // Two short ascending beeps — distinct from any single-tap ring a
+    // staff app might add later.
+    tone(880, 0,     0.18);
+    tone(1175, 0.22, 0.20);
+    // Schedule cleanup so we don't leak AudioContexts on repeat plays.
+    setTimeout(() => ctx.close().catch(() => undefined), 800);
+  } catch {
+    /* swallow — audio is non-critical */
+  }
+}
 
 type StaffMate = { id: string; name: string };
 
@@ -80,7 +122,57 @@ export function StaffQueue({
     items: { name: string; priceCents: number; quantity: number }[];
   } | null>(null);
   const aborter = useRef<AbortController | null>(null);
-  const assignedSet = new Set(assignedTableIds);
+  const assignedSet = useMemo(() => new Set(assignedTableIds), [assignedTableIds]);
+
+  // Multi-call alert: distinct assigned tables with at least one PENDING /
+  // ESCALATED request right now. Banner renders at count >= 2, an audio
+  // chime + vibrate fire on the upward transition. The waiter can mute
+  // the chime per-device via localStorage.
+  const multiCall = useMemo(
+    () => computeMultiCall(items, assignedSet),
+    [items, assignedSet],
+  );
+  const [chimeMuted, setChimeMuted] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      setChimeMuted(localStorage.getItem(MULTI_CALL_MUTE_KEY) === "1");
+    } catch { /* private mode — leave default */ }
+  }, []);
+  const prevCountRef = useRef<number>(0);
+  const lastChimeAtRef = useRef<number>(0);
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    const curr = multiCall.count;
+    prevCountRef.current = curr;
+    // Only chime on upward transitions across the >= 2 threshold or when
+    // an additional table starts calling. Don't fire on de-escalation.
+    if (curr < 2 || curr <= prev) return;
+    if (chimeMuted) return;
+    // Debounce so a flurry of three near-simultaneous requests doesn't
+    // hammer the speaker.
+    const now = Date.now();
+    if (now - lastChimeAtRef.current < MULTI_CALL_CHIME_DEBOUNCE_MS) return;
+    lastChimeAtRef.current = now;
+    void playMultiCallChime();
+    try {
+      // Two short pulses so it's distinct from a normal one-tap ring.
+      navigator.vibrate?.([90, 60, 90]);
+    } catch { /* unsupported browser */ }
+  }, [multiCall.count, chimeMuted]);
+
+  function toggleChimeMute() {
+    const next = !chimeMuted;
+    setChimeMuted(next);
+    try { localStorage.setItem(MULTI_CALL_MUTE_KEY, next ? "1" : "0"); } catch { /* ignore */ }
+  }
+  function focusRequest(id: string) {
+    const el = document.querySelector(`[data-request-id="${id}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Brief highlight so the waiter sees where their tap landed.
+    el.classList.add("ring-2", "ring-coral", "ring-offset-2");
+    setTimeout(() => el.classList.remove("ring-2", "ring-coral", "ring-offset-2"), 1600);
+  }
 
   const refresh = useCallback(async () => {
     aborter.current?.abort();
@@ -401,6 +493,68 @@ export function StaffQueue({
         </div>
       ) : null}
 
+      {multiCall.count >= 2 ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-3 rounded-2xl border border-coral bg-coral/15 px-4 py-3 ring-1 ring-coral/40"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-coral text-white"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" />
+                    <path d="M10 21a2 2 0 0 0 4 0" />
+                  </svg>
+                </span>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-coral">
+                  {multiCall.count} of your tables are calling
+                </p>
+              </div>
+              <ul className="mt-2 space-y-1.5">
+                {multiCall.tables.map(t => (
+                  <li key={t.tableId}>
+                    <button
+                      type="button"
+                      onClick={() => focusRequest(t.oldestRequestId)}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg border border-coral/30 bg-white px-3 py-2 text-left text-sm text-slate hover:border-coral hover:bg-coral/5"
+                    >
+                      <span className="min-w-0 truncate">
+                        <span className="font-medium">{t.tableLabel}</span>
+                        <span className="ml-2 text-[11px] uppercase tracking-wider text-slate/55">
+                          {REQUEST_LABEL[t.oldestRequestType as Item["type"]] ?? t.oldestRequestType}
+                        </span>
+                        {t.openCount > 1 ? (
+                          <span className="ml-2 rounded-full bg-coral/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-coral">
+                            +{t.openCount - 1}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 font-mono text-[12px] tabular-nums text-coral">
+                        {formatAgeMs(t.oldestAgeMs)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <button
+              type="button"
+              onClick={toggleChimeMute}
+              aria-pressed={chimeMuted}
+              aria-label={chimeMuted ? "Unmute multi-call chime" : "Mute multi-call chime"}
+              className="shrink-0 rounded-full border border-coral/40 bg-white px-2.5 py-1 text-[11px] font-medium text-coral hover:bg-coral/10"
+            >
+              {chimeMuted ? "Unmute" : "Mute"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {reconnecting ? (
         <div className="mb-3 rounded-lg bg-sea/20 px-3 py-2 text-center text-xs text-slate/70">
           Reconnecting…
@@ -560,6 +714,7 @@ function RequestCard({
 
   return (
     <li
+      data-request-id={item.id}
       className={[
         "rounded-2xl border bg-white shadow-card p-4 transition-colors",
         delayed ? "border-coral ring-1 ring-coral/30" : warning ? "border-sea/40" : isYours ? "border-chartreuse/40" : "border-umber-soft/30",

@@ -1,0 +1,10 @@
+# Bun config for `bun test`. The preload captures the real
+# `@/lib/rate-limit` module exports onto globalThis before any test
+# file is loaded — see src/lib/__tests__/_setup/preserve-rate-limit.ts
+# for the rationale. Without this, sibling test files that mock
+# `@/lib/rate-limit` in their beforeEach leak an incomplete stub
+# (missing the `rateLimit` named export) and break consumers like
+# `rate-limit.test.ts` on Linux CI's readdir-driven file load order.
+
+[test]
+preload = ["./src/lib/__tests__/_setup/preserve-rate-limit.ts"]

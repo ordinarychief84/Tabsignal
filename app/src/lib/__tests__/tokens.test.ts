@@ -72,9 +72,17 @@ describe("magic-link tokens", () => {
       staffId: "stf_1",
       email: "owner@example.com",
     });
-    // Flip a character in the signature segment.
+    // Flip a character in the MIDDLE of the signature segment. The
+    // previous version flipped the LAST char between "A" and "B" —
+    // but HMAC-SHA256 base64url signatures are 43 chars (256 bits)
+    // and the final char encodes only the trailing 4 bits. If those
+    // happened to be 0000 (chars A / Q / g / w) the flip to "A"
+    // decoded to the SAME byte and the signature still verified,
+    // turning the test into a 1-in-12-ish flake. Touching a middle
+    // char guarantees a 6-bit change → a definitely different byte.
     const parts = token.split(".");
-    parts[2] = parts[2].slice(0, -1) + (parts[2].slice(-1) === "A" ? "B" : "A");
+    const mid = Math.floor(parts[2].length / 2);
+    parts[2] = parts[2].slice(0, mid) + (parts[2][mid] === "A" ? "B" : "A") + parts[2].slice(mid + 1);
     const tampered = parts.join(".");
     expect(await verifyLinkToken(tampered)).toBeNull();
   });
