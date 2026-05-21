@@ -4,8 +4,29 @@
  * temporarily flipping NODE_ENV.
  */
 
-import { afterEach, describe, expect, test } from "bun:test";
-import { rateLimit, rateLimitAsync } from "../rate-limit";
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
+
+// Sibling test files (signup-flow, auth-start-flow, etc.) stub
+// `@/lib/rate-limit` via `mock.module(...)` in their beforeEach,
+// providing a factory that only defines `rateLimitAsync` — the real
+// module also exports `rateLimit`. Bun's mock.module is process-wide
+// and `mock.restore()` doesn't undo it (per docs), so on Linux CI's
+// readdir order — where the polluters load before us — a static
+// `import { rateLimit }` throws SyntaxError at file-load time.
+//
+// Fix: the test-runner preload (bunfig.toml → preserve-rate-limit.ts)
+// captures the REAL module exports onto globalThis BEFORE any test
+// file loads. Here we use that snapshot to restore the module to its
+// genuine implementation, then dynamic-import the bindings.
+type RealRateLimit = typeof import("../rate-limit");
+const realRateLimit = (globalThis as Record<string, unknown>).__realRateLimit as RealRateLimit;
+mock.module("@/lib/rate-limit", () => realRateLimit);
+
+let rateLimit!: RealRateLimit["rateLimit"];
+let rateLimitAsync!: RealRateLimit["rateLimitAsync"];
+beforeAll(async () => {
+  ({ rateLimit, rateLimitAsync } = await import("../rate-limit"));
+});
 
 afterEach(() => {
   (process.env as Record<string, string>).NODE_ENV = "test";
