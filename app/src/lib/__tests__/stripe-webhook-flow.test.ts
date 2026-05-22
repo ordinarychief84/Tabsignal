@@ -76,6 +76,11 @@ beforeEach(() => {
   resetState();
 
   // Mock the Stripe constructor so constructEvent is under our control.
+  // Include EVERY export from the real module — Bun's mock.module is
+  // process-wide, so a partial factory here drops `stripeErrorResponse`
+  // for any sibling test file that imports it (notably
+  // bill-payment-flow.test.ts via the session/payment route). The
+  // dropped named export then throws SyntaxError at load time.
   mock.module("@/lib/stripe", () => ({
     stripe: () => ({
       webhooks: {
@@ -85,6 +90,8 @@ beforeEach(() => {
         },
       },
     }),
+    stripeErrorResponse: (err: unknown, _prefix: string) =>
+      Response.json({ error: "STRIPE_ERROR", detail: String(err) }, { status: 500 }),
   }));
 
   // Mock db. Only the surface this route touches.
