@@ -156,26 +156,50 @@ function makeReq(body: unknown): Request {
   });
 }
 
+/**
+ * Build a complete, valid signup payload. Tests pass overrides to
+ * test edge cases without re-listing the six required fields each
+ * time. Phone number is in E.164 (+1 for US) and address contains a
+ * parseable ZIP for the tax routing.
+ */
+function validPayload(overrides: Partial<{
+  email: string;
+  password: string;
+  restaurantName: string;
+  address: string;
+  phoneNumber: string;
+  country: string;
+  agreeTerms: unknown;
+}> = {}): Record<string, unknown> {
+  const base: Record<string, unknown> = {
+    restaurantName: "Test Venue",
+    address: "123 Main St, Houston, TX 77002",
+    phoneNumber: "+12125551234",
+    country: "US",
+    email: "owner@new.com",
+    password: "StrongPassword-2026",
+    agreeTerms: true,
+  };
+  return { ...base, ...overrides };
+}
+
 describe("POST /api/signup", () => {
   test("creates org + venue + owner and returns 201 with slug", async () => {
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "owner@new.com",
-        ownerName: "Sam Owner",
-        venueName: "Test Venue",
-        zipCode: "77002",
-        agreeTerms: true,
-      }),
-    );
+    const res = await POST(makeReq(validPayload()));
     expect(res.status).toBe(201);
     const body = (await res.json()) as { ok: boolean; slug: string };
     expect(body.ok).toBe(true);
     expect(body.slug).toBe("test-venue");
     expect(state.createdVenueSlug).toBe("test-venue");
     expect(state.createdStaffEmail).toBe("owner@new.com");
+    // Password is now mandatory at signup so passwordHash is always
+    // written on the first staff row.
+    expect(state.createdStaffWithPassword).toBe(true);
     expect(state.emailSends.length).toBe(1);
     expect(state.emailSends[0].to).toBe("owner@new.com");
+    // Verification link routes to /api/auth/callback; the click
+    // sets emailVerifiedAt + mints the first session cookie.
     expect(state.emailSends[0].link).toContain(
       "https://tab-call.test/api/auth/callback?token=",
     );
@@ -183,14 +207,7 @@ describe("POST /api/signup", () => {
 
   test("rejects invalid body with 400 INVALID_BODY + detail", async () => {
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "not-an-email",
-        ownerName: "Sam",
-        venueName: "Test",
-        zipCode: "abc",
-      }),
-    );
+    const res = await POST(makeReq(validPayload({ email: "not-an-email" })));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string; detail: string };
     expect(body.error).toBe("INVALID_BODY");
@@ -200,15 +217,7 @@ describe("POST /api/signup", () => {
   test("rejects when IP rate limit is exhausted", async () => {
     state.rateLimitOk = false;
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "owner@new.com",
-        ownerName: "Sam Owner",
-        venueName: "Test Venue",
-        zipCode: "77002",
-        agreeTerms: true,
-      }),
-    );
+    const res = await POST(makeReq(validPayload()));
     expect(res.status).toBe(429);
     const body = (await res.json()) as { error: string; retryAfterMs: number };
     expect(body.error).toBe("RATE_LIMITED");
@@ -219,20 +228,15 @@ describe("POST /api/signup", () => {
     state.existingStaffEmail = "existing@owner.com";
     const { POST } = await import("../../app/api/signup/route");
     const res = await POST(
-      makeReq({
+      makeReq(validPayload({
         email: "existing@owner.com",
-        ownerName: "Sam Owner",
-        venueName: "Different Name",
-        zipCode: "77002",
-        agreeTerms: true,
-      }),
+        restaurantName: "Different Name",
+      })),
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as { ok: boolean; alreadyRegistered: boolean };
     expect(body.alreadyRegistered).toBe(true);
-    // No new venue created.
     expect(state.createdVenueSlug).toBeNull();
-    // Sign-in email goes out, targeted at the existing venue slug.
     expect(state.emailSends.length).toBe(1);
     expect(state.emailSends[0].link).toContain("/api/auth/callback?token=");
   });
@@ -240,107 +244,68 @@ describe("POST /api/signup", () => {
   test("slug collision is suffixed with a 4-char random tail", async () => {
     state.existingSlugTaken = true;
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "fresh@owner.com",
-        ownerName: "Fresh Owner",
-        venueName: "Test Venue",
-        zipCode: "77002",
-        agreeTerms: true,
-      }),
-    );
+    const res = await POST(makeReq(validPayload({ email: "fresh@owner.com" })));
     expect(res.status).toBe(201);
     const body = (await res.json()) as { ok: boolean; slug: string };
-    // "test-venue" was taken, so the result must be "test-venue-XXXX"
-    // where XXXX is the first 4 chars of a lowercased base64url token
-    // (alphabet: a-z, 0-9, underscore, dash).
+    // "test-venue" was taken; result is "test-venue-XXXX" where XXXX is
+    // the first 4 chars of a lowercased base64url token.
     expect(body.slug).toMatch(/^test-venue-[a-z0-9_-]{4}$/);
     expect(state.createdVenueSlug).toBe(body.slug);
   });
 
   test("rejects when agreeTerms is missing (server-side terms gate)", async () => {
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "owner@new.com",
-        ownerName: "Sam Owner",
-        venueName: "Test Venue",
-        zipCode: "77002",
-        // agreeTerms intentionally omitted — server must refuse.
-      }),
-    );
+    const payload = validPayload();
+    delete payload.agreeTerms;
+    const res = await POST(makeReq(payload));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string; detail: string };
     expect(body.error).toBe("INVALID_BODY");
     expect(body.detail).toContain("agreeTerms");
-    // Nothing was committed.
     expect(state.createdVenueSlug).toBeNull();
     expect(state.emailSends.length).toBe(0);
   });
 
   test("rejects when agreeTerms is literally false", async () => {
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "owner@new.com",
-        ownerName: "Sam Owner",
-        venueName: "Test Venue",
-        zipCode: "77002",
-        agreeTerms: false,
-      }),
-    );
+    const res = await POST(makeReq(validPayload({ agreeTerms: false })));
     expect(res.status).toBe(400);
     expect(state.createdVenueSlug).toBeNull();
     expect(state.emailSends.length).toBe(0);
   });
 
-  test("with optional password: hashes + writes passwordHash to the new staff row", async () => {
-    const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "pwd@new.com",
-        ownerName: "Sam Owner",
-        venueName: "Pwd Venue",
-        zipCode: "00000",
-        agreeTerms: true,
-        password: "StrongPassword-2026",
-      }),
-    );
-    expect(res.status).toBe(201);
-    expect(state.createdStaffWithPassword).toBe(true);
-  });
-
   test("rejects password shorter than 12 chars with INVALID_BODY", async () => {
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "short@new.com",
-        ownerName: "Sam Owner",
-        venueName: "Short Pwd",
-        zipCode: "00000",
-        agreeTerms: true,
-        password: "short",
-      }),
-    );
+    const res = await POST(makeReq(validPayload({ password: "short" })));
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("INVALID_BODY");
     expect(state.createdVenueSlug).toBeNull();
   });
 
+  test("rejects non-E.164 phone numbers", async () => {
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(makeReq(validPayload({ phoneNumber: "555-1234" })));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; detail: string };
+    expect(body.error).toBe("INVALID_BODY");
+    expect(body.detail).toMatch(/phone/i);
+  });
+
+  test("rejects non-ISO country codes", async () => {
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(makeReq(validPayload({ country: "usa" })));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; detail: string };
+    expect(body.error).toBe("INVALID_BODY");
+    expect(body.detail).toMatch(/country/i);
+  });
+
   test("email send failure surfaces emailDeliveryFailed (and devLink in dev)", async () => {
     (process.env as Record<string, string>).NODE_ENV = "development";
     state.emailShouldFail = true;
     const { POST } = await import("../../app/api/signup/route");
-    const res = await POST(
-      makeReq({
-        email: "fresh@owner.com",
-        ownerName: "Fresh Owner",
-        venueName: "Test Venue",
-        zipCode: "77002",
-        agreeTerms: true,
-      }),
-    );
+    const res = await POST(makeReq(validPayload({ email: "fresh@owner.com" })));
     expect(res.status).toBe(201);
     const body = (await res.json()) as {
       ok: boolean;
@@ -350,7 +315,6 @@ describe("POST /api/signup", () => {
     };
     expect(body.ok).toBe(true);
     expect(body.emailDeliveryFailed).toBe(true);
-    // dev mode → devLink leaked so local testing isn't blocked
     expect(body.devLink).toContain("/api/auth/callback?token=");
   });
 });

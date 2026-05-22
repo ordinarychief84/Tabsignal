@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { detectCountryFromHeaders } from "@/lib/countries";
 import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = {
@@ -7,6 +9,11 @@ export const metadata: Metadata = {
   description:
     "Run smarter hospitality operations. Live on your floor tonight. No credit card required.",
 };
+
+// Read on every request so country defaulting reflects where the
+// signup actually comes from. Static rendering would freeze the
+// default to whatever country built the page.
+export const dynamic = "force-dynamic";
 
 /**
  * Split-layout signup page. Left panel is a soft hospitality scene with
@@ -20,6 +27,10 @@ export const metadata: Metadata = {
  * the password-auth follow-up scope.
  */
 export default function SignupPage() {
+  // GeoIP-defaulted country for the phone-input dropdown. Vercel edge
+  // sets x-vercel-ip-country; falls back to US for local dev / non-Vercel.
+  const defaultCountry = detectCountryFromHeaders(headers());
+
   return (
     <main className="grid min-h-screen grid-cols-1 bg-surface-warm lg:grid-cols-[1.05fr_1fr]">
       {/* LEFT: hospitality scene + positioning. Collapses to a slim header
@@ -109,7 +120,7 @@ export default function SignupPage() {
                 Get started in minutes. No setup fees.
               </p>
             </div>
-            <SignupForm />
+            <SignupForm defaultCountry={defaultCountry} />
             <p className="mt-6 text-center text-[12px] text-slate/55">
               Already have an account?{" "}
               <Link href="/login" className="text-umber underline-offset-4 hover:underline">
