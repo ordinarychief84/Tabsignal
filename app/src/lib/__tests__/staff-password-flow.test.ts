@@ -257,6 +257,79 @@ describe("POST /api/auth/login", () => {
     // lastSeenAt update fired
     expect(state.updates.some(u => u.id === "stf_1" && (u.data.lastSeenAt as Date) instanceof Date)).toBe(true);
   });
+
+  test("per-email lockout: 10 attempts allowed, 11th returns 429 RATE_LIMITED", async () => {
+    // Sibling test files install a `mock.module("@/lib/rate-limit",
+    // () => ({ rateLimitAsync: alwaysOk }))` stub that leaks into this
+    // file via Bun's process-wide mock layer. We install a deterministic
+    // counting limiter scoped to THIS test (and restore the polluter's
+    // always-ok stub immediately after so sibling set-password tests
+    // that follow are unaffected). The behaviour we mimic is the real
+    // in-memory rate-limiter: per-key counter with windowMs eviction.
+    const counts = new Map<string, { count: number; expiresAt: number }>();
+    mock.module("@/lib/rate-limit", () => ({
+      rateLimit: (key: string, opts: { windowMs: number; max: number }) => {
+        const now = Date.now();
+        const cur = counts.get(key);
+        const entry = cur && cur.expiresAt > now ? cur : { count: 0, expiresAt: now + opts.windowMs };
+        entry.count += 1;
+        counts.set(key, entry);
+        return entry.count <= opts.max
+          ? { ok: true as const, retryAfterMs: 0 }
+          : { ok: false as const, retryAfterMs: entry.expiresAt - now };
+      },
+      rateLimitAsync: async (key: string, opts: { windowMs: number; max: number }) => {
+        const now = Date.now();
+        const cur = counts.get(key);
+        const entry = cur && cur.expiresAt > now ? cur : { count: 0, expiresAt: now + opts.windowMs };
+        entry.count += 1;
+        counts.set(key, entry);
+        return entry.count <= opts.max
+          ? { ok: true as const }
+          : { ok: false as const, retryAfterMs: entry.expiresAt - now };
+      },
+    }));
+
+    const email = `lockout-${Date.now()}@example.com`;
+    const ip = `9.${(Date.now() >> 16) & 0xff}.${(Date.now() >> 8) & 0xff}.${Date.now() & 0xff}`;
+    const { POST } = await import("../../app/api/auth/login/route");
+
+    function attempt() {
+      return POST(
+        new Request("https://tab-call.test/api/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-forwarded-for": ip },
+          body: JSON.stringify({ email, password: "anything-1234567" }),
+        }),
+      );
+    }
+
+    try {
+      // The route's per-email window is 10/hour. First 10 attempts
+      // pass the gate and reach the credential check (returns 401
+      // INVALID_CREDENTIALS for the non-existent email); 11th hits
+      // 429 RATE_LIMITED at the gate.
+      for (let i = 1; i <= 10; i++) {
+        const res = await attempt();
+        expect(res.status).toBe(401);
+        const body = (await res.json()) as { error: string };
+        expect(body.error).toBe("INVALID_CREDENTIALS");
+      }
+      const overLimit = await attempt();
+      expect(overLimit.status).toBe(429);
+      const body = (await overLimit.json()) as { error: string; retryAfterMs: number };
+      expect(body.error).toBe("RATE_LIMITED");
+      expect(body.retryAfterMs).toBeGreaterThan(0);
+    } finally {
+      // Restore the always-ok stub so sibling set-password tests that
+      // run after us in this file aren't accidentally rate-limited
+      // through our deterministic counter.
+      mock.module("@/lib/rate-limit", () => ({
+        rateLimit: () => ({ ok: true as const, retryAfterMs: 0 }),
+        rateLimitAsync: async () => ({ ok: true as const }),
+      }));
+    }
+  });
 });
 
 /* ---------- POST /api/auth/set-password ---------------------------- */

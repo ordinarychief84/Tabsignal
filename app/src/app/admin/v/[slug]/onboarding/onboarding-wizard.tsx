@@ -1013,14 +1013,57 @@ function Step5Launch({
       </ul>
 
       {!stripeReady ? (
-        <div className="rounded-2xl border border-chartreuse/40 bg-chartreuse/10 p-4">
-          <p className="text-[14px] font-semibold text-slate">Want guests to pay from the table?</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-slate/70">
-            Connect Stripe to enable in-table payments. The rest of the flow
-            works without it — bills can still close on your existing POS.
-          </p>
-          <ConnectStripeButton slug={slug} attached={stripeAttached} />
-        </div>
+        stripeAttached ? (
+          // Connected but Stripe's identity + bank checks haven't finished
+          // flipping `charges_enabled` yet. Verification typically takes
+          // 5–15 minutes after the merchant submits, but can stretch
+          // longer if Stripe asks for extra docs. Give the user a clear
+          // expectation + a one-click refresh so they don't have to keep
+          // reloading the page manually.
+          <div className="rounded-2xl border border-sea/40 bg-sea-soft/30 p-4">
+            <div className="flex items-start gap-3">
+              <span
+                aria-hidden
+                className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sea/20 text-sea"
+              >
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-sea" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-semibold text-slate">
+                  Stripe is verifying your account
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-slate/70">
+                  This usually takes 5–15 minutes after you submit. Stripe
+                  may email you for extra docs (utility bill, ID, EIN) —
+                  check the inbox you signed up with. You can launch now;
+                  guests will start paying from the table the moment
+                  Stripe finishes verifying.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="inline-flex min-h-[36px] items-center justify-center rounded-lg border border-sea/40 bg-white px-3 text-[12px] font-medium text-sea hover:bg-sea/5"
+                  >
+                    Check status
+                  </button>
+                  <ConnectStripeButton slug={slug} attached />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-chartreuse/40 bg-chartreuse/10 p-4">
+            <p className="text-[14px] font-semibold text-slate">Want guests to pay from the table?</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-slate/70">
+              Connect Stripe to enable in-table payments. The rest of the flow
+              works without it — bills can still close on your existing POS.
+              The handoff to Stripe takes about 5 minutes; you can come
+              back to this page any time.
+            </p>
+            <ConnectStripeButton slug={slug} attached={false} />
+          </div>
+        )
       ) : null}
 
       {err ? <p className="rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{err}</p> : null}
