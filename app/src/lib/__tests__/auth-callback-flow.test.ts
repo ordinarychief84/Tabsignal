@@ -109,6 +109,24 @@ async function callbackReq(token: string | null, extra: Record<string, string> =
   });
 }
 
+/**
+ * On the success path the callback returns an HTML interstitial that
+ * sets the session cookie + does client-side navigation (the email-
+ * click flow needs this so the cookie isn't dropped by SameSite or
+ * ITP). Error paths still 302/307 to /staff/login. This helper hides
+ * the difference for tests that only care about WHERE the user lands.
+ */
+async function readDest(res: Response): Promise<string | null> {
+  const loc = res.headers.get("location");
+  if (loc) return loc;
+  if (res.status === 200) {
+    const body = await res.text();
+    const m = /window\.location\.replace\("([^"]+)"\)/.exec(body);
+    return m ? m[1] : null;
+  }
+  return null;
+}
+
 describe("GET /api/auth/callback", () => {
   test("redirects to /staff/login?err=missing when token is absent", async () => {
     const { GET } = await import("../../app/api/auth/callback/route");
@@ -220,7 +238,8 @@ describe("GET /api/auth/callback", () => {
     });
     const { GET } = await import("../../app/api/auth/callback/route");
     const res = await GET(await callbackReq(token));
-    expect(res.headers.get("location")).toBe("https://tab-call.test/staff");
+    expect(res.status).toBe(200);
+    expect(await readDest(res)).toBe("https://tab-call.test/staff");
     const setCookie = res.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("tabsignal_session=");
     // jti consumed exactly once.
@@ -287,7 +306,7 @@ describe("GET /api/auth/callback", () => {
     });
     const { GET } = await import("../../app/api/auth/callback/route");
     const res = await GET(await callbackReq(token));
-    expect(res.headers.get("location")).toBe(
+    expect(await readDest(res)).toBe(
       "https://tab-call.test/admin/v/luna-lounge/onboarding",
     );
   });
@@ -308,7 +327,7 @@ describe("GET /api/auth/callback", () => {
     });
     const { GET } = await import("../../app/api/auth/callback/route");
     const res = await GET(await callbackReq(token));
-    expect(res.headers.get("location")).toBe("https://tab-call.test/staff");
+    expect(await readDest(res)).toBe("https://tab-call.test/staff");
   });
 
   test("operator email without claims.next defaults to /operator", async () => {
@@ -327,7 +346,7 @@ describe("GET /api/auth/callback", () => {
     });
     const { GET } = await import("../../app/api/auth/callback/route");
     const res = await GET(await callbackReq(token));
-    expect(res.headers.get("location")).toBe("https://tab-call.test/operator");
+    expect(await readDest(res)).toBe("https://tab-call.test/operator");
   });
 
   test("URL ?next= param works when claims.next absent", async () => {
@@ -345,7 +364,7 @@ describe("GET /api/auth/callback", () => {
     });
     const { GET } = await import("../../app/api/auth/callback/route");
     const res = await GET(await callbackReq(token, { next: "/admin/v/luna-lounge" }));
-    expect(res.headers.get("location")).toBe(
+    expect(await readDest(res)).toBe(
       "https://tab-call.test/admin/v/luna-lounge",
     );
   });
