@@ -84,7 +84,48 @@ export async function GET(req: Request) {
   });
   const defaultDest = operator ? "/operator" : "/staff";
   const dest = safeNext(claims.next ?? url.searchParams.get("next"), defaultDest);
-  const res = NextResponse.redirect(`${origin}${dest}`);
+
+  // Belt-and-braces against SameSite-Strict / ITP / older WebView
+  // quirks: instead of issuing an HTTP redirect (whose response carries
+  // Set-Cookie but whose subsequent request can be tagged with the
+  // cross-site initiator from the email-link click), we return a tiny
+  // HTML page that sets the session cookie THEN navigates client-side
+  // via window.location.replace(). The follow-up navigation is
+  // initiated by the page itself, so the browser treats it as a same-
+  // site request and includes the just-set cookie even under the
+  // strictest SameSite policies. Visible UX: a sub-second flash of
+  // "Signing you in…" before the dashboard renders.
+  const destUrl = `${origin}${dest}`;
+  // safeNext already restricted `dest` to paths beginning with `/` and
+  // rejected protocol-relative / javascript: / data: schemes — JSON-
+  // stringifying defends against any residual encoding surprise when
+  // we embed the URL inside a <script> string literal.
+  const safeDestJsLiteral = JSON.stringify(destUrl);
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Signing you in…</title>
+    <meta http-equiv="refresh" content="0;url=${destUrl}" />
+    <style>
+      body { font: 14px system-ui, sans-serif; color: #2A2837;
+             background: #F7F5F2; margin: 0; min-height: 100vh;
+             display: flex; align-items: center; justify-content: center; }
+      .card { padding: 1.25rem 1.5rem; border-radius: 12px;
+              background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    </style>
+  </head>
+  <body>
+    <div class="card">Signing you in…</div>
+    <script>window.location.replace(${safeDestJsLiteral});</script>
+  </body>
+</html>`;
+
+  const res = new NextResponse(html, {
+    status: 200,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
   res.cookies.set(SESSION_COOKIE, session, sessionCookieOptions());
   return res;
 }

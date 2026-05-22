@@ -64,6 +64,32 @@ const Body = z.object({
     .record(z.string(), z.boolean())
     .nullable()
     .optional(),
+  // Onboarding redesign (2026-05-20):
+  //   * venueType — vertical classifier set in wizard step 1.
+  //   * onboardingState — server-persisted cursor + completed steps.
+  //   * solo flag — venue owner has explicitly said "no team yet".
+  // The wizard PATCHes these as it goes; the wizard's pure helpers
+  // (lib/onboarding/wizard-state.ts) are the source of shape truth.
+  venueType: z
+    .enum([
+      "restaurant",
+      "cafe",
+      "bar",
+      "lounge",
+      "nightclub",
+      "food-court",
+      "hotel-restaurant",
+    ])
+    .nullable()
+    .optional(),
+  onboardingState: z
+    .object({
+      currentStep: z.number().int().min(1).max(5),
+      completedSteps: z.array(z.number().int().min(1).max(5)),
+      solo: z.boolean(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
@@ -102,7 +128,7 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   // parsed` form was brittle if Zod ever emitted undefined-valued keys.
   // Prisma Json typing accepts undefined to skip the column, so the
   // record value type widens for the enabledFeatures JSON column.
-  const data: Record<string, string | boolean | null | Record<string, boolean>> = {};
+  const data: Record<string, string | boolean | null | Record<string, unknown>> = {};
   if (parsed.name !== undefined) data.name = parsed.name;
   if (parsed.address !== undefined) data.address = parsed.address;
   if (parsed.zipCode !== undefined) data.zipCode = parsed.zipCode;
@@ -119,6 +145,8 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   if (parsed.preorderEnabled !== undefined) data.preorderEnabled = parsed.preorderEnabled;
   if (parsed.reservationsEnabled !== undefined) data.reservationsEnabled = parsed.reservationsEnabled;
   if (parsed.enabledFeatures !== undefined) data.enabledFeatures = parsed.enabledFeatures;
+  if (parsed.venueType !== undefined) data.venueType = parsed.venueType;
+  if (parsed.onboardingState !== undefined) data.onboardingState = parsed.onboardingState;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "NOTHING_TO_UPDATE" }, { status: 400 });

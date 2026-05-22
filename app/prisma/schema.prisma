@@ -115,6 +115,13 @@ model Venue {
   name                   String
   address                String?
   zipCode                String?
+  // E.164 phone number captured at signup. Used for SMS reservations
+  // confirmations and as the manager's emergency contact. Format:
+  // "+12125551234" (country dial code + national number, no spaces).
+  phoneNumber            String?
+  // ISO 3166-1 alpha-2 country code captured at signup (US, GB, MX, …).
+  // Drives the signup phone-input default + tax routing per jurisdiction.
+  country                String?
   timezone               String           @default("America/Chicago")
   posType                PosType          @default(NONE)
   posWebhookUrl          String?
@@ -156,6 +163,21 @@ model Venue {
   //   { qr_ordering: bool, qr_payments: bool, call_waiter: bool,
   //     reviews: bool, pos_integration: bool }
   enabledFeatures        Json?
+  // Onboarding redesign (2026-05-20): free-text vertical classifier set
+  // in wizard step 1 ("restaurant" | "cafe" | "bar" | ...). Was stored
+  // client-only in localStorage previously; promoted to a column so
+  // per-vertical analytics + features can query it.
+  venueType              String?
+  // Server-persisted wizard state — { currentStep, completedSteps[], solo }.
+  // Lets a user resume onboarding on a different device or after
+  // clearing browser data. The shape is validated client-side; the
+  // column is permissive so we can extend without a migration.
+  onboardingState        Json?
+  // Set when the user explicitly clicks "Launch venue" on the final
+  // step. Null = wizard not yet finished → dashboard shows a resume
+  // banner. Backfilled to createdAt for legacy venues that already had
+  // brandColor + a real zipCode before this column existed.
+  onboardingCompletedAt  DateTime?
   createdAt              DateTime         @default(now())
   org                    Organization     @relation(fields: [orgId], references: [id])
   tables                 Table[]

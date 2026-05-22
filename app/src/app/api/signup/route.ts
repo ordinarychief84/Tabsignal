@@ -6,42 +6,42 @@ import { newQrToken } from "@/lib/qr";
 import { signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 import { hashStaffPassword } from "@/lib/auth/staff-password";
+import { isE164 } from "@/lib/countries";
 import { appOrigin } from "@/lib/origin";
 import { rateLimitAsync } from "@/lib/rate-limit";
 
 /**
- * Self-serve signup at the Starter tier.
+ * Self-serve restaurant signup.
  *
- * Creates an Organization + Venue + owner StaffMember in one transaction,
- * then magic-links the owner into /admin/v/[slug]/onboarding so they can
- * finish Stripe Connect, add tables, and invite staff.
+ * Collects: restaurant name, full street address, E.164 phone +
+ * ISO country code, email, password, terms acceptance.
  *
- * Growth/Pro buyers DON'T come through here — they go through the
- * concierge "book a call" intercept on the billing page. This endpoint
- * is intentionally scoped to Starter only; promotion to Growth/Pro
- * happens through the existing billing checkout (post-call).
+ * Creates Organization + Venue (with 6 default tables) + owner
+ * StaffMember in one transaction. StaffMember.emailVerifiedAt is
+ * left NULL — `/api/auth/login` refuses to mint a session until the
+ * owner clicks the verification link sent here. The link routes
+ * through `/api/auth/callback`, which sets emailVerifiedAt and
+ * mints a session cookie, then redirects to the dashboard.
+ *
+ * Growth/Pro buyers don't come through here — they go through the
+ * concierge "book a call" intercept on the billing page. This
+ * endpoint is intentionally scoped to Starter only.
  */
 
 const Body = z.object({
+  restaurantName: z.string().min(1).max(120),
+  address: z.string().min(5).max(240),
+  // Server-validated as E.164 — the form composes it from country
+  // dial-code + national-number. Direct API callers must send the
+  // already-composed value.
+  phoneNumber: z.string().refine(isE164, {
+    message: "phoneNumber must be E.164 (e.g. +12125551234)",
+  }),
+  country: z.string().regex(/^[A-Z]{2}$/, "country must be ISO 3166-1 alpha-2 (e.g. US, GB)"),
   email: z.string().email().max(200),
-  ownerName: z.string().min(1).max(120),
-  venueName: z.string().min(1).max(120),
-  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, "ZIP must be 5 digits or 5+4"),
-  // Default 6 tables — owners can adjust during onboarding. Smaller default
-  // than the operator setup (10) because self-serve venues skew smaller.
-  tableCount: z.number().int().min(1).max(60).default(6),
-  timezone: z.string().min(1).default("America/Chicago"),
-  // Optional password. If provided, the row's passwordHash is set during
-  // the same transaction so the user can sign in with email+password
-  // after their first magic-link verification. emailVerifiedAt stamps
-  // when they click the link the signup email sends — password sign-in
-  // refuses to mint a session until that happens.
-  password: z.string().min(12).max(128).optional(),
-  // Server-side terms-of-service gate. The /signup form has a required
-  // checkbox, but the checkbox is client-only without this — a direct
-  // POST to /api/signup with no `agreeTerms` field would still create
-  // the Org+Venue+Staff. Require literal `true` so neither false nor
-  // missing satisfies it.
+  password: z.string().min(12).max(128),
+  // Server-side terms gate. The form has a checkbox; without this a
+  // direct POST could bypass it. Require literal `true`.
   agreeTerms: z.literal(true, {
     errorMap: () => ({
       message: "You must agree to the Terms of Service and Privacy Policy",
@@ -49,11 +49,33 @@ const Body = z.object({
   }),
 });
 
-// Spam guard: limit signups per IP. Upstash-backed via rateLimitAsync so
-// the cap holds across Vercel cold starts (the previous in-memory Map was
-// per-lambda — effectively no limiter on serverless). Falls back to
-// in-memory in dev; fails closed in prod when Upstash is absent.
+// Default table count for self-serve venues. Owners can adjust from
+// /admin/v/[slug]/qr-tents after launch.
+const DEFAULT_TABLE_COUNT = 6;
+
+// Spam guard: limit signups per IP. Upstash-backed via rateLimitAsync
+// so the cap holds across Vercel cold starts.
 const SIGNUPS_PER_HOUR = 5;
+
+/**
+ * Best-effort ZIP extraction from a free-text address string. The
+ * tax-rate helper needs a ZIP; if we can't find one the venue still
+ * works (tax falls back to a default rate) but receipts won't carry
+ * the correct rate. Recognises US 5-digit and ZIP+4 patterns.
+ */
+function extractZip(address: string): string | null {
+  const m = /\b(\d{5})(?:-\d{4})?\b/.exec(address);
+  return m ? m[1] : null;
+}
+
+/** Infer a display name for the owner StaffMember row from the email
+ *  local-part. The signup spec doesn't collect a name field; the row
+ *  still needs one because team-invite UIs render it everywhere.
+ *  Capitalises the first letter so "owner@luna" → "Owner". */
+function nameFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? email;
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
 
 export async function POST(req: Request) {
   let parsed;
@@ -78,8 +100,9 @@ export async function POST(req: Request) {
   const email = parsed.email.toLowerCase().trim();
 
   // If this email already has a staff record, do NOT create a duplicate
-  // org. Send them a sign-in link instead so they can recover access.
-  // Guards against accidental "create another venue" on the same email.
+  // venue. Send a sign-in link instead so they can recover access.
+  // Response shape stays identical to a fresh signup so we don't
+  // enumerate registered emails.
   const existing = await db.staffMember.findUnique({
     where: { email },
     include: { venue: { select: { slug: true, name: true } } },
@@ -109,7 +132,6 @@ export async function POST(req: Request) {
       });
       existingEmailFailed = true;
     }
-    // Same response shape regardless so we don't enumerate emails.
     return NextResponse.json({
       ok: true,
       alreadyRegistered: true,
@@ -117,43 +139,43 @@ export async function POST(req: Request) {
     });
   }
 
-  // Slug from venue name; collision-suffix if taken.
-  let slug = slugify(parsed.venueName);
+  // Slug from restaurant name; collision-suffix if taken.
+  let slug = slugify(parsed.restaurantName);
   if (await db.venue.findUnique({ where: { slug } })) {
     slug = `${slug}-${newQrToken().slice(0, 4).toLowerCase()}`;
   }
 
-  // Hash the optional password OUTSIDE the transaction. bcrypt takes
-  // ~250ms at cost 12 — running it inside the tx would hold the DB
-  // connection idle. Validation already enforced 12-128 chars in the
-  // Zod schema; we surface the helper's throw as INVALID_BODY in case
-  // an edge slipped through.
-  let passwordHash: string | null = null;
-  if (parsed.password) {
-    try {
-      passwordHash = await hashStaffPassword(parsed.password);
-    } catch (err) {
-      return NextResponse.json(
-        { error: "INVALID_BODY", detail: err instanceof Error ? err.message : "password failed validation" },
-        { status: 400 },
-      );
-    }
+  // Hash the password OUTSIDE the transaction — bcrypt at cost 12
+  // takes ~250ms and we don't want to hold a DB connection idle.
+  let passwordHash: string;
+  try {
+    passwordHash = await hashStaffPassword(parsed.password);
+  } catch (err) {
+    return NextResponse.json(
+      { error: "INVALID_BODY", detail: err instanceof Error ? err.message : "password failed validation" },
+      { status: 400 },
+    );
   }
 
-  // Single transaction: org + venue + tables + owner staff. If anything
-  // fails we don't want a partial venue with no manager.
+  const zipCode = extractZip(parsed.address);
+  const ownerName = nameFromEmail(email);
+
+  // Single transaction: org + venue + tables + owner staff. If
+  // anything fails we don't want a half-created venue.
   const result = await db.$transaction(async tx => {
     const org = await tx.organization.create({
       data: {
-        name: parsed.venueName,
+        name: parsed.restaurantName,
         venues: {
           create: {
             slug,
-            name: parsed.venueName,
-            zipCode: parsed.zipCode,
-            timezone: parsed.timezone,
+            name: parsed.restaurantName,
+            address: parsed.address,
+            phoneNumber: parsed.phoneNumber,
+            country: parsed.country,
+            ...(zipCode ? { zipCode } : {}),
             tables: {
-              create: Array.from({ length: parsed.tableCount }, (_, i) => ({
+              create: Array.from({ length: DEFAULT_TABLE_COUNT }, (_, i) => ({
                 label: `Table ${i + 1}`,
                 qrToken: newQrToken(),
               })),
@@ -165,27 +187,21 @@ export async function POST(req: Request) {
     });
     const venue = org.venues[0];
 
-    // Owner StaffMember + an OrgMember row so the operator console is
-    // accessible to them on day one.
-    //
-    // Explicit role='OWNER': the column default was 'STAFF' (legacy) until
-    // the 20260511 migration flipped it to 'SERVER'. Either default is wrong
-    // for the venue creator — they need manager permissions to invite staff,
-    // configure Stripe, and edit settings. Pass OWNER directly so the
-    // semantics are independent of whichever default the DB is currently on.
+    // Explicit role='OWNER': the column default was 'STAFF' (legacy)
+    // until 20260511 migration flipped it to 'SERVER'. Either default
+    // is wrong for the venue creator — they need manager permissions
+    // to invite staff, configure Stripe, and edit settings.
     const staff = await tx.staffMember.create({
       data: {
         venueId: venue.id,
         email,
-        name: parsed.ownerName,
+        name: ownerName,
         role: "OWNER",
-        // Set the password hash if the form passed a password. The user
-        // can still sign in with the magic link until they verify their
-        // email — password sign-in requires emailVerifiedAt to be set
-        // (stamped on the first magic-link click).
-        ...(passwordHash
-          ? { passwordHash, passwordChangedAt: new Date() }
-          : {}),
+        passwordHash,
+        passwordChangedAt: new Date(),
+        // emailVerifiedAt deliberately left NULL — set by
+        // /api/auth/callback when the user clicks the verification
+        // link. Password login refuses to mint a session until then.
       },
     });
     await tx.orgMember.create({
@@ -199,12 +215,14 @@ export async function POST(req: Request) {
     return { orgId: org.id, venue, staffId: staff.id };
   });
 
-  // Mint magic link → onboarding wizard.
+  // Mint a magic-link for email verification. Clicking it routes the
+  // owner to the dashboard with a session cookie set + emailVerifiedAt
+  // stamped, so they can subsequently log in with email+password.
   const token = await signLinkToken({
     kind: "link",
     staffId: result.staffId,
     email,
-    next: `/admin/v/${result.venue.slug}/onboarding`,
+    next: `/admin/v/${result.venue.slug}`,
   });
   const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
 
@@ -213,26 +231,19 @@ export async function POST(req: Request) {
   try {
     await sendMagicLinkEmail({
       to: email,
-      staffName: parsed.ownerName,
+      staffName: ownerName,
       venueName: result.venue.name,
       link,
     });
   } catch (err) {
-    // The org/venue/staff was committed before this point, so failing the
-    // request would orphan a venue with no way for the owner to sign in.
-    // Instead surface a structured `emailDeliveryFailed` flag so the form
-    // can tell the owner to contact support — the row is recoverable by
-    // an operator manually re-issuing a magic link.
     const e = err as { statusCode?: number; message?: string };
-    console.error("[signup] email send failed", {
+    console.error("[signup] verification email send failed", {
       email,
       slug: result.venue.slug,
       statusCode: e.statusCode,
       message: e.message,
     });
     emailDeliveryFailed = true;
-    // Dev-only: also return the raw link to keep local onboarding testable
-    // without a working Resend. Strictly gated — never set in prod.
     const allowDevLinks =
       process.env.TABSIGNAL_DEV_LINKS === "true" ||
       process.env.NODE_ENV === "development";

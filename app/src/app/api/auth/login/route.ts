@@ -31,8 +31,13 @@ export async function POST(req: Request) {
   let parsed;
   try {
     parsed = Body.parse(await req.json());
-  } catch {
-    return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
+  } catch (err) {
+    // Surface Zod field paths so a stuck client can fix the bad field
+    // and ops can root-cause "all logins 400ing" incidents from logs.
+    const detail = err instanceof z.ZodError
+      ? err.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+      : "unparsable JSON";
+    return NextResponse.json({ error: "INVALID_BODY", detail }, { status: 400 });
   }
 
   const email = parsed.email.toLowerCase().trim();
