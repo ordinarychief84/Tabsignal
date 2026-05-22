@@ -81,13 +81,18 @@ export async function getStaffSession(): Promise<SessionClaims | null> {
 export function sessionCookieOptions(maxAgeDays = 30) {
   return {
     httpOnly: true,
-    // Strict (was lax): the staff PWA is same-origin, so top-level
-    // navigations from external sites never need to carry credentials.
-    // Strict closes the residual CSRF surface that Lax leaves open on
-    // top-level form POSTs and some WebView edge cases. The /api/auth/
-    // callback is GET-only and lands on the same origin from the email
-    // link, so Strict doesn't interfere with magic-link sign-in.
-    sameSite: "strict" as const,
+    // Lax (was strict): SameSite=Strict prevents the cookie from being
+    // sent on top-level navigations whose *chain* originates cross-site
+    // — including the redirect from /api/auth/callback to /admin/v/[slug]
+    // after an email-link click (Gmail → callback → dashboard). The
+    // callback's response sets the cookie, but the subsequent request
+    // for the dashboard doesn't include it under Strict, so the layout
+    // bounces the user to /staff/login. Lax allows the cookie on
+    // top-level GET navigations (which is exactly what an email click
+    // is) while still blocking cross-site POST/PUT/DELETE — the CSRF
+    // surface that actually matters. This is the standard SameSite
+    // posture for session cookies; Strict was wrong here.
+    sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * maxAgeDays,

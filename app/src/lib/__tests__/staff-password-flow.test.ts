@@ -96,7 +96,7 @@ beforeEach(async () => {
     sessionCookieOptions: () => ({
       httpOnly: true,
       secure: false,
-      sameSite: "strict" as const,
+      sameSite: "lax" as const,
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
     }),
