@@ -4,13 +4,15 @@ import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
   title: "TabCall · Log in",
-  description: "Sign in to your TabCall account by email.",
+  description: "Sign in to your TabCall account with email and password.",
 };
 
 /**
  * Owner / staff log-in landing. Matches the /signup split-layout shell
- * so the auth pair feels coherent. Magic-link backend: enter email,
- * receive a single-use sign-in link.
+ * so the auth pair feels coherent. Email + password sign-in only —
+ * the legacy magic-link toggle was removed when PR #43 standardised
+ * the spec to "Login + Password". Forgot-password flow still uses
+ * a one-time email link for recovery.
  *
  * Operators with a PlatformAdmin password account sign in at
  * /admin/login instead.
@@ -55,14 +57,14 @@ export default function LoginPage() {
             Sign in to TabCall.
           </h1>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed text-slate/65 sm:text-base lg:mt-4">
-            We&rsquo;ll email you a single-use sign-in link. No password to
-            remember, no extra app to install.
+            Sign in with your work email and the password you set when
+            you created your venue. Sessions stay live for 30 days.
           </p>
 
           <ul className="mt-8 hidden flex-col gap-3.5 lg:flex">
-            <Bullet>Magic-link sign-in by email</Bullet>
-            <Bullet>Single-use, expires in 15 minutes</Bullet>
-            <Bullet>Same-device verification for safety</Bullet>
+            <Bullet>Email + password sign-in</Bullet>
+            <Bullet>Forgot password? One-tap recovery by email</Bullet>
+            <Bullet>30-day sessions on trusted devices</Bullet>
           </ul>
         </div>
       </aside>
@@ -75,7 +77,7 @@ export default function LoginPage() {
                 Log in
               </h2>
               <p className="mt-2 text-[14px] text-slate/65 sm:text-[15px]">
-                Enter your work email and we&rsquo;ll send a sign-in link.
+                Enter your work email and password.
               </p>
             </div>
             <LoginForm />
@@ -89,7 +91,7 @@ export default function LoginPage() {
           <p className="mt-5 text-center text-[12px] text-slate/55">
             Are you a TabCall super admin?{" "}
             <Link href="/admin/login" className="text-umber underline-offset-4 hover:underline">
-              Use password sign-in
+              Operator sign-in
             </Link>
           </p>
         </div>
