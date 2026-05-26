@@ -145,7 +145,10 @@ export async function GET() {
   }
 
   const staff = await db.staffMember.findMany({
-    where: { venueId: session.venueId },
+    // Hide soft-deleted rows. They remain in the DB for audit history
+    // (acknowledgedBy on closed Requests) but they shouldn't appear in
+    // any "current roster" surface.
+    where: { venueId: session.venueId, status: { not: "DELETED" } },
     orderBy: [{ status: "asc" }, { createdAt: "asc" }],
     include: {
       ackedRequests: { select: { id: true } },

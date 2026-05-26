@@ -10,7 +10,10 @@ type Member = {
   email: string;
   role: string;
   section: string | null;
-  status: "ACTIVE" | "INVITED" | "SUSPENDED";
+  // DELETED rows are filtered server-side; client-facing union excludes
+  // the soft-removed state. Keep it in the type so a future "Show
+  // deleted" toggle doesn't have to re-pipe the column.
+  status: "ACTIVE" | "INVITED" | "SUSPENDED" | "DELETED";
   ackedCount: number;
   lastSeenAt: string | null;
   invitedAt: string;
@@ -41,6 +44,10 @@ const STATUS_TONE: Record<Member["status"], string> = {
   ACTIVE: "bg-chartreuse/30 text-slate",
   INVITED: "bg-sea/20 text-slate",
   SUSPENDED: "bg-coral/15 text-coral",
+  // DELETED rows are server-filtered today; tone defined so a future
+  // "Show deleted" surface doesn't crash on lookup. Coral matches the
+  // suspended tone — both signal "not on the floor".
+  DELETED: "bg-slate/10 text-slate/55 line-through",
 };
 
 function initials(name: string): string {

@@ -29,6 +29,10 @@ import { rateLimitAsync } from "@/lib/rate-limit";
  */
 
 const Body = z.object({
+  // Owner's full name — separate from restaurantName so we can address
+  // emails ("Hi Sam Owner") + populate StaffMember.name accurately
+  // instead of inferring from the email local-part.
+  ownerName: z.string().trim().min(1, "ownerName is required").max(120),
   restaurantName: z.string().min(1).max(120),
   address: z.string().min(5).max(240),
   // Server-validated as E.164 — the form composes it from country
@@ -158,7 +162,10 @@ export async function POST(req: Request) {
   }
 
   const zipCode = extractZip(parsed.address);
-  const ownerName = nameFromEmail(email);
+  // Use the explicit ownerName from the form. Legacy callers (none
+  // currently, but defensive) that omit it fall back to the email
+  // local-part so we never persist an empty `name`.
+  const ownerName = parsed.ownerName.trim() || nameFromEmail(email);
 
   // Single transaction: org + venue + tables + owner staff. If
   // anything fails we don't want a half-created venue.

@@ -1,24 +1,28 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ForgotPasswordForm } from "./forgot-password-form";
+import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata: Metadata = {
-  title: "TabCall · Forgot password",
-  description: "Reset your TabCall password by email.",
+  title: "TabCall · Set a new password",
+  description: "Choose a new password for your TabCall account.",
 };
 
 /**
- * Forgot-password landing. Owner / staff enter their email; if it
- * matches an ACTIVE account we email a single-use, 1-hour reset link
- * that lands them on /reset-password?token=... Always shows the same
- * success state regardless of whether the email matched — prevents
- * enumeration.
- *
- * Distinct from the magic-link sign-in at /api/auth/start: clicking
- * the reset link does NOT mint a session, it only authorises one
- * password-change call.
+ * /reset-password?token=... — destination of the link in the
+ * password-reset email. Reads `?token` and hands it to the form,
+ * which POSTs to /api/auth/reset-password with the user's new
+ * password. On success the user is redirected to /login (they have
+ * to sign in with the new password — we deliberately don't auto-mint
+ * a session here so the user proves they remember the password they
+ * just set, and so any other-device sessions are clearly invalidated).
  */
-export default function ForgotPasswordPage() {
+export default function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: { token?: string };
+}) {
+  const token = searchParams.token ?? "";
+
   return (
     <main className="grid min-h-screen grid-cols-1 bg-surface-warm lg:grid-cols-[1.05fr_1fr]">
       <aside className="relative isolate overflow-hidden bg-surface-warm lg:bg-transparent">
@@ -44,9 +48,6 @@ export default function ForgotPasswordPage() {
             </span>
             <span className="text-lg font-semibold tracking-tight text-slate">TabCall</span>
           </Link>
-          <Link href="/login" className="text-[12px] text-slate/55 hover:text-slate sm:text-sm">
-            <span className="text-umber underline-offset-4 hover:underline">← back to sign-in</span>
-          </Link>
         </div>
 
         <div className="px-5 pb-8 pt-6 sm:px-8 sm:pb-10 sm:pt-8 lg:px-12 lg:pb-12 lg:pt-16">
@@ -54,14 +55,11 @@ export default function ForgotPasswordPage() {
             Account recovery
           </p>
           <h1 className="mt-3 text-[28px] font-semibold leading-[1.05] tracking-tight text-slate sm:text-[36px] lg:mt-5 lg:text-[48px]">
-            Reset your password.
+            Choose a new password.
           </h1>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed text-slate/65 sm:text-base lg:mt-4">
-            Enter the email associated with your TabCall account. We&rsquo;ll send a single-use
-            link that lets you set a new password.
-          </p>
-          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-slate/55">
-            The link expires in 1 hour. If you don&rsquo;t see the email, check spam.
+            Pick something at least 12 characters. Once you save, every device that was
+            previously signed in will be signed out automatically.
           </p>
         </div>
       </aside>
@@ -71,16 +69,16 @@ export default function ForgotPasswordPage() {
           <div className="rounded-3xl border border-slate/10 bg-white p-6 shadow-card sm:p-8">
             <div className="mb-6">
               <h2 className="text-2xl font-semibold tracking-tight text-slate sm:text-3xl">
-                Send reset link
+                New password
               </h2>
               <p className="mt-2 text-[14px] text-slate/65 sm:text-[15px]">
-                Enter the email associated with your TabCall account.
+                12 characters minimum.
               </p>
             </div>
-            <ForgotPasswordForm />
+            <ResetPasswordForm token={token} />
           </div>
           <p className="mt-5 text-center text-[12px] text-slate/55">
-            Remember your password?{" "}
+            Already remembered it?{" "}
             <Link href="/login" className="text-umber underline-offset-4 hover:underline">
               Sign in
             </Link>

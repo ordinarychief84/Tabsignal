@@ -19,7 +19,12 @@ export default async function PeoplePage({ params }: { params: { slug: string } 
 
   const [staff, tables] = await Promise.all([
     db.staffMember.findMany({
-      where: { venueId: venue.id },
+      // Hide soft-deleted rows from the People page. Resigned/fired
+      // staff stay in the database for audit history (their
+      // acknowledgedBy FK on closed Requests still points here) but
+      // they don't appear in the live roster, can't be assigned tables,
+      // and don't get tip-pool shares.
+      where: { venueId: venue.id, status: { not: "DELETED" } },
       orderBy: [{ status: "asc" }, { createdAt: "asc" }],
       include: {
         ackedRequests: { select: { id: true } },

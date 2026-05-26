@@ -235,18 +235,42 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     }
   }
 
-  // Hard delete. CASCADE on TableAssignment + nullable inviter/suspender
-  // FKs handle the cleanup. Audit fired BEFORE the row vanishes so the
-  // audit copy of the email/role survives.
-  await audit({
-    venueId: target.venueId,
-    actor: session,
-    action: "staff.removed",
-    targetType: "StaffMember",
-    targetId: target.id,
-    metadata: { email: target.email, role: target.role, name: target.name },
+  // Soft delete (spec: "Soft delete preferred — status = deleted").
+  // Flip status to DELETED, clear table assignments, and bump
+  // sessionsValidAfter so any cached JWT the removed user still has on
+  // their phone is rejected on the next request. We keep the row so
+  // audit history + acknowledgedBy on completed Requests stay
+  // attributable. The email is preserved on the row for audit; a future
+  // "Restore" UI could un-delete by flipping the status back.
+  //
+  // Audit fires INSIDE the transaction so the action is durably recorded
+  // alongside the state change.
+  await db.$transaction(async tx => {
+    await tx.tableAssignment.deleteMany({ where: { staffMemberId: target.id } });
+    await tx.staffMember.update({
+      where: { id: target.id },
+      data: {
+        status: "DELETED",
+        sessionsValidAfter: new Date(),
+        // Wipe FCM token so we don't keep pinging a phone that
+        // shouldn't be receiving alerts anymore.
+        fcmToken: null,
+      },
+    });
+    // audit() opens its own connection; pass the tx so the write is
+    // part of the same atomic unit.
+    await tx.auditLog.create({
+      data: {
+        venueId: target.venueId,
+        actorEmail: session.email,
+        actorRole: session.role,
+        action: "staff.removed",
+        targetType: "StaffMember",
+        targetId: target.id,
+        metadata: { email: target.email, role: target.role, name: target.name } as object,
+      },
+    });
   });
-  await db.staffMember.delete({ where: { id: target.id } });
 
   return NextResponse.json({ ok: true });
 }
