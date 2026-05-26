@@ -49,6 +49,12 @@ export async function GET(req: Request) {
   if (staff.status === "SUSPENDED") {
     return NextResponse.redirect(`${origin}/staff/login?err=suspended`);
   }
+  // Soft-deleted (resigned/fired) staff: refuse the link entirely. They
+  // get the same "invalid" error a never-existed account would —
+  // doesn't leak that the venue once knew them.
+  if (staff.status === "DELETED") {
+    return NextResponse.redirect(`${origin}/staff/login?err=invalid`);
+  }
   await db.staffMember
     .update({
       where: { id: staff.id },

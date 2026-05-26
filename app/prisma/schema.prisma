@@ -61,6 +61,9 @@ enum StaffStatus {
   ACTIVE
   INVITED // sent magic link, never signed in
   SUSPENDED // soft-disabled; row retained for audit history
+  DELETED // resigned / fired; soft-removed. Excluded from active lists,
+  // table-assignment writes refuse, sessions invalidated via
+  // sessionsValidAfter bump. Audit history + completed requests stay.
 }
 
 enum RequestType {
@@ -347,6 +350,7 @@ model StaffMember {
   venue         Venue             @relation(fields: [venueId], references: [id])
   ackedRequests Request[]         @relation("AcknowledgedBy")
   assignments   TableAssignment[]
+  passwordResets PasswordResetToken[]
 
   @@index([venueId])
   @@index([venueId, status])
@@ -552,6 +556,35 @@ model LinkTokenUse {
   usedAt  DateTime @default(now())
 
   @@index([usedAt])
+}
+
+// Single-use, time-bounded tokens for the password-reset flow.
+// Distinct from magic-link auth: a reset token is one-way (no session
+// is minted by clicking it), and consuming it bumps the staff row's
+// sessionsValidAfter so any older logged-in devices are signed out.
+// Tokens are stored as their sha256 hash (`tokenHash`) so a database
+// dump can't be used to mint replacements. Plaintext token never
+// leaves the email + the user's browser.
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  staffId     String
+  tokenHash   String    @unique
+  // 1-hour expiry. Cron job cleans up rows past expiresAt + grace
+  // period (~24h) for forensics.
+  expiresAt   DateTime
+  // Set on first successful POST to /api/auth/reset-password. The
+  // unique tokenHash prevents replay attacks via the DB constraint;
+  // usedAt is informational + lets us answer "did this user reset
+  // recently?" in audit reports.
+  usedAt      DateTime?
+  // Where the request came from. Useful when investigating "I didn't
+  // ask for a reset" support tickets.
+  requestIp   String?
+  createdAt   DateTime  @default(now())
+  staff       StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, createdAt])
+  @@index([expiresAt])
 }
 
 // Single-use enforcement + audit log for "Comp this round" actions

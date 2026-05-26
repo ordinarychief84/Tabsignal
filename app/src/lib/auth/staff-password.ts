@@ -92,6 +92,14 @@ export async function loginStaffWithPassword(
     await bcrypt.compare(password, DUMMY_HASH);
     return { ok: false, reason: "suspended" };
   }
+  // Soft-deleted (resigned/fired) staff are treated as if they don't
+  // exist. Return the generic "invalid" reason so a former employee
+  // can't probe whether their account still exists. Timing padded by
+  // the bcrypt.compare to match successful-row + wrong-password.
+  if (staff.status === "DELETED") {
+    await bcrypt.compare(password, DUMMY_HASH);
+    return { ok: false, reason: "invalid" };
+  }
 
   const match = await verifyStaffPassword(password, staff.passwordHash);
   if (!match) return { ok: false, reason: "invalid" };

@@ -6,12 +6,14 @@ import { COUNTRIES, toE164, type Country } from "@/lib/countries";
 
 type Status = "idle" | "submitting" | "sent" | "error";
 
-type FieldName = "restaurantName" | "address" | "phoneNational" | "email" | "password";
+type FieldName = "ownerName" | "restaurantName" | "address" | "phoneNational" | "email" | "password";
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 /**
- * Restaurant signup form. Collects the six fields the spec requires:
+ * Restaurant signup form. Collects:
  *
+ *   - Your full name (required) — persisted to StaffMember.name +
+ *     used in welcome / verification emails
  *   - Restaurant name (required)
  *   - Address — single text line (required); ZIP is parsed server-side
  *   - Phone — country dial-code picker + national number (required).
@@ -29,6 +31,7 @@ type FieldErrors = Partial<Record<FieldName, string>>;
  * EMAIL_UNVERIFIED.
  */
 export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
+  const [ownerName, setOwnerName] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState<Country>(defaultCountry);
@@ -54,6 +57,7 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
 
   function validate(name: FieldName, value: string): string | undefined {
     const v = value.trim();
+    if (name === "ownerName") return v.length >= 1 ? undefined : "What's your name?";
     if (name === "restaurantName") return v.length >= 1 ? undefined : "What's the restaurant called?";
     if (name === "address") return v.length >= 5 ? undefined : "Enter the full street address.";
     if (name === "phoneNational") {
@@ -95,8 +99,9 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
     }
 
     const errs: FieldErrors = {};
-    (["restaurantName", "address", "phoneNational", "email", "password"] as FieldName[]).forEach(n => {
+    (["ownerName", "restaurantName", "address", "phoneNational", "email", "password"] as FieldName[]).forEach(n => {
       const v =
+        n === "ownerName" ? ownerName :
         n === "restaurantName" ? restaurantName :
         n === "address" ? address :
         n === "phoneNational" ? phoneNational :
@@ -133,6 +138,7 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ownerName: ownerName.trim(),
           restaurantName: restaurantName.trim(),
           address: address.trim(),
           phoneNumber: phoneE164,
@@ -208,6 +214,17 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <Field
+        id="ownerName"
+        label="Your full name"
+        autoComplete="name"
+        value={ownerName}
+        onChange={v => { setOwnerName(v); if (fieldErrors.ownerName) clearFieldError("ownerName"); }}
+        onBlur={v => onBlur("ownerName", v)}
+        error={fieldErrors.ownerName}
+        placeholder="Sam Owner"
+      />
+
       <Field
         id="restaurantName"
         label="Restaurant name"

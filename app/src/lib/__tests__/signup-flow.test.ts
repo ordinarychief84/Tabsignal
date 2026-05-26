@@ -165,6 +165,7 @@ function makeReq(body: unknown): Request {
 function validPayload(overrides: Partial<{
   email: string;
   password: string;
+  ownerName: string;
   restaurantName: string;
   address: string;
   phoneNumber: string;
@@ -172,6 +173,7 @@ function validPayload(overrides: Partial<{
   agreeTerms: unknown;
 }> = {}): Record<string, unknown> {
   const base: Record<string, unknown> = {
+    ownerName: "Sam Owner",
     restaurantName: "Test Venue",
     address: "123 Main St, Houston, TX 77002",
     phoneNumber: "+12125551234",
