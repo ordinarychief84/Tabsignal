@@ -32,6 +32,8 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 const env = process.env.VERCEL_ENV ?? "(unset)";
 
@@ -45,8 +47,20 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-console.log("[prebuild-migrate] VERCEL_ENV=production — running prisma migrate deploy.");
-const result = spawnSync("bunx", ["prisma", "migrate", "deploy"], {
+// Resolve the prisma binary directly from node_modules. Avoids depending
+// on `bunx`, `npx`, or any specific package-manager being on the Vercel
+// PATH (the first version of this script used `bunx`, which doesn't
+// exist on Vercel's default Node runtime — deploys failed silently).
+const prismaBin = resolvePrismaBin();
+if (!prismaBin) {
+  console.error(
+    "[prebuild-migrate] Could not find the prisma binary in node_modules/.bin.",
+  );
+  process.exit(1);
+}
+
+console.log(`[prebuild-migrate] VERCEL_ENV=production — running prisma migrate deploy via ${prismaBin}`);
+const result = spawnSync(prismaBin, ["migrate", "deploy"], {
   stdio: "inherit",
   env: process.env,
 });
@@ -57,3 +71,20 @@ if (result.status !== 0) {
 }
 
 console.log("[prebuild-migrate] Migrations applied successfully.");
+
+/**
+ * Locate the prisma binary. Tries the current working directory's
+ * node_modules first (the common Vercel layout) then walks one level
+ * up in case `cwd` is the project root and node_modules lives next to
+ * package.json a level deeper. Returns null if neither path resolves.
+ */
+function resolvePrismaBin() {
+  const candidates = [
+    join(process.cwd(), "node_modules", ".bin", "prisma"),
+    join(process.cwd(), "..", "node_modules", ".bin", "prisma"),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
