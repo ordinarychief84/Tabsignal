@@ -76,36 +76,51 @@ if (result.status === 0) {
   process.exit(0);
 }
 
-// Special case: the production database has tables but no
-// `_prisma_migrations` history (e.g. schema was first set up via
-// Supabase Studio rather than Prisma migrations). `migrate deploy`
-// refuses to touch an unmanaged schema. That's the right safety
-// posture, but it would otherwise block every Vercel build forever.
+// Special cases: production DB has a migration-history table that's
+// in a state Prisma won't auto-recover from.
 //
-// In this state we DOWNGRADE the failure to a warning so the deploy
-// still ships the latest code. The application will continue to use
-// the schema that's already in the database; any column-mismatch
-// surfaces at runtime as a 500 on the affected route until an
-// operator runs the missing migrations manually (Supabase SQL Editor
-// or `prisma migrate resolve --applied` to baseline + migrate).
+//   P3005 — "The database schema is not empty"
+//           DB has tables but no _prisma_migrations history. Operator
+//           must baseline via `prisma migrate resolve --applied …`
+//           or run the missing SQL directly.
+//   P3009 — "Migrate found failed migrations in the target database"
+//           A prior migrate-deploy attempt died mid-migration and
+//           left a row marked FAILED. Operator must clear it via
+//           `prisma migrate resolve --rolled-back <name>` or by
+//           UPDATE/DELETE on _prisma_migrations.
+//   P3018 — "A migration failed to apply"
+//           Recoverable manually but blocks future deploys until
+//           resolved.
 //
-// Detect both the explicit `P3005` Prisma error code AND the literal
-// "database schema is not empty" string so newer/older Prisma
-// versions all fall into the same branch.
+// In all three cases we DOWNGRADE the failure to a warning so the
+// deploy still ships the latest code. Runtime routes may 500 if the
+// code references columns the DB doesn't have yet — that's the
+// trade-off for keeping the build unblocked. Operators see the
+// warning in Vercel build logs and can resolve the migration state
+// out of band.
+//
+// Anything else (bad SQL, connection error, drift detection on a
+// healthy migration history) STILL aborts the build — that's the
+// safety net working as intended.
 const combined = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
-const isUnmanaged =
-  /\bP3005\b/.test(combined) ||
+const recoverableCodes = ["P3005", "P3009", "P3018"];
+const matchedCode = recoverableCodes.find(code =>
+  new RegExp(`\\b${code}\\b`).test(combined),
+);
+const matchedString =
   /database schema is not empty/i.test(combined) ||
+  /failed migrations in the target/i.test(combined) ||
+  /migration failed to apply/i.test(combined) ||
   /db_schema_not_empty/i.test(combined);
 
-if (isUnmanaged) {
+if (matchedCode || matchedString) {
   console.warn(
-    "\n[prebuild-migrate] !!!! Prisma migrate refused with P3005 (database schema is not empty). " +
-    "The production DB has tables but no _prisma_migrations history. " +
-    "Continuing the build — runtime routes may 500 if the deployed code references columns " +
-    "that haven't been added yet. Operator action required: baseline the migration history " +
-    "(`prisma migrate resolve --applied <name>` for each existing migration) and then re-run " +
-    "this build, OR run the unapplied migration SQL directly via Supabase SQL Editor.\n",
+    `\n[prebuild-migrate] !!!! Prisma migrate refused (${matchedCode ?? "string-match"}). ` +
+    "Continuing the build so the latest application code ships, but the production DB " +
+    "is in an inconsistent migration state. Runtime routes may 500 if the deployed code " +
+    "references columns the DB doesn't have yet. " +
+    "Operator action required: resolve the migration history out-of-band " +
+    "(see `prisma migrate resolve --applied` / `--rolled-back`) and re-trigger a deploy.\n",
   );
   process.exit(0);
 }
