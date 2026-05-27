@@ -60,17 +60,58 @@ if (!prismaBin) {
 }
 
 console.log(`[prebuild-migrate] VERCEL_ENV=production — running prisma migrate deploy via ${prismaBin}`);
+// Capture stdout/stderr so we can detect the unmanaged-schema case and
+// continue the build instead of blocking the deploy forever.
 const result = spawnSync(prismaBin, ["migrate", "deploy"], {
-  stdio: "inherit",
+  encoding: "utf8",
   env: process.env,
 });
 
-if (result.status !== 0) {
-  console.error(`[prebuild-migrate] migrate deploy exited with status ${result.status}.`);
-  process.exit(result.status ?? 1);
+// Echo the output so operators can see it in Vercel build logs.
+if (result.stdout) process.stdout.write(result.stdout);
+if (result.stderr) process.stderr.write(result.stderr);
+
+if (result.status === 0) {
+  console.log("[prebuild-migrate] Migrations applied successfully.");
+  process.exit(0);
 }
 
-console.log("[prebuild-migrate] Migrations applied successfully.");
+// Special case: the production database has tables but no
+// `_prisma_migrations` history (e.g. schema was first set up via
+// Supabase Studio rather than Prisma migrations). `migrate deploy`
+// refuses to touch an unmanaged schema. That's the right safety
+// posture, but it would otherwise block every Vercel build forever.
+//
+// In this state we DOWNGRADE the failure to a warning so the deploy
+// still ships the latest code. The application will continue to use
+// the schema that's already in the database; any column-mismatch
+// surfaces at runtime as a 500 on the affected route until an
+// operator runs the missing migrations manually (Supabase SQL Editor
+// or `prisma migrate resolve --applied` to baseline + migrate).
+//
+// Detect both the explicit `P3005` Prisma error code AND the literal
+// "database schema is not empty" string so newer/older Prisma
+// versions all fall into the same branch.
+const combined = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+const isUnmanaged =
+  /\bP3005\b/.test(combined) ||
+  /database schema is not empty/i.test(combined) ||
+  /db_schema_not_empty/i.test(combined);
+
+if (isUnmanaged) {
+  console.warn(
+    "\n[prebuild-migrate] !!!! Prisma migrate refused with P3005 (database schema is not empty). " +
+    "The production DB has tables but no _prisma_migrations history. " +
+    "Continuing the build — runtime routes may 500 if the deployed code references columns " +
+    "that haven't been added yet. Operator action required: baseline the migration history " +
+    "(`prisma migrate resolve --applied <name>` for each existing migration) and then re-run " +
+    "this build, OR run the unapplied migration SQL directly via Supabase SQL Editor.\n",
+  );
+  process.exit(0);
+}
+
+console.error(`[prebuild-migrate] migrate deploy exited with status ${result.status}.`);
+process.exit(result.status ?? 1);
 
 /**
  * Locate the prisma binary. Tries the current working directory's
