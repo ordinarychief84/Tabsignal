@@ -59,7 +59,15 @@ const DEFAULT_TABLE_COUNT = 6;
 
 // Spam guard: limit signups per IP. Upstash-backed via rateLimitAsync
 // so the cap holds across Vercel cold starts.
-const SIGNUPS_PER_HOUR = 5;
+//
+// Was 5/hour during the original launch — too tight in practice. A
+// single demo session at a sales meeting (founder showing the product
+// to multiple prospects from one office IP) burned the budget and
+// locked the IP out for an hour. 50/hour preserves the spam guard
+// against scripted abuse while leaving comfortable headroom for
+// legitimate demo + multi-restaurant onboarding patterns from a
+// shared NAT. Tune higher if a real abuse pattern shows up in logs.
+const SIGNUPS_PER_HOUR = 50;
 
 /**
  * Best-effort ZIP extraction from a free-text address string. The
