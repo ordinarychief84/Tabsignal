@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { slugify } from "@/lib/slug";
@@ -90,6 +92,49 @@ function nameFromEmail(email: string): string {
 }
 
 export async function POST(req: Request) {
+  // Thin wrapper so EVERY unexpected throw in the signup path — most
+  // commonly a schema/DB mismatch (a migration that never reached prod,
+  // surfacing as Prisma P2021 "table does not exist" / P2022 "column
+  // does not exist") — is logged with its Prisma code + meta and a
+  // stable error code, instead of bubbling up as an opaque empty-body
+  // 500. This is what made the post-PR-#43 signup outage take days to
+  // root-cause: the failure carried no diagnostic signal in the logs.
+  try {
+    return await handleSignup(req);
+  } catch (err) {
+    return signupFailure(err);
+  }
+}
+
+/**
+ * Structured failure handler for the signup route. Logs the underlying
+ * Prisma error code/meta (the actionable signal for an operator) to the
+ * Vercel function logs, forwards to Sentry when SENTRY_DSN is configured
+ * (our own try/catch would otherwise swallow the SDK's auto-capture),
+ * and returns a stable, non-leaky JSON error to the client.
+ */
+function signupFailure(err: unknown): NextResponse {
+  const known = err instanceof Prisma.PrismaClientKnownRequestError;
+  const prismaCode = known ? err.code : undefined; // P2021 table / P2022 column / P2002 unique …
+  const prismaMeta = known ? err.meta : undefined; // e.g. { column: "Venue.phoneNumber" }
+  console.error("[signup] unhandled failure", {
+    prismaCode,
+    prismaMeta,
+    message: err instanceof Error ? err.message : String(err),
+  });
+  Sentry.captureException(err, {
+    tags: { route: "api/signup" },
+    extra: { prismaCode, prismaMeta },
+  });
+  return NextResponse.json(
+    // Expose only the Prisma code (e.g. "P2022"), never the raw message,
+    // so an operator can map it without leaking schema internals.
+    { error: "SIGNUP_FAILED", ...(prismaCode ? { code: prismaCode } : {}) },
+    { status: 500 },
+  );
+}
+
+async function handleSignup(req: Request) {
   let parsed;
   try {
     parsed = Body.parse(await req.json());

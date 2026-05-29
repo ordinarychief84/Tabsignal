@@ -12,6 +12,7 @@
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { Prisma } from "@prisma/client";
 
 // HS256 needs a secret >= 32 chars.
 const PREV_SECRET = process.env.NEXTAUTH_SECRET;
@@ -38,6 +39,9 @@ type StubState = {
   emailSends: Array<{ to: string; link: string; venueName: string }>;
   emailShouldFail: boolean;
   rateLimitOk: boolean;
+  // When set, the create transaction throws this Prisma error — models a
+  // prod schema/DB mismatch (a migration that never reached production).
+  transactionError: Error | null;
 };
 
 let state: StubState;
@@ -53,6 +57,7 @@ function resetState() {
     emailSends: [],
     emailShouldFail: false,
     rateLimitOk: true,
+    transactionError: null,
   };
 }
 
@@ -84,6 +89,7 @@ beforeEach(() => {
         },
       },
       $transaction: async (fn: (tx: unknown) => Promise<unknown>) => {
+        if (state.transactionError) throw state.transactionError;
         const tx = {
           organization: {
             create: async ({ data }: { data: { name: string; venues: { create: { slug: string; name: string } } } }) => {
@@ -301,6 +307,27 @@ describe("POST /api/signup", () => {
     const body = (await res.json()) as { error: string; detail: string };
     expect(body.error).toBe("INVALID_BODY");
     expect(body.detail).toMatch(/country/i);
+  });
+
+  test("schema/DB failure returns 500 SIGNUP_FAILED with the Prisma code (not an opaque 500)", async () => {
+    // Models the production outage: a migration that never reached prod
+    // means Prisma's INSERT/SELECT references a column that doesn't exist,
+    // throwing P2022. Before the handler-level guard this surfaced as a
+    // bare, body-less 500 that took days to root-cause.
+    state.transactionError = new Prisma.PrismaClientKnownRequestError(
+      "The column `Venue.phoneNumber` does not exist in the current database.",
+      { code: "P2022", clientVersion: "5.22.0", meta: { column: "Venue.phoneNumber" } },
+    );
+    const { POST } = await import("../../app/api/signup/route");
+    const res = await POST(makeReq(validPayload({ email: "fresh@owner.com" })));
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string; code?: string };
+    expect(body.error).toBe("SIGNUP_FAILED");
+    // The Prisma code is surfaced so an operator can map it instantly;
+    // the raw message (schema internals) is NOT leaked to the client.
+    expect(body.code).toBe("P2022");
+    // No partial venue/email side effects on a failed transaction.
+    expect(state.emailSends.length).toBe(0);
   });
 
   test("email send failure surfaces emailDeliveryFailed (and devLink in dev)", async () => {
