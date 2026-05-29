@@ -139,6 +139,10 @@ beforeEach(() => {
       }
       state.emailSends.push({ to: args.to, link: args.link, venueName: args.venueName });
     },
+    // No-op stub — see auth-start-flow.test.ts for why every email mock
+    // must export the full shape (process-wide mock.module + a sibling
+    // route that imports sendPasswordResetEmail).
+    sendPasswordResetEmail: async () => undefined,
   }));
 
   // Mock rate-limit — fail-open by default; tests can force-deny by
