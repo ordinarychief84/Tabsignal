@@ -83,7 +83,7 @@ export default async function AdminLiveRequestsPage({
     id: r.id,
     tableId: r.tableId,
     tableLabel: r.table.label,
-    type: r.type as "DRINK" | "BILL" | "HELP" | "REFILL",
+    type: r.type as "DRINK" | "BILL" | "HELP" | "REFILL" | "FOOD" | "CLEAN" | "MANAGER" | "SUPPLIES",
     note: r.note,
     status: r.status as "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED",
     idCheckRequired: r.idCheckRequired,

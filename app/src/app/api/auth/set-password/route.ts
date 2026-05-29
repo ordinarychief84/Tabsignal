@@ -23,7 +23,10 @@ import { rateLimitAsync } from "@/lib/rate-limit";
  */
 
 const Body = z.object({
-  currentPassword: z.string().min(1).max(200).optional(),
+  // currentPassword only ever feeds bcrypt.compare; cap at 128 to match the
+  // hasher (a longer value can't match any stored hash) and stay consistent
+  // with newPassword + the login routes.
+  currentPassword: z.string().min(1).max(128).optional(),
   newPassword: z.string().min(12).max(128),
 });
 

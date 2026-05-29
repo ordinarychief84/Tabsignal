@@ -67,6 +67,12 @@ beforeEach(() => {
       }
       state.emailSends.push(args);
     },
+    // No-op stub. This file never sends a reset email, but bun's
+    // mock.module is process-wide: if this mock is the active registry
+    // entry when password-reset-flow.test.ts's route links its
+    // `import { sendPasswordResetEmail }`, the named export must exist or
+    // linking hard-fails for that sibling. Keep the shape complete.
+    sendPasswordResetEmail: async () => undefined,
   }));
 
   mock.module("@/lib/rate-limit", () => ({

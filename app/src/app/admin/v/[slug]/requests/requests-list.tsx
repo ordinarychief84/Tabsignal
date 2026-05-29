@@ -8,7 +8,7 @@ export type LiveRequest = {
   id: string;
   tableId: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "FOOD" | "CLEAN" | "MANAGER" | "SUPPLIES";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
@@ -35,6 +35,10 @@ const REQUEST_LABEL: Record<LiveRequest["type"], string> = {
   BILL: "Bill",
   HELP: "Help",
   REFILL: "Refill",
+  FOOD: "Food",
+  CLEAN: "Clean-up",
+  MANAGER: "Manager",
+  SUPPLIES: "Supplies",
 };
 
 // Same threshold the floor app uses so the buckets line up.
@@ -55,10 +59,14 @@ const RESOLVE_ACTIONS: { id: string; label: string }[] = [
 ];
 
 const TYPE_FILTERS: { id: LiveRequest["type"]; label: string }[] = [
-  { id: "DRINK",  label: "Drink"  },
-  { id: "BILL",   label: "Bill"   },
-  { id: "HELP",   label: "Help"   },
-  { id: "REFILL", label: "Refill" },
+  { id: "DRINK",    label: "Drink"    },
+  { id: "FOOD",     label: "Food"     },
+  { id: "REFILL",   label: "Refill"   },
+  { id: "SUPPLIES", label: "Supplies" },
+  { id: "CLEAN",    label: "Clean-up" },
+  { id: "HELP",     label: "Help"     },
+  { id: "MANAGER",  label: "Manager"  },
+  { id: "BILL",     label: "Bill"     },
 ];
 
 type StaffMate = { id: string; name: string };

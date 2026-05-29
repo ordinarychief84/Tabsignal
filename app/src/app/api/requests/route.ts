@@ -16,7 +16,7 @@ function tokensEqual(a: string, b: string): boolean {
 const Body = z.object({
   sessionId: z.string().min(1),
   sessionToken: z.string().min(1),
-  type: z.enum(["DRINK", "BILL", "HELP", "REFILL"]),
+  type: z.enum(["DRINK", "BILL", "HELP", "REFILL", "FOOD", "CLEAN", "MANAGER", "SUPPLIES"]),
   note: z.string().max(120).optional(),
 });
 

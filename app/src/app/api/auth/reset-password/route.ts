@@ -22,7 +22,14 @@ import { hashStaffPassword } from "@/lib/auth/staff-password";
 
 const Body = z.object({
   token: z.string().min(1).max(200),
-  password: z.string().min(12, "Password must be at least 12 characters").max(200),
+  // Cap MUST match hashStaffPassword's MAX_PASSWORD_LENGTH (128). When this
+  // allowed up to 200, a 129–200 char password passed Zod but then threw
+  // inside hashStaffPassword below (which isn't wrapped in try/catch),
+  // surfacing as an opaque 500 instead of a clean 400. Keep the two in lockstep.
+  password: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .max(128, "Password must be at most 128 characters"),
 });
 
 export async function POST(req: Request) {
