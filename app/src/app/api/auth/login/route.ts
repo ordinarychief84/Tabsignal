@@ -24,7 +24,10 @@ import { rateLimitAsync } from "@/lib/rate-limit";
 
 const Body = z.object({
   email: z.string().email().max(200),
-  password: z.string().min(1).max(200),
+  // Cap at 128 to match hashStaffPassword's MAX_PASSWORD_LENGTH. A password
+  // longer than 128 can never match a hash we minted, so reject it up front
+  // rather than burning a bcrypt.compare on an input that can't succeed.
+  password: z.string().min(1).max(128),
 });
 
 export async function POST(req: Request) {
@@ -63,6 +66,16 @@ export async function POST(req: Request) {
     // Surface UNVERIFIED specifically so the UI can offer a one-click
     // "resend verification link". Every other failure mode collapses
     // to INVALID_CREDENTIALS to avoid enumeration.
+    //
+    // This is NOT an email-enumeration vector: loginStaffWithPassword
+    // only returns `unverified` AFTER a successful bcrypt password match
+    // (see staff-password.ts — the match check precedes the
+    // emailVerifiedAt check). So EMAIL_UNVERIFIED is only ever observable
+    // by someone who already supplied the correct password; an attacker
+    // probing which emails are registered gets the generic
+    // INVALID_CREDENTIALS for every wrong/absent password. Do not collapse
+    // this branch — doing so would only remove the resend-verification UX
+    // without improving enumeration resistance.
     if (result.reason === "unverified") {
       return NextResponse.json({ error: "EMAIL_UNVERIFIED" }, { status: 401 });
     }

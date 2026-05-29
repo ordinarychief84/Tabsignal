@@ -76,7 +76,16 @@ export async function POST(req: Request) {
       //   - SUSPENDED / DELETED accounts (former employees shouldn't
       //     be able to reset themselves back in)
       //   - INVITED accounts that haven't accepted yet (they use the
-      //     magic-link callback, not the reset flow)
+      //     magic-link callback to accept, not the reset flow)
+      //
+      // The ACTIVE-only gate is deliberate and is mirrored at consume
+      // time in /api/auth/reset-password (which re-checks status==ACTIVE
+      // before writing the new hash), so a token issued to a now-inactive
+      // account can't be redeemed. Note this means an INVITED user who
+      // lost their invite link has no self-serve password recovery — they
+      // must be re-invited by a manager. Expanding forgot-password to also
+      // (re)activate INVITED accounts would change invite semantics and is
+      // intentionally left out of scope here.
       if (!staff) return;
       if (staff.status !== "ACTIVE") return;
       const { token } = await issueResetToken({ staffId: staff.id, requestIp: ip });
