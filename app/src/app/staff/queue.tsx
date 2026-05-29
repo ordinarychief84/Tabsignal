@@ -7,7 +7,7 @@ type Item = {
   id: string;
   tableId?: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "FOOD" | "CLEAN" | "MANAGER" | "SUPPLIES";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
@@ -28,6 +28,10 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
   BILL: "Bill",
   HELP: "Help",
   REFILL: "Refill",
+  FOOD: "Food",
+  CLEAN: "Clean-up",
+  MANAGER: "Manager",
+  SUPPLIES: "Supplies",
 };
 
 // Safety-net poll interval — covers socket reconnect gaps. Real-time pushes

@@ -71,6 +71,10 @@ enum RequestType {
   BILL
   HELP
   REFILL
+  FOOD // ready to order / kitchen request
+  CLEAN // clear or wipe the table
+  MANAGER // ask to speak with a manager
+  SUPPLIES // napkins, cutlery, condiments, etc.
 }
 
 enum RequestStatus {

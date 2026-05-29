@@ -75,8 +75,14 @@ export const events = {
       emit({ kind: "guest", id: sessionId, event: "request_acknowledged", payload: { request } }),
     ]).then(() => undefined),
 
-  requestResolved: (venueId: string, request: unknown) =>
-    emit({ kind: "venue", id: venueId, event: "request_resolved", payload: { request } }),
+  // Fans out to the venue floor AND the guest's browser so the guest sees
+  // "your request is complete" once a server finishes it — closing the loop
+  // that previously only the staff side saw.
+  requestResolved: (venueId: string, sessionId: string, request: unknown) =>
+    Promise.all([
+      emit({ kind: "venue", id: venueId, event: "request_resolved", payload: { request } }),
+      emit({ kind: "guest", id: sessionId, event: "request_resolved", payload: { request } }),
+    ]).then(() => undefined),
 
   paymentConfirmed: (venueId: string, sessionId: string, summary: unknown) =>
     Promise.all([

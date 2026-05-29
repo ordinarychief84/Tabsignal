@@ -73,14 +73,20 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     });
   }
 
-  const updated = await db.request.findUnique({ where: { id: existing.id } });
+  const updated = await db.request.findUnique({
+    where: { id: existing.id },
+    include: { acknowledgedBy: { select: { name: true } } },
+  });
   if (!updated) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
-  void events.requestResolved(updated.venueId, {
+  void events.requestResolved(updated.venueId, updated.sessionId, {
     id: updated.id,
     status: updated.status,
     resolvedAt: updated.resolvedAt?.toISOString() ?? null,
     resolutionAction: updated.resolutionAction,
+    // The acker is, in practice, the server who handled it. Surfaced so the
+    // guest's "all done" screen can name who took care of them.
+    acknowledgedBy: updated.acknowledgedBy ? { name: updated.acknowledgedBy.name } : null,
   });
 
   return NextResponse.json({

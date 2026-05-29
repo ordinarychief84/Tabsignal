@@ -4,18 +4,22 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { configureSocketAuth, getSocket, joinRoom, resetSocket } from "@/lib/socket";
 
-// Type metadata. Icons + a short caption to make the four buttons feel
+// Type metadata. Icons + a short caption to make the buttons feel
 // less like a form and more like physical taps. Captions are intentionally
 // terse — they're for skim-readers in dim bar light.
 const REQUEST_TYPES = [
-  { id: "DRINK",  label: "Order a drink", icon: "🍸", caption: "I'd like another round" },
-  { id: "BILL",   label: "Get the bill",  icon: "🧾", caption: "Ready to close out" },
-  { id: "HELP",   label: "Need help",     icon: "✋", caption: "Question for staff" },
-  { id: "REFILL", label: "Refill",        icon: "🥤", caption: "Water, ice, top-off" },
+  { id: "DRINK",    label: "Order a drink",      icon: "🍸", caption: "I'd like another round" },
+  { id: "FOOD",     label: "Ready to order",     icon: "🍽️", caption: "Food or kitchen request" },
+  { id: "REFILL",   label: "Refill",             icon: "🥤", caption: "Water, ice, top-off" },
+  { id: "SUPPLIES", label: "Napkins / utensils", icon: "🍴", caption: "Cutlery, condiments, etc." },
+  { id: "CLEAN",    label: "Clear the table",    icon: "🧹", caption: "Clear plates or wipe down" },
+  { id: "HELP",     label: "Need help",          icon: "✋", caption: "Question for staff" },
+  { id: "MANAGER",  label: "Speak to a manager", icon: "🧑‍💼", caption: "Talk to someone in charge" },
+  { id: "BILL",     label: "Get the bill",       icon: "🧾", caption: "Ready to close out" },
 ] as const;
 
 type RequestType = (typeof REQUEST_TYPES)[number]["id"];
-type Status = "idle" | "submitting" | "sent" | "ack" | "error" | "rate_limited";
+type Status = "idle" | "submitting" | "sent" | "ack" | "done" | "error" | "rate_limited";
 
 type PrevTab = { itemCount: number; lastRequestMinAgo: number | null };
 
@@ -40,6 +44,10 @@ export function GuestRequestPanel({
   const [activeType, setActiveType] = useState<RequestType | null>(null);
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Name of the server who acknowledged/handled this request, if the
+  // realtime payload carried it. Drives the "Maya is on the way" copy so
+  // the guest knows a real person is attending to them.
+  const [serverName, setServerName] = useState<string | null>(null);
   // Free-text "tell us what you need" message. Sent as a HELP request with
   // a note so it flows through the same queue + push path as the quick taps.
   const [note, setNote] = useState("");
@@ -96,15 +104,34 @@ export function GuestRequestPanel({
     });
     const leave = joinRoom({ guestSessionId: sessionId });
     const socket = getSocket();
-    function onAck(payload: { request?: { id: string } } | null) {
-      const id = payload?.request?.id;
+    type ReqPayload = {
+      request?: { id?: string; acknowledgedBy?: { name?: string | null } | null };
+    } | null;
+    function onAck(payload: ReqPayload) {
+      const req = payload?.request;
+      const id = req?.id;
       if (!id) return;
       if (lastRequestId && id !== lastRequestId) return;
+      const name = req?.acknowledgedBy?.name;
+      if (name) setServerName(name);
       setStatus("ack");
     }
+    // Server finished the request — close the loop for the guest so they
+    // know it's handled, not just acknowledged.
+    function onResolved(payload: ReqPayload) {
+      const req = payload?.request;
+      const id = req?.id;
+      if (!id) return;
+      if (lastRequestId && id !== lastRequestId) return;
+      const name = req?.acknowledgedBy?.name;
+      if (name) setServerName(name);
+      setStatus("done");
+    }
     socket.on("request_acknowledged", onAck);
+    socket.on("request_resolved", onResolved);
     return () => {
       socket.off("request_acknowledged", onAck);
+      socket.off("request_resolved", onResolved);
       leave();
       // Tear down the connection — its claims are scoped to this guest
       // session. If the user navigates to a different table/session in
@@ -163,6 +190,7 @@ export function GuestRequestPanel({
     setActiveType(null);
     setLastRequestId(null);
     setErrorMsg(null);
+    setServerName(null);
   }
 
   async function startFresh() {
@@ -183,28 +211,49 @@ export function GuestRequestPanel({
     }
   }
 
-  if (status === "sent" || status === "ack") {
+  if (status === "sent" || status === "ack" || status === "done") {
     const acknowledged = status === "ack";
+    const completed = status === "done";
+    // Card tone escalates with progress: white (sent) → chartreuse
+    // (acknowledged) → sea (done).
+    const cardClass = completed
+      ? "border-sea/50 bg-sea/20"
+      : acknowledged
+        ? "border-chartreuse/40 bg-chartreuse/20"
+        : "border-slate/10 bg-white";
+    const eyebrow = completed ? "Complete" : acknowledged ? "Acknowledged" : "Request sent";
+    const heading = completed
+      ? "All taken care of"
+      : acknowledged
+        ? serverName
+          ? `${serverName} is on the way`
+          : "Staff is on the way"
+        : confirmationMessage ?? "Sent. We’re alerting your server.";
+    const subtext = completed
+      ? serverName
+        ? `${serverName} marked your request complete.`
+        : "Your server marked your request complete."
+      : acknowledged
+        ? serverName
+          ? `${serverName} acknowledged your request and is heading over.`
+          : "Someone just acknowledged your request and is heading over."
+        : "You'll see a confirmation here when it's seen.";
     return (
       <section className="px-6">
         <div
           className={[
             "rounded-2xl border p-8 text-center transition-colors",
-            acknowledged ? "border-chartreuse/40 bg-chartreuse/20" : "border-slate/10 bg-white",
+            cardClass,
           ].join(" ")}
         >
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-umber">
-            {acknowledged ? "Acknowledged" : "Request sent"}
+            {eyebrow}
           </p>
           <h2 className="mt-3 text-2xl font-medium text-slate">
-            {acknowledged
-              ? "Staff is on the way"
-              : confirmationMessage ?? "Sent. We’re alerting your server."}
+            {heading}
           </h2>
           <p className="mt-2 text-sm text-slate/60">
-            {acknowledged
-              ? "Someone just acknowledged your request."
-              : "You'll see a confirmation here when it's seen."}
+            {subtext}
           </p>
           <div className="mt-6 flex flex-col items-center gap-2">
             <button
