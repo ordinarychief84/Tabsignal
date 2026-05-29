@@ -40,6 +40,9 @@ export function GuestRequestPanel({
   const [activeType, setActiveType] = useState<RequestType | null>(null);
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Free-text "tell us what you need" message. Sent as a HELP request with
+  // a note so it flows through the same queue + push path as the quick taps.
+  const [note, setNote] = useState("");
   const [prev, setPrev] = useState<PrevTab | null>(prevTab);
   const [closingTab, setClosingTab] = useState(false);
   // Tier 3e: shown briefly when the guest is recognized as a returning regular.
@@ -111,16 +114,24 @@ export function GuestRequestPanel({
     };
   }, [sessionId, sessionToken, lastRequestId]);
 
-  async function submit(type: RequestType) {
+  async function submit(type: RequestType, note?: string) {
     if (status === "submitting") return;
     setStatus("submitting");
     setActiveType(type);
     setErrorMsg(null);
     try {
+      const trimmed = note?.trim();
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, sessionToken, type }),
+        body: JSON.stringify({
+          sessionId,
+          sessionToken,
+          type,
+          // Server caps notes at 120 chars; the textarea enforces the same
+          // limit, but slice defensively so a paste can't 400 the request.
+          ...(trimmed ? { note: trimmed.slice(0, 120) } : {}),
+        }),
       });
       if (res.status === 429) {
         setStatus("rate_limited");
@@ -133,6 +144,7 @@ export function GuestRequestPanel({
       }
       const body = await res.json();
       setLastRequestId(body?.id ?? null);
+      setNote("");
       setStatus("sent");
       // Special case: BILL request → take guest to bill screen.
       if (type === "BILL") {
@@ -283,6 +295,39 @@ export function GuestRequestPanel({
             </button>
           );
         })}
+      </div>
+
+      {/* Free-text request. For anything the four taps don't cover —
+        * "no ice please", "extra napkins", "can we move tables?". Sends as
+        * a HELP request carrying the typed note. */}
+      <div className="rounded-2xl border border-slate/10 bg-white p-4">
+        <label htmlFor="guest-note" className="text-sm font-medium text-slate">
+          Something specific?
+        </label>
+        <p className="mt-0.5 text-[11px] text-slate/55">
+          Type what you need and we&rsquo;ll pass it to your server.
+        </p>
+        <textarea
+          id="guest-note"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          maxLength={120}
+          rows={2}
+          disabled={status === "submitting"}
+          placeholder="e.g. No ice in the water, please"
+          className="mt-2 w-full resize-none rounded-xl border border-slate/15 bg-white px-3 py-2.5 text-sm text-slate placeholder-slate/35 focus:border-sea focus:outline-none focus:ring-1 focus:ring-sea disabled:opacity-60"
+        />
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-[11px] text-slate/40">{note.length}/120</span>
+          <button
+            type="button"
+            disabled={status === "submitting" || note.trim().length === 0}
+            onClick={() => submit("HELP", note)}
+            className="rounded-xl bg-slate px-4 py-2 text-sm font-medium text-oat transition-opacity disabled:opacity-40"
+          >
+            {status === "submitting" && activeType === "HELP" ? "Sending…" : "Send message"}
+          </button>
+        </div>
       </div>
 
       {errorMsg ? (
