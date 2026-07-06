@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { resolveByQrToken } from "@/lib/session";
-import { parseLineItems } from "@/lib/bill";
+import { tabItems } from "@/domain/billing/tab";
 import { GuestRequestPanel } from "@/app/v/[slug]/t/[tableId]/request-panel";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +42,7 @@ export default async function GuestQrPage({ params }: PageProps) {
       },
     },
   });
-  const items = session ? parseLineItems(session.lineItems) : [];
+  const items = session ? tabItems(session.lineItems) : [];
   const lastRequestAt = session?.requests[0]?.createdAt ?? null;
   const minutesSinceLast = lastRequestAt
     ? (Date.now() - lastRequestAt.getTime()) / 60_000

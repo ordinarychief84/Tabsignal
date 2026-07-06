@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { LineItem as LineItemSchema, parseLineItems } from "@/lib/bill";
+import { LineItem as LineItemSchema } from "@/lib/bill";
+import { addItems, tabItems } from "@/domain/billing/tab";
 import { getStaffSession } from "@/lib/auth/session";
 
 function tokensEqual(a: string, b: string): boolean {
@@ -45,28 +46,18 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     );
   }
 
-  const session = await db.guestSession.findUnique({ where: { id: ctx.params.id } });
-  if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
-  if (session.venueId !== staffSession.venueId) {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const result = await addItems(ctx.params.id, staffSession.venueId, parsed.items, parsed.mode);
+  if (!result.ok) {
+    const status =
+      result.error === "SESSION_NOT_FOUND" ? 404 :
+      result.error === "FORBIDDEN" ? 403 : 410;
+    return NextResponse.json({ error: result.error }, { status });
   }
-  if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });
-  if (session.expiresAt.getTime() <= Date.now()) {
-    return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
-  }
-
-  const existing = parseLineItems(session.lineItems);
-  const next = parsed.mode === "replace" ? parsed.items : [...existing, ...parsed.items];
-
-  const updated = await db.guestSession.update({
-    where: { id: session.id },
-    data: { lineItems: next },
-  });
 
   return NextResponse.json({
     ok: true,
-    sessionId: updated.id,
-    items: parseLineItems(updated.lineItems),
+    sessionId: result.sessionId,
+    items: result.items,
   });
 }
 
@@ -94,6 +85,6 @@ export async function GET(req: Request, ctx: { params: { id: string } }) {
     sessionId: session.id,
     paid: !!session.paidAt,
     expired: session.expiresAt.getTime() <= Date.now(),
-    items: parseLineItems(session.lineItems),
+    items: tabItems(session.lineItems),
   });
 }

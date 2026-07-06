@@ -1,5 +1,6 @@
 import { db } from "./db";
-import { parseLineItems, totalsFor } from "./bill";
+import { totalsFor } from "./bill";
+import { tabItems } from "@/domain/billing/tab";
 
 export type AnalyticsRange = "today" | "week" | "month";
 
@@ -82,7 +83,7 @@ export async function venueAnalytics(
   for (let h = 0; h < 24; h++) hourlyMap.set(h, { sessions: 0, revenueCents: 0 });
 
   for (const s of paidSessions) {
-    const items = parseLineItems(s.lineItems);
+    const items = tabItems(s.lineItems);
     const tipPct = typeof s.tipPercent === "number" ? s.tipPercent : 0;
     const t = totalsFor(items, venue?.zipCode ?? "", tipPct);
     revenueCents += t.totalCents;

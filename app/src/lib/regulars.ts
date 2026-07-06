@@ -11,7 +11,7 @@
  */
 
 import { db } from "@/lib/db";
-import { parseLineItems } from "@/lib/bill";
+import { spendForSession, tabItems } from "@/domain/billing/tab";
 
 type LineItem = { name: string; quantity: number; unitCents: number };
 
@@ -114,7 +114,7 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
   let tipSum = 0;
   let tipN = 0;
   for (const s of sessions) {
-    const items = parseLineItems(s.lineItems) as LineItem[];
+    const items = tabItems(s.lineItems) as LineItem[];
     for (const it of items) {
       spendCents += (it.quantity ?? 1) * (it.unitCents ?? 0);
       const name = (it.name ?? "").trim();
@@ -173,11 +173,6 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
     })),
     loyaltyPoints: points,
   };
-}
-
-function spendForSession(lineItems: unknown): number {
-  const items = parseLineItems(lineItems) as LineItem[];
-  return items.reduce((s, it) => s + (it.quantity ?? 1) * (it.unitCents ?? 0), 0);
 }
 
 function pointsFromMap(value: unknown, venueId: string): number {

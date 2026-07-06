@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { verifyCompToken } from "@/lib/auth/comp-token";
-import { LineItem as LineItemSchema, parseLineItems } from "@/lib/bill";
+import { appendComp } from "@/domain/billing/tab";
 import { events, emit } from "@/lib/realtime";
 
 const Body = z.object({ token: z.string().min(1) });
@@ -62,17 +62,8 @@ export async function POST(req: Request) {
     throw err;
   }
 
-  // Append the negative line item to the session.
-  const items = parseLineItems(session.lineItems);
-  const compItem = LineItemSchema.parse({
-    name: "Comp · manager apology",
-    quantity: 1,
-    unitCents: -Math.abs(claims.amountCents),
-  });
-  await db.guestSession.update({
-    where: { id: session.id },
-    data: { lineItems: [...items, compItem] },
-  });
+  // Append the negative line item to the session's tab.
+  await appendComp(session, claims.amountCents);
 
   // Push to staff covering this venue so the server can deliver the comp.
   void emit({
