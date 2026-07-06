@@ -7,6 +7,7 @@ import { events, emit } from "@/lib/realtime";
 import { parseLineItems, totalsFor, dollars } from "@/lib/bill";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { subscriptionStatusFor } from "@/lib/stripe-helpers";
+import { markSessionPaidFromIntent, applyChargeRefundToSession } from "@/domain/billing/payment";
 
 export const runtime = "nodejs"; // raw body required for signature verification
 
@@ -264,47 +265,9 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       }
 
       if (!sessionId) return;
-      const session = await tx.guestSession.findUnique({
-        where: { id: sessionId },
-        include: {
-          venue: { select: { id: true, name: true, zipCode: true } },
-          table: { select: { label: true } },
-        },
-      });
-      if (!session || session.paidAt) return;
-
-      await tx.guestSession.update({
-        where: { id: session.id },
-        data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
-      });
-
-      const tipPercent = Number(intent.metadata?.tip_percent ?? session.tipPercent ?? 20);
-      const totals = totalsFor(parseLineItems(session.lineItems), session.venue.zipCode ?? "", tipPercent);
-
-      // Tier 3c: award loyalty for the full session payment. Points are
-      // computed off the subtotal+tax (not the tip).
-      if (session.guestProfileId) {
-        try {
-          await awardPoints(
-            tx,
-            session.guestProfileId,
-            session.venueId,
-            pointsForCents(totals.subtotalCents + totals.taxCents),
-          );
-        } catch (loyaltyErr) {
-          console.error("loyalty:award:single failed", loyaltyErr);
-        }
-      }
-      void events.paymentConfirmed(session.venueId, session.id, {
-        sessionId: session.id,
-        tableLabel: session.table.label,
-        venueName: session.venue.name,
-        totalCents: totals.totalCents,
-        tipCents: totals.tipCents,
-        tipPercent,
-        totalDisplay: dollars(totals.totalCents),
-        paymentIntentId: intent.id,
-      });
+      // Full-session paid effect (stamp paidAt, loyalty, realtime) —
+      // extracted to domain/billing/payment in PR 1.2.
+      await markSessionPaidFromIntent(tx, sessionId, intent);
       return;
     }
 
@@ -329,45 +292,9 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       const refundedCents = charge.amount_refunded ?? 0;
       const refundedAt = new Date();
 
-      // Sessions: match by stripePaymentIntentId.
-      const sessionMatch = await tx.guestSession.findFirst({
-        where: { stripePaymentIntentId: intentId },
-        include: { venue: { select: { id: true } }, table: { select: { label: true } } },
-      });
-      if (sessionMatch) {
-        await tx.guestSession.update({
-          where: { id: sessionMatch.id },
-          data: {
-            // Record refund in lineItems metadata. We append a synthetic
-            // negative line item so downstream readers see the net total
-            // change without us needing a dedicated refunds table.
-            lineItems: [
-              ...parseLineItems(sessionMatch.lineItems),
-              {
-                name: charge.amount_refunded === charge.amount
-                  ? "Refunded (full)"
-                  : `Refunded ($${(refundedCents / 100).toFixed(2)})`,
-                quantity: 1,
-                unitCents: -Math.abs(refundedCents),
-                isRefund: true,
-              } as unknown as Prisma.InputJsonValue,
-            ] as unknown as Prisma.InputJsonValue,
-          },
-        });
-        void emit({
-          kind: "venue",
-          id: sessionMatch.venue.id,
-          event: "payment_refunded",
-          payload: {
-            sessionId: sessionMatch.id,
-            tableLabel: sessionMatch.table.label,
-            refundedCents,
-            refundedAt: refundedAt.toISOString(),
-            chargeId: charge.id,
-          },
-        });
-        return;
-      }
+      // Sessions first (domain/billing/payment owns the ledger append +
+      // emit since PR 1.2); falls through to split / pre-order matching.
+      if (await applyChargeRefundToSession(tx, intentId, charge)) return;
 
       // Splits: match by stripePaymentIntentId on BillSplit.
       const splitMatch = await tx.billSplit.findFirst({
