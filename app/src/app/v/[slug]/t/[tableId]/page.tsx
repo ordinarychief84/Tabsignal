@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { resolveGuestSession } from "@/lib/session";
+import { resolveGuestSession } from "@/domain/sessions/resolve";
 import { tabItems } from "@/domain/billing/tab";
 import { GuestRequestPanel } from "./request-panel";
 
