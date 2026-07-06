@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/assert-dev-db.mjs && next dev",
     "build": "node scripts/prebuild-migrate.mjs && prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
@@ -11,9 +11,11 @@
     "test": "bun test src/lib/__tests__",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:migrate": "node scripts/assert-dev-db.mjs && prisma migrate dev",
+    "db:deploy": "node scripts/assert-dev-db.mjs && prisma migrate deploy",
+    "db:bootstrap": "node scripts/assert-dev-db.mjs && node scripts/bootstrap-dev-db.mjs",
+    "db:seed": "node scripts/assert-dev-db.mjs && bun prisma/seed.ts",
+    "db:studio": "node scripts/assert-dev-db.mjs && prisma studio"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.93.0",

@@ -1,0 +1,29 @@
+# Local development database. NEVER point dev at the production
+# Supabase instance — scripts/assert-dev-db.mjs enforces this.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   bun run db:deploy && bun run db:seed
+#
+# No Docker? Homebrew works identically (see docs/RUNBOOK.md):
+#   brew install postgresql@16 && brew services start postgresql@16
+#   createdb tabcall_dev
+services:
+  postgres:
+    image: postgres:16
+    container_name: tabcall-dev-postgres
+    environment:
+      POSTGRES_DB: tabcall_dev
+      POSTGRES_USER: tabcall
+      POSTGRES_PASSWORD: tabcall
+    ports:
+      - "5432:5432"
+    volumes:
+      - tabcall_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tabcall -d tabcall_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tabcall_dev_pgdata:

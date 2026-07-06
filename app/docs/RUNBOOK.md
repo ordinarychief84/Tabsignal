@@ -4,6 +4,39 @@ Procedures for production incidents and recurring ops tasks.
 
 ---
 
+## Local development database (required setup)
+
+Local dev runs against **local Postgres only**. `scripts/assert-dev-db.mjs`
+front-runs `dev` and every `db:*` script and refuses a remote
+`DATABASE_URL` (the months of dev-against-prod are over — that's how the
+P3009 saga started). Escape hatch for conscious remote work (incident
+inspection): `ALLOW_REMOTE_DB=1 bun run db:studio`.
+
+First-time setup (Homebrew):
+
+```bash
+brew install postgresql@16 && brew services start postgresql@16
+createdb tabcall_dev
+# .env.local (note the explicit user — Prisma doesn't default to the OS user):
+#   DATABASE_URL="postgresql://<your-macos-username>@localhost:5432/tabcall_dev"
+#   DIRECT_URL="postgresql://<your-macos-username>@localhost:5432/tabcall_dev"
+bun run db:bootstrap   # replays the full migration chain (see below)
+bun run db:seed        # "The Local Dev Taproom" + tables + staff + menu + open tab
+```
+
+Docker instead: `docker compose -f docker-compose.dev.yml up -d`, then the
+same bootstrap + seed (URL: `postgresql://tabcall:tabcall@localhost:5432/tabcall_dev`).
+
+`db:bootstrap` exists because two historical migrations can't replay
+verbatim on an empty database (enum-value-used-in-same-transaction, and
+RLS on two prod-only Studio-era tables). The originals are untouched —
+production's migration history still matches — the bootstrap applies
+equivalent variants from `scripts/bootstrap/` and marks them applied.
+The seed is idempotent and prints ready-to-open guest QR URLs and staff
+logins (`maya@dev.local` / `devpass123`).
+
+---
+
 ## P0: Signup is returning 500 (or any DB write fails with "column does not exist")
 
 **Cause:** Production schema is missing columns or tables that the deployed
