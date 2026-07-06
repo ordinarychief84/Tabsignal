@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { resolveGuestSession } from "@/lib/session";
+import { resolveGuestSession } from "@/domain/sessions/resolve";
 import { WishlistPanel } from "./wishlist-panel";
 
 export const dynamic = "force-dynamic";
