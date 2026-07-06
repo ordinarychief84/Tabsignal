@@ -173,7 +173,18 @@ export function PeoplePanel(props: {
       const res = await fetch(`/api/admin/staff/${m.id}/resend-invite`, { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
-      setError(body.delivered ? `Re-sent invite to ${m.email}.` : `Invite queued. Email send failed, contact support.`);
+      if (body.inviteLink) {
+        const copied = await copyText(body.inviteLink);
+        setError(
+          body.delivered
+            ? `Re-sent invite to ${m.email}.${copied ? " Link also copied — you can text it to them." : ""}`
+            : copied
+              ? `Email to ${m.email} failed, but a fresh invite link is on your clipboard — text it to them.`
+              : `Email to ${m.email} failed. Fresh link: ${body.inviteLink}`,
+        );
+      } else {
+        setError(body.delivered ? `Re-sent invite to ${m.email}.` : `Invite queued. Email send failed, contact support.`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not resend invite");
     }
@@ -325,6 +336,24 @@ function Section({ title, count, empty, muted = false, children }: {
   );
 }
 
+/** Clipboard write that degrades gracefully on http / older WebViews. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+type LastInvite = {
+  name: string;
+  email: string;
+  link: string;
+  // true = email delivered, false = send failed, null = not attempted
+  delivered: boolean | null;
+};
+
 function InviteCard({ assignableRoles, onInvited, onError }: {
   assignableRoles: string[];
   onInvited: (m: Member) => void;
@@ -334,14 +363,16 @@ function InviteCard({ assignableRoles, onInvited, onError }: {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState(assignableRoles[0] ?? "SERVER");
   const [busy, setBusy] = useState(false);
-  const [devLink, setDevLink] = useState<string | null>(null);
+  const [lastInvite, setLastInvite] = useState<LastInvite | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
     onError(null);
-    setDevLink(null);
+    setLastInvite(null);
+    setCopied(false);
     try {
       const res = await fetch("/api/admin/staff", {
         method: "POST",
@@ -363,7 +394,14 @@ function InviteCard({ assignableRoles, onInvited, onError }: {
         invitedBy: null,
         tableIds: [],
       });
-      if (body.devLink) setDevLink(body.devLink);
+      if (body.inviteLink) {
+        setLastInvite({
+          name: body.name,
+          email: body.email,
+          link: body.inviteLink,
+          delivered: body.emailDelivered ?? null,
+        });
+      }
       setName("");
       setEmail("");
     } catch (e) {
@@ -373,11 +411,19 @@ function InviteCard({ assignableRoles, onInvited, onError }: {
     }
   }
 
+  async function copyInviteLink() {
+    if (!lastInvite) return;
+    const ok = await copyText(lastInvite.link);
+    setCopied(ok);
+    if (!ok) onError("Couldn't access the clipboard — long-press the link below to copy it.");
+  }
+
   return (
     <section className="rounded-2xl border border-slate/10 bg-white px-6 py-6">
       <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Invite a teammate</p>
       <p className="mt-1 text-sm text-slate/55">
-        They&rsquo;ll get a magic-link sign-in by email. No passwords, no app to install.
+        They&rsquo;ll get an email invite that signs them in — valid 7 days, no app to install.
+        You can also copy the link and text it to them.
       </p>
       <form
         onSubmit={onSubmit}
@@ -418,11 +464,38 @@ function InviteCard({ assignableRoles, onInvited, onError }: {
         </button>
       </form>
 
-      {devLink ? (
-        <p className="mt-3 rounded-lg bg-chartreuse/15 px-3 py-2 text-[11px] text-slate/70">
-          <span className="uppercase tracking-wider">Dev link:</span>{" "}
-          <a className="break-all underline" href={devLink}>{devLink}</a>
-        </p>
+      {lastInvite ? (
+        <div
+          className={[
+            "mt-4 rounded-xl border px-4 py-3",
+            lastInvite.delivered === false
+              ? "border-coral/40 bg-coral/10"
+              : "border-chartreuse/50 bg-chartreuse/15",
+          ].join(" ")}
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-sm font-medium text-slate">
+            {lastInvite.delivered === false
+              ? `Invite created, but the email to ${lastInvite.email} didn't go out.`
+              : `Invite sent to ${lastInvite.email}.`}
+          </p>
+          <p className="mt-1 text-[12px] text-slate/65">
+            {lastInvite.delivered === false
+              ? "No problem — copy the invite link and text or AirDrop it to them instead."
+              : "Waiting on them? Copy the link and text it — same invite, instant delivery."}
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={copyInviteLink}
+              className="rounded-lg bg-slate px-3 py-1.5 text-xs font-medium text-oat hover:bg-slate/90"
+            >
+              {copied ? "Copied ✓" : "Copy invite link"}
+            </button>
+            <span className="break-all font-mono text-[10px] text-slate/45">{lastInvite.link.slice(0, 64)}…</span>
+          </div>
+        </div>
       ) : null}
     </section>
   );

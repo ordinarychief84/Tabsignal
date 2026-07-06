@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { MarketingNav, MarketingFooter } from "./marketing-chrome";
+import { JsonLd } from "./json-ld";
+import { organizationLd, webSiteLd, softwareApplicationLd, pageMetadata } from "@/lib/seo";
 
 /**
  * TabCall landing page. Faithful to the design mockup direction:
@@ -18,10 +20,24 @@ import { MarketingNav, MarketingFooter } from "./marketing-chrome";
  * behavior is preserved.
  */
 
+// Landing carries the category head terms; the title template in the
+// root layout is bypassed here (brand already in the string).
 export const metadata: Metadata = {
-  title: "TabCall · all-in-one hospitality platform",
-  description:
-    "The all-in-one hospitality operating system that bridges the gap between digital convenience and human hospitality.",
+  ...pageMetadata({
+    title: "QR Ordering, Pay-at-Table & Waiter Calls for Restaurants | TabCall",
+    description:
+      "TabCall turns every table into a service point: QR code ordering, pay-at-table payments, a call-waiter button and live staff alerts on top of your POS. Free at up to 5 tables — live tonight.",
+    path: "/",
+    keywords: [
+      "restaurant QR code system",
+      "bar service technology",
+      "guest experience platform",
+      "reduce restaurant wait times",
+      "turn tables faster",
+    ],
+  }),
+  // Prevent the "%s | TabCall" template from double-branding this one.
+  title: { absolute: "QR Ordering, Pay-at-Table & Waiter Calls for Restaurants | TabCall" },
 };
 
 /** Resolve a feature image from /public/landing/features/ if a file was saved
@@ -38,6 +54,7 @@ function findLandingImage(name: string): string | null {
 export default function LandingPage() {
   return (
     <div className="overflow-x-hidden bg-surface-warm text-on-surface selection:bg-brand-lime selection:text-primary-deep">
+      <JsonLd nodes={[organizationLd(), webSiteLd(), softwareApplicationLd()]} />
       <MarketingNav />
 
       <main className="pt-24">

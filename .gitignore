@@ -14,6 +14,9 @@ next-env.d.ts
 dist/
 *.log
 
+# SwiftPM build output (sdk/tabcall-wear/swift compile checks)
+.build/
+
 # Temp / intermediates
 .tmp/
 
@@ -35,3 +38,4 @@ venv/
 # accumulate fast (multi-GB across worktrees) and should never be
 # tracked. Each Claude session writes its own subdirectory here.
 .claude/
+.gstack/

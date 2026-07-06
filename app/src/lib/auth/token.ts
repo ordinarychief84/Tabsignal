@@ -30,16 +30,29 @@ export type SessionClaims = {
 };
 
 const LINK_TTL = "15m";
+// Invite links live longer than sign-in links: a bartender invited during
+// the manager's morning admin session often doesn't open the email until
+// their shift starts. Still single-use (jti burned on redemption), so the
+// longer window doesn't allow replay.
+const INVITE_LINK_TTL = "7d";
 const SESSION_TTL = "30d";
 
-export async function signLinkToken(claims: Omit<LinkClaims, "jti"> & { jti?: string }): Promise<string> {
+export async function signLinkToken(
+  claims: Omit<LinkClaims, "jti"> & { jti?: string },
+  opts?: { ttl?: "15m" | "7d" },
+): Promise<string> {
   const jti = claims.jti ?? randomUUID();
   return new SignJWT({ ...claims, jti })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setJti(jti)
-    .setExpirationTime(LINK_TTL)
+    .setExpirationTime(opts?.ttl ?? LINK_TTL)
     .sign(key());
+}
+
+/** Sugar for staff-invite links — same claims shape, 7-day expiry. */
+export async function signInviteToken(claims: Omit<LinkClaims, "jti"> & { jti?: string }): Promise<string> {
+  return signLinkToken(claims, { ttl: INVITE_LINK_TTL });
 }
 
 export async function verifyLinkToken(token: string): Promise<LinkClaims | null> {

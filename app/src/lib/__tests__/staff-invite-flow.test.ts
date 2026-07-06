@@ -124,6 +124,14 @@ beforeEach(() => {
     sendMagicLinkEmail: async () => {
       state.emailSends += 1;
     },
+    // Invite flow sends the dedicated invite email; count it in the same
+    // bucket — the tests assert "an email went out", not which template.
+    sendStaffInviteEmail: async () => {
+      state.emailSends += 1;
+    },
+    sendPasswordResetEmail: async () => {
+      state.emailSends += 1;
+    },
   }));
 
   mock.module("@/lib/origin", () => ({

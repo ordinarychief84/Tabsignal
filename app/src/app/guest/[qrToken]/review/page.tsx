@@ -25,7 +25,7 @@ export default async function GuestQrReviewPage({ params }: PageProps) {
   const venue = await db.venue.findUnique({
     where: { id: resolved.venueId },
     include: {
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) notFound();

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { signLinkToken } from "@/lib/auth/token";
-import { sendMagicLinkEmail } from "@/lib/auth/email";
+import { signInviteToken } from "@/lib/auth/token";
+import { sendStaffInviteEmail } from "@/lib/auth/email";
 import { isVenueManager } from "@/lib/auth/venue-role";
 import { can, assignableRoles } from "@/lib/auth/permissions";
 import { audit } from "@/lib/audit";
@@ -64,10 +64,11 @@ export async function POST(req: Request) {
   });
   if (!venue) return NextResponse.json({ error: "VENUE_NOT_FOUND" }, { status: 404 });
 
-  // The actor's StaffMember row — used to attribute invitedBy + suspendedBy.
+  // The actor's StaffMember row — used to attribute invitedBy + suspendedBy
+  // and to name the inviter in the invite email.
   const actorRow = await db.staffMember.findUnique({
     where: { id: session.staffId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
 
   // Idempotent: if email already exists, refuse cross-venue and return
@@ -90,16 +91,25 @@ export async function POST(req: Request) {
     },
   });
 
-  let devLink: string | null = null;
+  // Mint a 7-day single-use invite link. Always returned to the caller
+  // (manager-tier by the gates above) so the manager can hand it to the
+  // invitee directly — text/AirDrop — when the invitee has no work email
+  // or delivery fails. This is not an escalation: the caller just created
+  // (or already administers) this lower-or-equal-privilege account.
+  const token = await signInviteToken({ kind: "link", staffId: staff.id, email });
+  const inviteLink = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
+
+  let emailDelivered: boolean | null = null; // null = not attempted (send:false)
   if (parsed.send) {
-    const token = await signLinkToken({ kind: "link", staffId: staff.id, email });
-    const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
+    emailDelivered = true;
     try {
-      await sendMagicLinkEmail({
+      await sendStaffInviteEmail({
         to: email,
         staffName: staff.name,
         venueName: venue.name,
-        link,
+        inviterName: actorRow?.name ?? null,
+        role: staff.role,
+        link: inviteLink,
       });
     } catch (err) {
       const e = err as { statusCode?: number; message?: string };
@@ -108,8 +118,7 @@ export async function POST(req: Request) {
         statusCode: e.statusCode,
         message: e.message,
       });
-      const allowDevLinks = process.env.TABSIGNAL_DEV_LINKS === "true" || process.env.NODE_ENV === "development";
-      if (allowDevLinks) devLink = link;
+      emailDelivered = false;
     }
   }
 
@@ -133,7 +142,10 @@ export async function POST(req: Request) {
     status: staff.status,
     lastSeenAt: staff.lastSeenAt?.toISOString() ?? null,
     invitedById: staff.invitedById,
-    devLink,
+    inviteLink,
+    emailDelivered,
+    // Legacy field older clients read when email delivery failed in dev.
+    devLink: emailDelivered === false ? inviteLink : null,
   });
 }
 

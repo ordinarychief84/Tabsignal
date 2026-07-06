@@ -2,9 +2,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
+// Utility page: keep it out of the index (thin content, brand-only
+// intent) but let crawlers pass through to linked marketing pages.
 export const metadata: Metadata = {
-  title: "TabCall · Log in",
+  title: "Log in",
   description: "Sign in to your TabCall account by email.",
+  robots: { index: false, follow: true },
 };
 
 /**

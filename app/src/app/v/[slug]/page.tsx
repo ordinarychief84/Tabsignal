@@ -1,9 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
+import { SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const venue = await db.venue.findUnique({ where: { slug: params.slug }, select: { name: true } });
+  if (!venue) return {};
+  return {
+    title: `${venue.name} — Order, Pay & Call Your Server by QR`,
+    description: `You're at ${venue.name}. Scan the QR on your table to see the menu, call your server or open your tab. Powered by TabCall.`,
+    alternates: { canonical: `${SITE_URL}/v/${params.slug}` },
+  };
+}
 
 export default async function VenueRootPage({ params }: { params: { slug: string } }) {
   const venue = await db.venue.findUnique({
@@ -13,7 +25,7 @@ export default async function VenueRootPage({ params }: { params: { slug: string
       name: true,
       brandColor: true,
       logoUrl: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) notFound();

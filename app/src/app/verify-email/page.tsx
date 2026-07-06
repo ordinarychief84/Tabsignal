@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "TabCall · Verify your email",
+  title: "Verify your email",
   description: "How TabCall verifies your email via the magic-link sign-in.",
+  robots: { index: false, follow: true },
 };
 
 /**

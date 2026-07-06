@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata: Metadata = {
-  title: "TabCall · Set a new password",
+  title: "Set a new password",
   description: "Choose a new password for your TabCall account.",
+  robots: { index: false, follow: false },
 };
 
 /**

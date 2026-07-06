@@ -1,6 +1,11 @@
 import Link from "next/link";
 
-export const metadata = { title: "TabCall · terms of service" };
+// noindex while this is stub copy — indexing placeholder legal text
+// hurts more than it helps. Flip to indexable when real terms land.
+export const metadata = {
+  title: "Terms of Service",
+  robots: { index: false, follow: true },
+};
 
 // Stub terms page. Real legal copy lives here once we have it. Linked from
 // the signup footer so "agree to TabCall's terms" actually points somewhere.

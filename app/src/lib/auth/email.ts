@@ -31,6 +31,47 @@ export async function sendMagicLinkEmail(opts: {
   return sendEmail({ to, subject, html, text });
 }
 
+/**
+ * Staff-invite email. Distinct from the sign-in magic link: different
+ * subject ("You're invited…"), names the inviter and role, and reflects
+ * the 7-day invite-token TTL instead of the 15-minute sign-in TTL.
+ */
+export async function sendStaffInviteEmail(opts: {
+  to: string;
+  staffName: string;
+  venueName: string;
+  inviterName?: string | null;
+  role?: string | null;
+  link: string;
+}) {
+  const { to, staffName, venueName, inviterName, role, link } = opts;
+  const subject = `You're invited to join ${venueName} on TabCall`;
+  const invitedBy = inviterName ? `${inviterName} invited you` : "You've been invited";
+  const roleLine = role ? ` as ${role.charAt(0) + role.slice(1).toLowerCase()}` : "";
+  const text =
+    `Hi ${staffName || "there"},\n\n` +
+    `${invitedBy} to join the ${venueName} team on TabCall${roleLine}.\n` +
+    `Tap the link below to accept — it signs you in and activates your account.\n` +
+    `The link is valid for 7 days and can only be used once.\n\n` +
+    `${link}\n\n` +
+    `If you weren't expecting this, you can ignore this email.`;
+  const html = `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #232130; background:#F7F5F2;">
+      <tr><td style="padding: 24px;">
+        <h2 style="margin: 0 0 12px; font-weight: 500;">Join ${escapeHtml(venueName)} on TabCall</h2>
+        <p style="margin: 0 0 16px;">Hi ${escapeHtml(staffName || "there")}, ${escapeHtml(invitedBy.toLowerCase())} to the <strong>${escapeHtml(venueName)}</strong> team${escapeHtml(roleLine)}.</p>
+        <p style="margin: 24px 0;">
+          <a href="${link}" style="background:#F2E7B7;color:#232130;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Accept invite &amp; open the staff app</a>
+        </p>
+        <p style="margin: 0 0 8px;font-size:13px;color:#8B6F4E;">Or paste this link into your browser:</p>
+        <p style="margin: 0 0 24px;font-size:13px;color:#8B6F4E;word-break:break-all;">${link}</p>
+        <p style="margin: 0;font-size:12px;color:#8B6F4E;">This invite is valid for 7 days and is single-use. If you weren't expecting it, ignore this email.</p>
+      </td></tr>
+    </table>
+  `.trim();
+  return sendEmail({ to, subject, html, text });
+}
+
 function escapeHtml(s: string) {
   return s
     .replace(/&/g, "&amp;")

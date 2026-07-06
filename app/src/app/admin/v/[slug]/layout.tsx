@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { isOperator, isPlatformStaff } from "@/lib/auth/operator";
-import { meetsAtLeast, planFromOrg } from "@/lib/plans";
+import { meetsAtLeast, planFromOrg, trialDaysLeft } from "@/lib/plans";
 import { AdminNav } from "./admin-nav";
 import { StopImpersonationBanner } from "./stop-impersonation-banner";
 
@@ -32,7 +32,7 @@ export default async function AdminVenueLayout({
     select: {
       id: true,
       name: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) notFound();
@@ -64,6 +64,7 @@ export default async function AdminVenueLayout({
   const orgPlan = planFromOrg(venue.org);
   const isPaidPlan = meetsAtLeast(orgPlan, "growth");
   const isProPlan = meetsAtLeast(orgPlan, "pro");
+  const platformTrialDays = trialDaysLeft(venue.org);
 
   // Impersonation = platform-staff session attached to a staff row whose
   // email doesn't match the caller's. The session JWT carries the
@@ -99,7 +100,13 @@ export default async function AdminVenueLayout({
             <p className="truncate text-sm font-medium text-slate">{venue.name}</p>
           </div>
         </div>
-        <AdminNav slug={params.slug} operator={operator} isPaidPlan={isPaidPlan} isProPlan={isProPlan} />
+        <AdminNav
+          slug={params.slug}
+          operator={operator}
+          isPaidPlan={isPaidPlan}
+          isProPlan={isProPlan}
+          trialDaysLeft={platformTrialDays}
+        />
         <div className="hidden md:block md:px-6 md:py-6">
           <form action="/api/auth/logout" method="post">
             <button

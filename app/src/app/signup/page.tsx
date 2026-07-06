@@ -5,9 +5,10 @@ import { detectCountryFromHeaders } from "@/lib/countries";
 import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = {
-  title: "TabCall · Create your account",
+  title: "Start Free — QR Ordering Live on Your Floor Tonight",
   description:
-    "Run smarter hospitality operations. Live on your floor tonight. No credit card required.",
+    "Create your TabCall venue in minutes: free at up to 5 tables, no credit card, no new hardware. Print your QR tents and take your first table request tonight.",
+  alternates: { canonical: "https://www.tab-call.com/signup" },
 };
 
 // Read on every request so country defaulting reflects where the

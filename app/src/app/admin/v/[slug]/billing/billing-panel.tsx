@@ -18,6 +18,10 @@ type Props = {
   hasSubscription: boolean;
   status: string;
   trialEndsAt: string | null;
+  // Days left on the card-less platform trial (null = not on one).
+  // Drives the "no card on file" trial banner instead of the Stripe
+  // "your card will be charged" copy.
+  platformTrialDays: number | null;
 };
 
 function dollars(cents: number): string {
@@ -38,19 +42,40 @@ function daysBetween(target: Date, from: Date): number {
   return Math.ceil((target.getTime() - from.getTime()) / 86_400_000);
 }
 
-export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, status, trialEndsAt }: Props) {
+export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, status, trialEndsAt, platformTrialDays }: Props) {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Concierge intercept: instead of jumping to Stripe checkout, route
-  // Growth/Pro upgrades through a 15-min setup call screen first. After
-  // the call we flip the org via the operator console / SQL, then the
-  // existing checkout flow takes over for self-service plan changes
-  // (e.g. Growth → Pro). This is also the natural sales motion at the
-  // moment of intent.
-  function startCheckout(planId: "growth" | "pro") {
+  // Self-serve first: when the plan has a configured Stripe Price we go
+  // straight to Checkout — the buyer is at peak intent, don't make them
+  // book a call. The concierge contact screen remains the fallback for
+  // environments where prices aren't wired up (or if checkout errors),
+  // so the button never dead-ends.
+  async function startCheckout(planId: "growth" | "pro") {
+    const plan = plans.find(p => p.id === planId);
+    if (!plan?.configured) {
+      setPending(planId);
+      window.location.href = `/admin/v/${slug}/billing/upgrade-contact?plan=${planId}`;
+      return;
+    }
     setPending(planId);
-    window.location.href = `/admin/v/${slug}/billing/upgrade-contact?plan=${planId}`;
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/v/${slug}/billing/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.url) {
+        // Price missing server-side or Stripe hiccup → concierge path.
+        window.location.href = `/admin/v/${slug}/billing/upgrade-contact?plan=${planId}`;
+        return;
+      }
+      window.location.href = body.url;
+    } catch {
+      window.location.href = `/admin/v/${slug}/billing/upgrade-contact?plan=${planId}`;
+    }
   }
 
   async function openPortal() {
@@ -95,7 +120,32 @@ export function BillingPanel({ slug, currentPlanId, plans, hasSubscription, stat
         </section>
       ) : null}
 
-      {status === "TRIALING" && trialEndsAt ? (
+      {platformTrialDays !== null && trialEndsAt ? (
+        <section className="rounded-2xl border border-chartreuse/50 bg-chartreuse/15 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Growth trial · no card on file</p>
+              <p className="mt-1 text-base font-medium text-slate">
+                {platformTrialDays === 1
+                  ? "Last day of your free Growth trial."
+                  : `${platformTrialDays} days of Growth left, on us.`}
+              </p>
+              <p className="mt-1 text-xs text-slate/70">
+                Menu, pre-orders, analytics and unlimited staff are all on. On{" "}
+                {new Date(trialEndsAt).toLocaleDateString()} your venue drops to Starter
+                unless you pick a plan — nothing is charged automatically.
+              </p>
+            </div>
+            <button
+              onClick={() => startCheckout("growth")}
+              disabled={pending === "growth"}
+              className="shrink-0 rounded-full bg-slate px-4 py-2 text-sm text-oat hover:bg-slate/90 disabled:opacity-50"
+            >
+              {pending === "growth" ? "Loading…" : "Keep Growth"}
+            </button>
+          </div>
+        </section>
+      ) : status === "TRIALING" && trialEndsAt ? (
         (() => {
           const days = daysBetween(new Date(trialEndsAt), new Date());
           if (days < 0) return null;

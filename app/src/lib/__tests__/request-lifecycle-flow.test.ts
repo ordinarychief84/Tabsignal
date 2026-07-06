@@ -421,7 +421,7 @@ describe("end-to-end: PENDING -> ACKNOWLEDGED -> handoff -> RESOLVED", () => {
     const { PATCH: resolve } = await import("../../app/api/requests/[id]/resolve/route");
 
     // Alice acknowledges.
-    let res = await ack(makeReq(ackUrl("req_1")), { params: { id: "req_1" } });
+    let res: Response = await ack(makeReq(ackUrl("req_1")), { params: { id: "req_1" } });
     expect(res.status).toBe(200);
     expect(state.requests.get("req_1")?.status).toBe("ACKNOWLEDGED");
     expect(state.requests.get("req_1")?.acknowledgedById).toBe("stf_alice");

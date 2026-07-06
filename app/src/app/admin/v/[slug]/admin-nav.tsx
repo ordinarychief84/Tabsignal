@@ -8,11 +8,14 @@ export function AdminNav({
   operator,
   isPaidPlan,
   isProPlan,
+  trialDaysLeft = null,
 }: {
   slug: string;
   operator: boolean;
   isPaidPlan: boolean;
   isProPlan: boolean;
+  // Days remaining on the card-less platform trial; null = not trialing.
+  trialDaysLeft?: number | null;
 }) {
   const pathname = usePathname();
   const items: { href: string; label: string; growth?: boolean; pro?: boolean }[] = [
@@ -48,6 +51,25 @@ export function AdminNav({
 
   return (
     <nav className="border-t border-slate/10 px-2 py-2 md:border-t-0 md:px-3 md:py-2">
+      {trialDaysLeft !== null ? (
+        <Link
+          href={`/admin/v/${slug}/billing`}
+          className="mb-2 hidden rounded-xl border border-chartreuse/60 bg-chartreuse/15 px-3 py-2.5 md:block"
+        >
+          <p className="text-[10px] uppercase tracking-[0.16em] text-umber">Growth trial</p>
+          <p className="mt-0.5 text-xs font-medium text-slate">
+            {trialDaysLeft === 1 ? "Ends today" : `${trialDaysLeft} days left`} · keep it →
+          </p>
+        </Link>
+      ) : !isPaidPlan ? (
+        <Link
+          href={`/admin/v/${slug}/billing`}
+          className="mb-2 hidden rounded-xl border border-slate/10 bg-white px-3 py-2.5 hover:border-slate/30 md:block"
+        >
+          <p className="text-[10px] uppercase tracking-[0.16em] text-umber">Starter plan</p>
+          <p className="mt-0.5 text-xs font-medium text-slate">Unlock menu + analytics →</p>
+        </Link>
+      ) : null}
       <ul className="flex gap-1 overflow-x-auto md:flex-col md:gap-0.5">
         {items.map(it => {
           const active = isActive(it.href);

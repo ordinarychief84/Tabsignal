@@ -28,7 +28,7 @@ export default async function GuestQrMenuPage({ params }: PageProps) {
     select: {
       id: true,
       name: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) notFound();

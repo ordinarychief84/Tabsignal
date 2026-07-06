@@ -24,7 +24,7 @@ export async function gateAdminVenuePlan(
     where: { slug },
     select: {
       id: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) return { ok: false, status: 404, body: { error: "NOT_FOUND" } };
@@ -57,7 +57,7 @@ export async function gateGuestVenuePlan(
     where: { slug },
     select: {
       id: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) return { ok: false, status: 404, body: { error: "NOT_FOUND" } };
@@ -109,7 +109,7 @@ export async function gateAdminRoute(
 export async function venuePlanForVenueId(venueId: string): Promise<PlanId> {
   const venue = await db.venue.findUnique({
     where: { id: venueId },
-    select: { org: { select: { subscriptionPriceId: true, subscriptionStatus: true } } },
+    select: { org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } } },
   });
   if (!venue) return "free";
   return planFromOrg(venue.org);

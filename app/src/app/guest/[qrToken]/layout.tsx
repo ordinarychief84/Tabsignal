@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+
+// Per-table token URLs — private by construction. Crawlable-but-noindex
+// (NOT robots.txt-disallowed) so search engines that find a shared link
+// read the directive and drop the URL entirely.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function GuestQrLayout({ children }: { children: ReactNode }) {
   return (
