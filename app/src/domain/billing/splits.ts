@@ -6,6 +6,7 @@ import { dollars } from "@/lib/bill";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { events } from "@/lib/realtime";
 import { tabItems, tabTotals } from "@/domain/billing/tab";
+import { mirrorBillSplitPayment } from "@/domain/billing/mirror";
 
 /**
  * domain/billing/splits — even-N bill splits (legacy BillSplit model):
@@ -207,4 +208,15 @@ export async function applySplitPaidFromIntent(
     paymentIntentId: intent.id,
     split: { splitId, allPaid },
   });
+
+  // Phase 2 dual-write: accumulate this split (incl. its tip) onto the
+  // mirrored bill; PARTIAL until the last split lands. No-op at
+  // BILLING_V2=off; never throws.
+  await mirrorBillSplitPayment(
+    tx,
+    session.id,
+    intent.amount ?? split.amountCents,
+    Number(intent.metadata?.tip_cents ?? 0),
+    allPaid,
+  );
 }
