@@ -156,12 +156,21 @@ beforeEach(() => {
       state.emits.push(method);
       return Promise.resolve();
     };
+    // IMPORTANT: mirror the REAL module's full export surface. Bun's
+    // mock.module is process-wide; module-level `import { events }`
+    // bindings in route files capture whichever mock was live at their
+    // FIRST import. A skinny events object here broke the stripe
+    // webhook test in CI (linux file order imports the webhook route
+    // while this mock is active → events.paymentConfirmed undefined).
     return {
       emit: record("emit"),
       events: {
         newRequest: record("newRequest"),
         requestAcknowledged: record("requestAcknowledged"),
         requestResolved: record("requestResolved"),
+        paymentConfirmed: record("paymentConfirmed"),
+        preOrderPaid: record("preOrderPaid"),
+        regularArrived: record("regularArrived"),
       },
     };
   });
