@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { LineItem as LineItemSchema, parseLineItems, totalsFor, type LineItem } from "@/lib/bill";
+import { mirrorTabToBill } from "@/domain/billing/mirror";
 
 /**
  * domain/billing/tab — the ONE place that reads or mutates a guest
@@ -98,6 +99,9 @@ export async function addItems(
     data: { lineItems: next as unknown as Prisma.InputJsonValue },
   });
 
+  // Phase 2 dual-write (no-op while BILLING_V2=off; never throws).
+  await mirrorTabToBill(db, session.id);
+
   return { ok: true, sessionId: updated.id, items: tabItems(updated.lineItems) };
 }
 
@@ -134,6 +138,11 @@ export async function appendTabLine(
       lineItems: [...existing, item] as unknown as Prisma.InputJsonValue,
     },
   });
+
+  // Phase 2 dual-write. Uses the SAME client so a caller inside a
+  // transaction keeps the mirror atomic with its append; no-op while
+  // BILLING_V2=off and never throws either way.
+  await mirrorTabToBill(client as Prisma.TransactionClient, session.id);
 }
 
 /**
