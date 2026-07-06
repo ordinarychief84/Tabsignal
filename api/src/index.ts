@@ -30,15 +30,23 @@ const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? "";
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET ?? "";
 const LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
 
-if (!INTERNAL_API_SECRET) {
-  console.warn(
-    "[tabsignal-api] INTERNAL_API_SECRET is empty — /internal/emit will reject all requests. Set it in .env."
-  );
-}
-if (!NEXTAUTH_SECRET) {
-  console.warn(
-    "[tabsignal-api] NEXTAUTH_SECRET is empty — Socket.io connections will be rejected. Set it in .env."
-  );
+// In production a missing secret means every emit / socket handshake
+// silently rejects — a relay that "runs" but relays nothing. Fail the
+// boot instead so Fly's health check flags the deploy immediately.
+// Local dev keeps the softer warning (you can poke /healthz without a
+// full .env).
+const missingSecrets = [
+  !INTERNAL_API_SECRET && "INTERNAL_API_SECRET",
+  !NEXTAUTH_SECRET && "NEXTAUTH_SECRET",
+].filter(Boolean) as string[];
+
+if (missingSecrets.length > 0) {
+  const msg = `[tabsignal-api] missing required env: ${missingSecrets.join(", ")}`;
+  if (process.env.NODE_ENV === "production") {
+    console.error(`${msg} — refusing to start a relay that can't relay.`);
+    process.exit(1);
+  }
+  console.warn(`${msg} — emits/socket auth will reject until set (dev warning).`);
 }
 
 const app = Fastify({ logger: { level: LOG_LEVEL } });
