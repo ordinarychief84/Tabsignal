@@ -4,10 +4,9 @@ import { Prisma } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import { events, emit } from "@/lib/realtime";
-import { parseLineItems, totalsFor, dollars } from "@/lib/bill";
-import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { subscriptionStatusFor } from "@/lib/stripe-helpers";
 import { markSessionPaidFromIntent, applyChargeRefundToSession } from "@/domain/billing/payment";
+import { applySplitPaidFromIntent } from "@/domain/billing/splits";
 
 export const runtime = "nodejs"; // raw body required for signature verification
 
@@ -207,60 +206,10 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       const sessionId = intent.metadata?.tabcall_session_id;
       const splitId = intent.metadata?.tabcall_split_id;
       // Split payment: mark the split, and mark the session paid only when
-      // every split has been settled. The non-split path falls through.
+      // every split has been settled (domain/billing/splits since PR 1.3).
+      // The non-split path falls through.
       if (splitId && sessionId) {
-        const split = await tx.billSplit.findUnique({ where: { id: splitId } });
-        if (!split || split.paidAt) return;
-        await tx.billSplit.update({
-          where: { id: splitId },
-          data: { paidAt: new Date(), stripePaymentIntentId: intent.id },
-        });
-
-        const allSplits = await tx.billSplit.findMany({
-          where: { sessionId },
-          select: { paidAt: true },
-        });
-        const allPaid = allSplits.every(s => s.paidAt !== null);
-
-        const session = await tx.guestSession.findUnique({
-          where: { id: sessionId },
-          include: {
-            venue: { select: { id: true, name: true, zipCode: true } },
-            table: { select: { label: true } },
-          },
-        });
-        if (!session) return;
-
-        if (allPaid && !session.paidAt) {
-          await tx.guestSession.update({
-            where: { id: sessionId },
-            data: { paidAt: new Date() },
-          });
-        }
-
-        // Tier 3c: award loyalty points for THIS split's contribution.
-        // Points never block the payment — wrap in try/catch so a points
-        // bug can't break the rest of the webhook.
-        if (session.guestProfileId) {
-          try {
-            await awardPoints(tx, session.guestProfileId, session.venueId, pointsForCents(split.amountCents));
-          } catch (loyaltyErr) {
-            console.error("loyalty:award:split failed", loyaltyErr);
-          }
-        }
-
-        const totals = totalsFor(parseLineItems(session.lineItems), session.venue.zipCode ?? "", 0);
-        void events.paymentConfirmed(session.venueId, session.id, {
-          sessionId: session.id,
-          tableLabel: session.table.label,
-          venueName: session.venue.name,
-          totalCents: totals.subtotalCents + totals.taxCents,
-          tipCents: 0,
-          tipPercent: 0,
-          totalDisplay: dollars(totals.subtotalCents + totals.taxCents),
-          paymentIntentId: intent.id,
-          split: { splitId, allPaid },
-        });
+        await applySplitPaidFromIntent(tx, sessionId, splitId, intent);
         return;
       }
 

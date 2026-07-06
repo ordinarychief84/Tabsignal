@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { stripe, stripeErrorResponse } from "@/lib/stripe";
+import { stripeErrorResponse } from "@/lib/stripe";
+import { createSplitPaymentIntent } from "@/domain/billing/splits";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -50,48 +51,20 @@ export async function POST(
   if (!split) return NextResponse.json({ error: "SPLIT_NOT_FOUND" }, { status: 404 });
   if (split.paidAt) return NextResponse.json({ error: "SPLIT_ALREADY_PAID" }, { status: 410 });
 
-  // Tip is layered on TOP of the split's pre-tax amount. The split was sized
-  // by subtotal+tax; the payer chooses their own tip percent.
-  const tipPercent = parsed.tipPercent ?? split.tipPercent;
-  const tipCents = Math.round(split.amountCents * (Math.max(0, Math.min(50, tipPercent)) / 100));
-  const totalCents = split.amountCents + tipCents;
-  if (totalCents <= 0) return NextResponse.json({ error: "EMPTY_SPLIT" }, { status: 400 });
-
-  const platformFeeCents = Math.round(totalCents * 0.005);
-  const idempotencyKey = `pi_split_${split.id}_${totalCents}`;
-
-  let intent;
+  // Tip layering, idempotency key, and PI metadata pins live in
+  // domain/billing/splits. Stripe errors propagate for mapping here.
+  let result;
   try {
-    intent = await stripe().paymentIntents.create(
-      {
-        amount: totalCents,
-        currency: "usd",
-        automatic_payment_methods: { enabled: true },
-        metadata: {
-          tabcall_session_id: session.id,
-          tabcall_split_id: split.id,
-          tabcall_venue_id: session.venueId,
-          tabcall_table_id: session.tableId,
-          tip_cents: String(tipCents),
-          tip_percent: String(tipPercent),
-        },
-        ...(session.venue.stripeAccountId
-          ? {
-              application_fee_amount: platformFeeCents,
-              transfer_data: { destination: session.venue.stripeAccountId },
-            }
-          : {}),
-      },
-      { idempotencyKey }
-    );
+    result = await createSplitPaymentIntent(session, split, parsed.tipPercent);
   } catch (err) {
     return stripeErrorResponse(err, "[session/splits/payment]");
   }
+  if (!result.ok) return NextResponse.json({ error: "EMPTY_SPLIT" }, { status: 400 });
 
   await db.billSplit.update({
     where: { id: split.id },
-    data: { stripePaymentIntentId: intent.id, tipPercent },
+    data: { stripePaymentIntentId: result.paymentIntentId, tipPercent: result.tipPercent },
   });
 
-  return NextResponse.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id });
+  return NextResponse.json({ clientSecret: result.clientSecret, paymentIntentId: result.paymentIntentId });
 }

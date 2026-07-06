@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
-import { parseLineItems, totalsFor } from "@/lib/bill";
+import { tabItems, tabTotals } from "@/domain/billing/tab";
 
 async function gatePool(slug: string, poolId: string) {
   const gate = await gateAdminRoute(slug, "growth", "tip_pools.manage");
@@ -66,7 +66,7 @@ export async function PATCH(req: Request, ctx: { params: { slug: string; id: str
 
   if (parsed.close) {
     // Sum tip cents from sessions paid since pool start. We compute via
-    // totalsFor() rather than reading Stripe so the math survives even if
+    // tabTotals() rather than reading Stripe so the math survives even if
     // the Stripe charge id is missing.
     const sessions = await db.guestSession.findMany({
       where: {
@@ -77,8 +77,8 @@ export async function PATCH(req: Request, ctx: { params: { slug: string; id: str
     });
     let totalTipsCents = 0;
     for (const s of sessions) {
-      const items = parseLineItems(s.lineItems);
-      const t = totalsFor(items, gate.venue.zipCode ?? "", typeof s.tipPercent === "number" ? s.tipPercent : 0);
+      const items = tabItems(s.lineItems);
+      const t = tabTotals(items, gate.venue.zipCode ?? "", typeof s.tipPercent === "number" ? s.tipPercent : 0);
       totalTipsCents += t.tipCents;
     }
 
