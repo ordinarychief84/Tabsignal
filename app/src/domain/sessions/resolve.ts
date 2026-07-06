@@ -120,30 +120,7 @@ export async function resolveGuestSession(
   );
 }
 
-/**
- * Resolves a guest landing on the flat /guest/[qrToken] route. The token
- * itself identifies the table — no slug or table id in the URL.
- *
- * Throws "TABLE_NOT_FOUND" if the qrToken matches no table; throws
- * "VENUE_NOT_FOUND" if the table somehow lacks a venue (shouldn't happen
- * given the FK, but we belt-and-suspenders for the page's error handler).
- */
-export async function resolveByQrToken(
-  qrToken: string,
-): Promise<ResolvedSession> {
-  if (!qrToken) throw new Error("TABLE_NOT_FOUND");
-
-  const table = await db.table.findUnique({
-    where: { qrToken },
-    include: {
-      venue: { select: { id: true, name: true, slug: true } },
-    },
-  });
-  if (!table) throw new Error("TABLE_NOT_FOUND");
-  if (!table.venue) throw new Error("VENUE_NOT_FOUND");
-
-  return findOrCreateLiveSession(
-    { id: table.venue.id, name: table.venue.name, slug: table.venue.slug },
-    { id: table.id, label: table.label },
-  );
-}
+// resolveByQrToken (the flat /guest/[qrToken] resolver) was deleted in
+// restructure PR 3.1 together with the orphaned guest surface — QR
+// generation always emitted /v/{slug}/t/{label}?s= URLs, so nothing
+// ever reached it.
