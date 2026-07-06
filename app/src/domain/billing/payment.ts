@@ -5,6 +5,7 @@ import { dollars } from "@/lib/bill";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { events, emit } from "@/lib/realtime";
 import { tabItems, tabTotals, appendTabLine } from "@/domain/billing/tab";
+import { mirrorBillPaidInFull, mirrorBillRefund } from "@/domain/billing/mirror";
 
 /**
  * domain/billing/payment — the session payment lifecycle:
@@ -149,6 +150,10 @@ export async function markSessionPaidFromIntent(
     totalDisplay: dollars(totals.totalCents),
     paymentIntentId: intent.id,
   });
+
+  // Phase 2 dual-write: settle the mirrored bill (tip becomes known
+  // here). No-op at BILLING_V2=off; never throws.
+  await mirrorBillPaidInFull(tx, session.id, totals.tipCents);
 }
 
 /* ------------------------ webhook: session refund ----------------------- */
@@ -202,5 +207,9 @@ export async function applyChargeRefundToSession(
       chargeId: charge.id,
     },
   });
+
+  // Phase 2 dual-write: the refund line was already mirrored by the
+  // appendTabLine rebuild above; flip the bill status on full refunds.
+  await mirrorBillRefund(tx, sessionMatch.id, charge.amount_refunded === charge.amount);
   return true;
 }
