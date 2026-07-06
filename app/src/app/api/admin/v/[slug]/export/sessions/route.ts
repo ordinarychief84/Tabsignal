@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
 import { csv, csvResponseHeaders } from "@/lib/csv";
-import { parseLineItems, totalsFor } from "@/lib/bill";
+import { tabItems, tabTotals } from "@/domain/billing/tab";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +39,9 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
   const out = csv([
     ["sessionId", "paidAtIso", "table", "subtotalUsd", "taxUsd", "tipUsd", "totalUsd", "tipPercent", "stripePaymentIntent"],
     ...sessions.map(s => {
-      const items = parseLineItems(s.lineItems);
+      const items = tabItems(s.lineItems);
       const tip = typeof s.tipPercent === "number" ? s.tipPercent : 0;
-      const t = totalsFor(items, venue.zipCode ?? "", tip);
+      const t = tabTotals(items, venue.zipCode ?? "", tip);
       return [
         s.id,
         s.paidAt!.toISOString(),
