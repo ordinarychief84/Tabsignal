@@ -37,7 +37,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const v = await db.venue.findUnique({
     where: { id: ctx.params.id },
     include: {
-      org: { select: { id: true, name: true, plan: true } },
+      org: { select: { id: true, name: true, subscriptionPriceId: true, subscriptionStatus: true } },
       _count: { select: { staff: true, tables: true, sessions: true, requests: true, feedback: true } },
     },
   });

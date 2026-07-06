@@ -9,6 +9,7 @@
 import { db } from "@/lib/db";
 import type { SessionClaims } from "./auth/token";
 import { isPlatformStaff } from "./auth/operator";
+import { planFromOrg } from "./plans";
 
 export type OrgRole = "OWNER" | "ADMIN" | "VIEWER" | "PLATFORM";
 
@@ -19,23 +20,45 @@ export type OrgAccess = {
 };
 
 // All orgs the caller can see. Platform staff sees every org; non-staff
-// sees only orgs they have a membership row for.
+// sees only orgs they have a membership row for. `plan` is DERIVED from
+// the Stripe subscription (restructure P3.4 retired Organization.plan).
+const ORG_SUMMARY_SELECT = {
+  id: true,
+  name: true,
+  createdAt: true,
+  subscriptionPriceId: true,
+  subscriptionStatus: true,
+} as const;
+
+type OrgSummaryRow = {
+  id: string;
+  name: string;
+  createdAt: Date;
+  subscriptionPriceId: string | null;
+  subscriptionStatus: string;
+};
+
+function toOrgSummary(org: OrgSummaryRow) {
+  return { id: org.id, name: org.name, createdAt: org.createdAt, plan: planFromOrg(org) };
+}
+
 export async function listAccessibleOrgs(session: SessionClaims) {
   const email = session.email.toLowerCase();
   if (isPlatformStaff(session)) {
-    return db.organization.findMany({
+    const orgs = await db.organization.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, plan: true, createdAt: true },
+      select: ORG_SUMMARY_SELECT,
     });
+    return orgs.map(toOrgSummary);
   }
   const memberships = await db.orgMember.findMany({
     where: { email },
     include: {
-      org: { select: { id: true, name: true, plan: true, createdAt: true } },
+      org: { select: ORG_SUMMARY_SELECT },
     },
   });
   return memberships
-    .map(m => m.org)
+    .map(m => toOrgSummary(m.org))
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
