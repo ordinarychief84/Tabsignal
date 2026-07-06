@@ -136,7 +136,26 @@ export async function POST(req: Request) {
         where: whereStaff,
         select: { id: true, fcmToken: true },
       });
-      const tokens = recipients.map(r => r.fcmToken).filter((t): t is string => !!t);
+      // Paired smartwatches ride the same targeting: watches belonging
+      // to the staff the phone push targets. Wear tokens live on
+      // WearDevice (not StaffMember.fcmToken) so phones and watches
+      // buzz independently.
+      const wearWhere = assignedStaffIds.length > 0
+        ? { staffId: { in: assignedStaffIds }, revokedAt: null, fcmToken: { not: null } }
+        : {
+            staff: { venueId: session.venueId, status: "ACTIVE" as const },
+            revokedAt: null,
+            fcmToken: { not: null },
+          };
+      const wearDevices = await db.wearDevice.findMany({
+        where: wearWhere,
+        select: { id: true, fcmToken: true },
+      });
+
+      const tokens = [
+        ...recipients.map(r => r.fcmToken),
+        ...wearDevices.map(d => d.fcmToken),
+      ].filter((t): t is string => !!t);
       if (tokens.length === 0) return;
 
       const { invalidTokens } = await sendPushToStaff(tokens, {
@@ -153,6 +172,10 @@ export async function POST(req: Request) {
       // Prune dead tokens so subsequent pushes don't waste a slot on them.
       if (invalidTokens.length > 0) {
         await db.staffMember.updateMany({
+          where: { fcmToken: { in: invalidTokens } },
+          data: { fcmToken: null },
+        });
+        await db.wearDevice.updateMany({
           where: { fcmToken: { in: invalidTokens } },
           data: { fcmToken: null },
         });

@@ -1,11 +1,25 @@
 import { notFound } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
+import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { dollars } from "@/lib/bill";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
+import { SITE_URL } from "@/lib/seo";
 import { WishlistHeart } from "./wishlist-heart";
 
 export const dynamic = "force-dynamic";
+
+// Venue menus are public and in the sitemap — each venue's menu page is
+// local-SEO surface area for that venue ("<venue> menu" queries).
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const venue = await db.venue.findUnique({ where: { slug: params.slug }, select: { name: true } });
+  if (!venue) return {};
+  return {
+    title: `${venue.name} Menu — Browse, Order & Pay by QR`,
+    description: `See the live menu at ${venue.name}. Browse dishes and drinks, order from your table and pay by QR code — no app needed. Powered by TabCall.`,
+    alternates: { canonical: `${SITE_URL}/v/${params.slug}/menu` },
+  };
+}
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -34,7 +48,7 @@ export default async function PublicMenuPage({
       id: true,
       name: true,
       brandColor: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) notFound();

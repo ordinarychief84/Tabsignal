@@ -1,20 +1,21 @@
 /**
  * POST /api/admin/staff/[id]/resend-invite
  *
- * Mints a fresh magic-link for an INVITED (or otherwise stuck) staff
- * row and re-sends the welcome email. Useful when:
- *   - The original invite expired (15-minute TTL)
+ * Mints a fresh 7-day invite link for an INVITED (or otherwise stuck)
+ * staff row and re-sends the invite email. Useful when:
+ *   - The original invite expired
  *   - The invitee swears they never received it (spam folder, typo
  *     they want re-sent, etc.)
  *
- * Manager-tier action; emits an audit row.
+ * Manager-tier action; emits an audit row. The fresh link is returned
+ * to the caller so it can be copied and handed over out-of-band.
  */
 
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { signLinkToken } from "@/lib/auth/token";
-import { sendMagicLinkEmail } from "@/lib/auth/email";
+import { signInviteToken } from "@/lib/auth/token";
+import { sendStaffInviteEmail } from "@/lib/auth/email";
 import { can } from "@/lib/auth/permissions";
 import { audit } from "@/lib/audit";
 import { appOrigin } from "@/lib/origin";
@@ -42,16 +43,16 @@ export async function POST(req: Request, ctx: Ctx) {
     );
   }
 
-  const token = await signLinkToken({ kind: "link", staffId: target.id, email: target.email });
+  const token = await signInviteToken({ kind: "link", staffId: target.id, email: target.email });
   const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
 
-  let devLink: string | null = null;
   let delivered = true;
   try {
-    await sendMagicLinkEmail({
+    await sendStaffInviteEmail({
       to: target.email,
       staffName: target.name,
       venueName: target.venue.name,
+      role: null,
       link,
     });
   } catch (err) {
@@ -62,8 +63,6 @@ export async function POST(req: Request, ctx: Ctx) {
       statusCode: e.statusCode,
       message: e.message,
     });
-    const allowDevLinks = process.env.TABSIGNAL_DEV_LINKS === "true" || process.env.NODE_ENV === "development";
-    if (allowDevLinks) devLink = link;
   }
 
   void audit({
@@ -75,5 +74,7 @@ export async function POST(req: Request, ctx: Ctx) {
     metadata: { email: target.email, delivered },
   });
 
-  return NextResponse.json({ ok: true, delivered, devLink });
+  // inviteLink returned for the copy-to-clipboard fallback in the People
+  // panel; devLink kept for older clients that only read it on failure.
+  return NextResponse.json({ ok: true, delivered, inviteLink: link, devLink: delivered ? null : link });
 }

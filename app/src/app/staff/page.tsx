@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
@@ -33,6 +34,13 @@ export default async function StaffPage() {
             <p className="text-sm font-medium text-slate">Live queue</p>
           </div>
           <LiveClock />
+          <Link
+            href="/staff/watch"
+            aria-label="Pair a smartwatch"
+            className="rounded-lg border border-umber-soft/40 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
+          >
+            ⌚ Watch
+          </Link>
           <form action="/api/auth/logout" method="post">
             <button
               type="submit"

@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata: Metadata = {
-  title: "TabCall · Forgot password",
+  title: "Forgot password",
   description: "Reset your TabCall password by email.",
+  robots: { index: false, follow: true },
 };
 
 /**

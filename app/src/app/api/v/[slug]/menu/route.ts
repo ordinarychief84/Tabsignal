@@ -11,7 +11,7 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
     select: {
       id: true,
       name: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });

@@ -351,9 +351,57 @@ model StaffMember {
   ackedRequests Request[]         @relation("AcknowledgedBy")
   assignments   TableAssignment[]
   passwordResets PasswordResetToken[]
+  wearDevices   WearDevice[]
 
   @@index([venueId])
   @@index([venueId, status])
+}
+
+// =====================================================================
+// Wearables — paired smartwatches for floor staff (see sdk/tabcall-wear)
+// =====================================================================
+
+// A watch (or other wearable) paired to one staff member. Watches
+// authenticate with a long-lived bearer JWT (kind:"wear") that names
+// this row; verification refuses tokens minted before tokenIssuedAt
+// (rotated on re-pair) or for revoked/suspended rows, so "Revoke" in
+// the staff console kills a lost watch instantly.
+model WearDevice {
+  id            String      @id @default(cuid())
+  staffId       String
+  staff         StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  // Human label shown in the staff console ("Maya's Galaxy Watch").
+  name          String
+  // "wearos" | "watchos" | "tizen" | "fitbit" | ... — free text so a new
+  // platform doesn't need a migration.
+  platform      String
+  // Push token registered by the watch app itself (FCM on Wear OS).
+  // Separate from StaffMember.fcmToken (the phone PWA) so pairing a
+  // watch doesn't clobber phone push.
+  fcmToken      String?
+  // Lower bound on accepted JWT iat for this device.
+  tokenIssuedAt DateTime  @default(now())
+  revokedAt     DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([staffId])
+}
+
+// Single-use, short-TTL numeric codes bridging phone → watch pairing.
+// The staff member generates a code on their (already authenticated)
+// phone; the watch claims it with no other credentials. Stored hashed
+// so a DB read can't mint watch sessions.
+model WearPairCode {
+  id        String    @id @default(cuid())
+  staffId   String
+  codeHash  String    @unique
+  expiresAt DateTime
+  claimedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([staffId, createdAt])
+  @@index([expiresAt])
 }
 
 // Append-only audit trail for sensitive admin actions. Today we emit

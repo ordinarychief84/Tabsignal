@@ -31,58 +31,99 @@ const Required = z.object({
   NEXT_PUBLIC_SOCKET_URL: z.string().url(),
 });
 
+// Optional integration vars. Two hard-won rules encoded here:
+//
+//   1. `""` (or whitespace) counts as ABSENT. Vercel's dashboard and
+//      copied .env templates routinely leave optional vars as empty
+//      strings; `z.string().email().optional()` rejects "" and a single
+//      empty placeholder used to kill `next build` (and would 500 every
+//      route at runtime, since this module parses at import).
+//   2. A malformed value must only disable ITS integration, never the
+//      app. parseOptionalEnv() below validates field-by-field, warns,
+//      and drops bad values instead of throwing.
+const emptyAsAbsent = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+const optionalString = z.preprocess(emptyAsAbsent, z.string().optional());
+const optionalEmail = z.preprocess(emptyAsAbsent, z.string().email().optional());
+const optionalUrl = z.preprocess(emptyAsAbsent, z.string().url().optional());
+
 const Optional = z.object({
   // Stripe
-  STRIPE_SECRET_KEY: z.string().optional(),
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_SECRET_KEY: optionalString,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalString,
+  STRIPE_WEBHOOK_SECRET: optionalString,
 
   // Anthropic
-  ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().optional(),
+  ANTHROPIC_API_KEY: optionalString,
+  ANTHROPIC_MODEL: optionalString,
 
   // Resend
-  RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM: z.string().optional(),
+  RESEND_API_KEY: optionalString,
+  RESEND_FROM: optionalString,
 
   // Operator
-  OPERATOR_EMAILS: z.string().optional(),
+  OPERATOR_EMAILS: optionalString,
 
   // Twilio (reservations + waitlist + loyalty OTP). Optional in dev — the
   // SMS adapter mocks when these are absent.
-  TWILIO_ACCOUNT_SID: z.string().optional(),
-  TWILIO_AUTH_TOKEN: z.string().optional(),
-  TWILIO_FROM_NUMBER: z.string().optional(),
+  TWILIO_ACCOUNT_SID: optionalString,
+  TWILIO_AUTH_TOKEN: optionalString,
+  TWILIO_FROM_NUMBER: optionalString,
 
   // Benchmarks cron — bearer token gating /api/cron/benchmarks. Optional
   // in dev (the cron only runs in prod via Vercel Cron).
-  BENCHMARK_CRON_SECRET: z.string().optional(),
+  BENCHMARK_CRON_SECRET: optionalString,
 
   // Supabase Storage. NEXT_PUBLIC_SUPABASE_URL + the service role key
   // power server-side image uploads (venue logos, etc.). Service role is
   // server-only — never expose to the browser. Optional in dev: the
   // upload endpoint surfaces a clear "not configured" error if missing.
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: optionalUrl,
+  SUPABASE_SERVICE_ROLE_KEY: optionalString,
 
   // Firebase Cloud Messaging — server credentials. Required to push to
   // backgrounded staff PWAs; optional everywhere (lib/fcm.ts warns and
   // no-ops when absent). The private key is stored with literal "\n"
   // sequences in Vercel and converted to real newlines at read time.
-  FIREBASE_PROJECT_ID: z.string().optional(),
-  FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
-  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  FIREBASE_PROJECT_ID: optionalString,
+  FIREBASE_CLIENT_EMAIL: optionalEmail,
+  FIREBASE_PRIVATE_KEY: optionalString,
 
   // Firebase web config — public by design (the web SDK publishes these
   // values). The browser registers the SW with these as URL params and
   // mints a token via getToken(). All optional in dev.
-  NEXT_PUBLIC_FIREBASE_API_KEY: z.string().optional(),
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().optional(),
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: z.string().optional(),
-  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().optional(),
-  NEXT_PUBLIC_FIREBASE_APP_ID: z.string().optional(),
-  NEXT_PUBLIC_FIREBASE_VAPID_KEY: z.string().optional(),
+  NEXT_PUBLIC_FIREBASE_API_KEY: optionalString,
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: optionalString,
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: optionalString,
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: optionalString,
+  NEXT_PUBLIC_FIREBASE_APP_ID: optionalString,
+  NEXT_PUBLIC_FIREBASE_VAPID_KEY: optionalString,
 });
+
+/**
+ * Field-by-field tolerant parse of the Optional block. A malformed value
+ * (e.g. FIREBASE_CLIENT_EMAIL="tabcall-fcm" — not an email) logs a loud
+ * warning and is dropped, disabling only the integration that reads it.
+ * Never throws.
+ */
+function parseOptionalEnv(): z.infer<typeof Optional> {
+  const out: Record<string, string | undefined> = {};
+  const issues: string[] = [];
+  for (const [key, schema] of Object.entries(Optional.shape)) {
+    const result = (schema as z.ZodTypeAny).safeParse(process.env[key]);
+    if (result.success) {
+      if (result.data !== undefined) out[key] = result.data as string;
+    } else {
+      issues.push(`${key}: ${result.error.errors[0]?.message ?? "invalid"}`);
+    }
+  }
+  if (issues.length > 0) {
+    console.warn(
+      `[env] Ignoring malformed optional env (the integrations reading these are disabled until fixed):\n  ${issues.join("\n  ")}`,
+    );
+  }
+  return out as z.infer<typeof Optional>;
+}
 
 const ProdRequired = z.object({
   STRIPE_SECRET_KEY: z.string().regex(/^sk_(live|test)_/),
@@ -90,9 +131,15 @@ const ProdRequired = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().regex(/^whsec_/),
   ANTHROPIC_API_KEY: z.string().regex(/^sk-ant-/),
   RESEND_API_KEY: z.string().regex(/^re_/),
-  RESEND_FROM: z.string().email().refine(
-    s => !s.endsWith("@resend.dev"),
-    "RESEND_FROM in production must be a verified domain — onboarding@resend.dev only delivers to verified test addresses",
+  // Accepts both bare addresses and Resend's display-name form
+  // ("TabCall <alerts@tab-call.com>") — .email() alone rejected the
+  // latter and would have crashed prod boot on a perfectly valid value.
+  RESEND_FROM: z.string().refine(
+    s => {
+      const addr = /<([^>]+)>\s*$/.exec(s)?.[1] ?? s;
+      return z.string().email().safeParse(addr.trim()).success && !addr.trim().endsWith("@resend.dev");
+    },
+    "RESEND_FROM must be a valid sender (name <email@verified-domain> or bare email); resend.dev only delivers to test addresses",
   ),
   // Required in prod because the rate limiter falls back to an in-memory
   // Map that resets on every Vercel cold start — i.e. effectively no
@@ -126,12 +173,12 @@ function parseEnv() {
         FASTIFY_INTERNAL_URL: process.env.FASTIFY_INTERNAL_URL ?? "",
         INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET ?? "",
         NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL ?? "",
-        ...Optional.parse(process.env),
+        ...parseOptionalEnv(),
       };
     }
     throw new Error(`Missing required env:\n  ${issues}`);
   }
-  const optional = Optional.parse(process.env);
+  const optional = parseOptionalEnv();
 
   if (isProd && !isBuildPhase) {
     const prod = ProdRequired.safeParse(process.env);

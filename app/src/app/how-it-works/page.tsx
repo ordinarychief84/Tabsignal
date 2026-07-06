@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MarketingNav, MarketingFooter } from "../marketing-chrome";
+import { pageMetadata } from "@/lib/seo";
 
 /**
  * /how-it-works. Written in About-us page format (Mission, What we do, the
@@ -11,11 +12,18 @@ import { MarketingNav, MarketingFooter } from "../marketing-chrome";
  * AI-slop language.
  */
 
-export const metadata: Metadata = {
-  title: "TabCall · How it works",
+export const metadata: Metadata = pageMetadata({
+  title: "How It Works — Scan, Signal, Serve: QR Table Service in 3 Steps",
   description:
-    "TabCall is the hospitality platform that sits on top of your POS. Guests scan a QR. Staff get pinged. Operations run on data, not vibes.",
-};
+    "How TabCall works: guests scan the table QR to order, pay or call a waiter; staff phones and smartwatches buzz; unanswered requests escalate to the manager. On top of your POS — no new hardware.",
+  path: "/how-it-works",
+  keywords: [
+    "how QR table ordering works",
+    "restaurant workflow automation",
+    "waiter call system how it works",
+    "reduce restaurant wait times",
+  ],
+});
 
 export default function HowItWorksPage() {
   return (

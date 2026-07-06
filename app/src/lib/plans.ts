@@ -90,13 +90,43 @@ export function meetsAtLeast(current: PlanId, required: PlanId): boolean {
 // fix payment. CANCELED / NONE drops them back to free.
 const ACCESS_GRANTING: ReadonlyArray<string> = ["ACTIVE", "TRIALING", "PAST_DUE"];
 
+// Every new self-serve org starts on this many days of Growth, no card
+// required. Signup stamps subscriptionStatus=TRIALING + trialEndsAt;
+// planFromOrg below grants Growth until the stamp expires, then the org
+// falls back to free automatically — no cron needed.
+export const PLATFORM_TRIAL_DAYS = 14;
+export const PLATFORM_TRIAL_PLAN: PlanId = "growth";
+
 type OrgPlanFields = {
   subscriptionPriceId: string | null;
   subscriptionStatus: string;
+  // Optional so legacy call sites that don't select it keep compiling —
+  // they simply don't honor platform trials.
+  trialEndsAt?: Date | string | null;
 };
 
 export function planFromOrg(org: OrgPlanFields): PlanId {
   if (!ACCESS_GRANTING.includes(org.subscriptionStatus)) return "free";
-  if (!org.subscriptionPriceId) return "free";
+  if (!org.subscriptionPriceId) {
+    // Platform trial: TRIALING with no Stripe subscription behind it.
+    // Time-boxed by trialEndsAt; expiry downgrades to free lazily on
+    // the next read (webhooks never fire for card-less trials).
+    if (org.subscriptionStatus === "TRIALING" && org.trialEndsAt) {
+      const ends = new Date(org.trialEndsAt);
+      if (!Number.isNaN(ends.getTime()) && ends.getTime() > Date.now()) {
+        return PLATFORM_TRIAL_PLAN;
+      }
+    }
+    return "free";
+  }
   return planByPriceId(org.subscriptionPriceId) ?? "free";
+}
+
+/** Days left in a platform trial; null when not on a card-less trial. */
+export function trialDaysLeft(org: OrgPlanFields): number | null {
+  if (org.subscriptionStatus !== "TRIALING" || org.subscriptionPriceId || !org.trialEndsAt) return null;
+  const ends = new Date(org.trialEndsAt);
+  if (Number.isNaN(ends.getTime())) return null;
+  const days = Math.ceil((ends.getTime() - Date.now()) / 86_400_000);
+  return days > 0 ? days : null;
 }

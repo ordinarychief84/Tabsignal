@@ -31,7 +31,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       venue: {
         select: {
           zipCode: true,
-          org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+          org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
         },
       },
       splits: { select: { id: true, paidAt: true } },

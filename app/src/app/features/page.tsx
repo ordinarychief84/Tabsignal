@@ -2,12 +2,19 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { FEATURES } from "@/lib/features-data";
 import { MarketingNav, MarketingFooter } from "../marketing-chrome";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "TabCall · Features",
+export const metadata: Metadata = pageMetadata({
+  title: "Features — QR Ordering, Pay-at-Table, Waiter Calls & More",
   description:
-    "Everything TabCall does: QR payments, QR orders, digital menu, wishlist, promotions, POS integration, call waiter, reviews, analytics.",
-};
+    "Everything TabCall does for restaurants and bars: QR code payments, table ordering, digital menus, waiter call button, promotions, POS integration, review intercept and floor analytics.",
+  path: "/features",
+  keywords: [
+    "restaurant technology features",
+    "QR ordering features",
+    "table service software",
+  ],
+});
 
 export default function FeaturesPage() {
   return (

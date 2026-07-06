@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { PLANS, planByPriceId } from "@/lib/plans";
+import { PLANS, planFromOrg, planById, trialDaysLeft } from "@/lib/plans";
 import { BillingPanel } from "./billing-panel";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +23,11 @@ export default async function BillingPage({
   });
   if (!venue || venue.id !== session.venueId) return null;
 
-  const currentPlan = venue.org.subscriptionPriceId
-    ? planByPriceId(venue.org.subscriptionPriceId) ?? "free"
-    : "free";
+  // Single source of truth for "what plan are they actually on" —
+  // honors subscription status (CANCELED ≠ still paid) and card-less
+  // platform trials, unlike a bare priceId lookup.
+  const currentPlan = planFromOrg(venue.org);
+  const platformTrialDays = trialDaysLeft(venue.org);
 
   return (
     <>
@@ -33,7 +35,8 @@ export default async function BillingPage({
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Plan</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Billing</h1>
         <p className="mt-2 text-sm text-slate/60">
-          You&rsquo;re on the <strong>{currentPlan === "free" ? "Starter" : currentPlan}</strong> plan.
+          You&rsquo;re on the <strong>{planById(currentPlan)?.name ?? currentPlan}</strong> plan
+          {platformTrialDays !== null ? <> (free trial)</> : null}.
           {venue.org.subscriptionPeriodEnd ? (
             <> Renews {new Date(venue.org.subscriptionPeriodEnd).toLocaleDateString()}.</>
           ) : null}
@@ -64,6 +67,7 @@ export default async function BillingPage({
         hasSubscription={!!venue.org.subscriptionPriceId}
         status={venue.org.subscriptionStatus}
         trialEndsAt={venue.org.trialEndsAt?.toISOString() ?? null}
+        platformTrialDays={platformTrialDays}
       />
     </>
   );

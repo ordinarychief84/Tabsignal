@@ -3,12 +3,13 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { slugify } from "@/lib/slug";
 import { newQrToken } from "@/lib/qr";
-import { signLinkToken } from "@/lib/auth/token";
+import { signInviteToken, signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 import { hashStaffPassword } from "@/lib/auth/staff-password";
 import { isE164 } from "@/lib/countries";
 import { appOrigin } from "@/lib/origin";
 import { rateLimitAsync } from "@/lib/rate-limit";
+import { PLATFORM_TRIAL_DAYS } from "@/lib/plans";
 
 /**
  * Self-serve restaurant signup.
@@ -181,6 +182,12 @@ export async function POST(req: Request) {
     const org = await tx.organization.create({
       data: {
         name: parsed.restaurantName,
+        // Card-less platform trial: full Growth features for the first
+        // PLATFORM_TRIAL_DAYS. planFromOrg() downgrades to free lazily
+        // when trialEndsAt passes; a real Stripe subscription (webhook)
+        // overwrites both fields when they upgrade.
+        subscriptionStatus: "TRIALING",
+        trialEndsAt: new Date(Date.now() + PLATFORM_TRIAL_DAYS * 86_400_000),
         venues: {
           create: {
             slug,
@@ -231,13 +238,19 @@ export async function POST(req: Request) {
   });
 
   // Mint a magic-link for email verification. Clicking it routes the
-  // owner to the dashboard with a session cookie set + emailVerifiedAt
-  // stamped, so they can subsequently log in with email+password.
-  const token = await signLinkToken({
+  // owner to the onboarding launchpad with a session cookie set +
+  // emailVerifiedAt stamped, so they can subsequently log in with
+  // email+password. The launchpad walks brand → QRs → team → payments
+  // → go-live; progress persists server-side on the venue row.
+  //
+  // 7-day TTL (signInviteToken), not the 15-minute sign-in TTL: owners
+  // routinely sign up mid-shift and open the email hours later. Still
+  // single-use via the jti burn in /api/auth/callback.
+  const token = await signInviteToken({
     kind: "link",
     staffId: result.staffId,
     email,
-    next: `/admin/v/${result.venue.slug}`,
+    next: `/admin/v/${result.venue.slug}/onboarding`,
   });
   const link = `${appOrigin(req)}/api/auth/callback?token=${encodeURIComponent(token)}`;
 

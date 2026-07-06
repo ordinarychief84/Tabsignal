@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { FEATURES, getFeature } from "@/lib/features-data";
 import { MarketingNav, MarketingFooter } from "../../marketing-chrome";
+import { JsonLd } from "../../json-ld";
+import { FEATURE_SEO, breadcrumbLd, pageMetadata } from "@/lib/seo";
 
 type Params = { params: { slug: string } };
 
@@ -10,13 +12,19 @@ export function generateStaticParams() {
   return FEATURES.map((f) => ({ slug: f.slug }));
 }
 
+// Each feature detail page targets one search intent (see FEATURE_SEO
+// in lib/seo) — e.g. /features/call-waiter competes for "call waiter
+// button", not for the generic brand query.
 export function generateMetadata({ params }: Params): Metadata {
   const f = getFeature(params.slug);
-  if (!f) return { title: "TabCall · feature" };
-  return {
-    title: `TabCall · ${f.title}`,
-    description: f.tagline,
-  };
+  if (!f) return { title: "Feature" };
+  const seo = FEATURE_SEO[f.slug];
+  return pageMetadata({
+    title: seo?.title ?? f.title,
+    description: seo?.description ?? f.tagline,
+    path: `/features/${f.slug}`,
+    keywords: seo?.keywords,
+  });
 }
 
 export default function FeatureDetailPage({ params }: Params) {
@@ -28,6 +36,15 @@ export default function FeatureDetailPage({ params }: Params) {
 
   return (
     <main className="bg-oat text-slate">
+      <JsonLd
+        nodes={[
+          breadcrumbLd([
+            { name: "Home", path: "/" },
+            { name: "Features", path: "/features" },
+            { name: feature.title, path: `/features/${feature.slug}` },
+          ]),
+        ]}
+      />
       <MarketingNav />
 
       <section className="relative overflow-hidden border-b border-umber-soft/30 bg-oat">

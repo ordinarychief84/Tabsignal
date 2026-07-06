@@ -66,7 +66,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
       zipCode: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
-      org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+      org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });
   if (!venue) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });

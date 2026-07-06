@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { MarketingNav, MarketingFooter } from "../marketing-chrome";
+import { JsonLd } from "../json-ld";
+import { faqPageLd, pageMetadata, softwareApplicationLd, type FaqEntry } from "@/lib/seo";
 
 /**
  * Scoped pricing page. Renders only the pricing tiers + nav + footer.
@@ -9,11 +11,49 @@ import { MarketingNav, MarketingFooter } from "../marketing-chrome";
  * /how-it-works.
  */
 
-export const metadata: Metadata = {
-  title: "TabCall · Pricing",
+export const metadata: Metadata = pageMetadata({
+  title: "Pricing — Free QR Ordering Plan, Growth $99/mo, Pro $299/mo",
   description:
-    "Starter is free at 5 tables. Growth ($99/mo) and Pro ($299/mo) start with a 14-day free trial. Founding is concierge only.",
-};
+    "TabCall pricing: Starter is free for up to 5 tables. Growth ($99/mo) adds menus, pre-orders and analytics; Pro ($299/mo) adds multi-location and branding. 14-day free trial, no card required.",
+  path: "/pricing",
+  keywords: [
+    "TabCall pricing",
+    "QR ordering system cost",
+    "restaurant QR code system price",
+    "free QR menu plan",
+    "pay at table pricing",
+  ],
+});
+
+// Rendered as the visible FAQ section AND serialized as FAQPage JSON-LD —
+// keep the two in lockstep (Google penalizes schema for invisible content).
+const PRICING_FAQS: FaqEntry[] = [
+  {
+    question: "Is the Starter plan really free?",
+    answer:
+      "Yes. Starter is free forever for up to 5 tables — QR requests, live staff alerts and Stripe pay-at-table included. TabCall earns a 0.5% platform fee on transactions, so we only make money when your tables do.",
+  },
+  {
+    question: "Do I need to replace my POS?",
+    answer:
+      "No. TabCall sits on top of your existing POS. On Growth and Pro, orders and payments sync to Toast, Square or Clover automatically — no rip-and-replace, no double entry.",
+  },
+  {
+    question: "How long does setup take?",
+    answer:
+      "Most venues are live the same day: create your venue, print the QR tents we generate for each table, and your floor is taking requests — typically under 15 minutes of actual work.",
+  },
+  {
+    question: "What happens after the 14-day trial?",
+    answer:
+      "Growth and Pro start with a 14-day free trial, no card required. If you don't subscribe, your venue drops to the free Starter plan — nothing is deleted, paid features just pause until you upgrade.",
+  },
+  {
+    question: "Are there any transaction fees?",
+    answer:
+      "Stripe's processing fee (2.9% + 30¢) is passed through at cost on all plans, plus TabCall's 0.5% platform fee on the free Starter plan. Growth and Pro have no platform fee on payments.",
+  },
+];
 
 type PricingTier = {
   key: "starter" | "growth" | "pro" | "founding";
@@ -221,6 +261,38 @@ export default function PricingPage() {
           </p>
         </div>
       </section>
+
+      {/* FAQ — visible twin of the FAQPage structured data above. */}
+      <section className="border-t border-umber-soft/30 bg-white py-16 md:py-20">
+        <div className="mx-auto max-w-3xl px-5 md:px-8">
+          <h2 className="text-center text-[26px] font-semibold tracking-[-0.01em] text-slate md:text-[32px]">
+            Pricing questions, answered
+          </h2>
+          <div className="mt-10 space-y-3">
+            {PRICING_FAQS.map((faq) => (
+              <details
+                key={faq.question}
+                className="group rounded-2xl border border-umber-soft/30 bg-oat px-5 py-4 open:bg-white open:shadow-card"
+              >
+                <summary className="cursor-pointer list-none text-[15px] font-semibold text-slate marker:content-none">
+                  <span className="flex items-center justify-between gap-4">
+                    {faq.question}
+                    <span
+                      aria-hidden
+                      className="text-lg text-umber transition-transform group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-slate/70">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <JsonLd nodes={[softwareApplicationLd(), faqPageLd(PRICING_FAQS)]} />
 
       <MarketingFooter />
     </main>

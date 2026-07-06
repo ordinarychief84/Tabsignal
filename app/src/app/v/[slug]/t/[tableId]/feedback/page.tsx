@@ -23,7 +23,7 @@ type PageProps = {
 export default async function FeedbackPage({ params, searchParams }: PageProps) {
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
-    include: { org: { select: { subscriptionPriceId: true, subscriptionStatus: true } } },
+    include: { org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } } },
   });
   if (!venue) notFound();
   const isPro = meetsAtLeast(planFromOrg(venue.org), "pro");

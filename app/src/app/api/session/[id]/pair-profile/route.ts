@@ -37,7 +37,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       venue: {
         select: {
           id: true,
-          org: { select: { subscriptionPriceId: true, subscriptionStatus: true } },
+          org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
         },
       },
       table: { select: { id: true, assignments: { select: { staffMemberId: true } } } },

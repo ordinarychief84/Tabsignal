@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { defaultMetadata } from "@/lib/seo";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,11 +9,9 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "TabCall · all-in-one hospitality platform",
-  description:
-    "TabCall sits on top of any POS. Guests scan, staff get alerted, service moves.",
-};
+// Site-wide SEO defaults (metadataBase, title template, OG/Twitter,
+// keyword pool). Marketing pages override via lib/seo pageMetadata().
+export const metadata: Metadata = defaultMetadata;
 
 // WCAG 1.4.4: never block pinch-zoom. Guests in dim bars need it,
 // staff with one-hand-on-tray need it. Fixed-width layout doesn't

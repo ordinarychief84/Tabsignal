@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { readOnboardingState, deriveOnboarding } from "@/lib/onboarding";
 import { ManagerFloor } from "./manager-floor";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,27 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       timezone: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
+      venueType: true,
+      brandColor: true,
+      onboardingState: true,
+      onboardingCompletedAt: true,
+      _count: { select: { staff: { where: { status: { in: ["ACTIVE", "INVITED"] } } } } },
     },
   });
   if (!venue) return null;
   const stripeReady = !!venue.stripeAccountId && venue.stripeChargesEnabled;
+
+  // Launch-progress nudge for venues that never hit "Go live". Legacy
+  // venues had onboardingCompletedAt backfilled, so this only shows for
+  // genuinely unfinished setups.
+  const onboarding = deriveOnboarding({
+    state: readOnboardingState(venue.onboardingState),
+    venueType: venue.venueType,
+    brandColor: venue.brandColor,
+    staffCount: venue._count.staff,
+    stripeChargesEnabled: venue.stripeChargesEnabled,
+    onboardingCompletedAt: venue.onboardingCompletedAt,
+  });
 
   // Day window in venue's local timezone — fall back to UTC if Intl can't parse.
   const start = startOfTodayUTC(venue.timezone);
@@ -41,7 +59,9 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       select: { createdAt: true, acknowledgedAt: true },
       take: 500,
     }),
-    db.staffMember.count({ where: { venueId: venue.id } }),
+    // On-floor roster only — soft-deleted and suspended rows stay in the
+    // DB for audit history but shouldn't inflate the "Staff" stat.
+    db.staffMember.count({ where: { venueId: venue.id, status: { in: ["ACTIVE", "INVITED"] } } }),
     db.request.findMany({
       where: {
         venueId: venue.id,
@@ -69,10 +89,12 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       },
       take: 1000,
     }),
-    // Leaderboard: every staff at the venue + their acks in the last 7d.
-    // Joined in Prisma so we get the names without an extra query.
+    // Leaderboard: every current staff at the venue + their acks in the
+    // last 7d. Joined in Prisma so we get the names without an extra
+    // query. Deleted/suspended staff keep their history but drop off
+    // the board.
     db.staffMember.findMany({
-      where: { venueId: venue.id },
+      where: { venueId: venue.id, status: { in: ["ACTIVE", "INVITED"] } },
       select: {
         id: true,
         name: true,
@@ -91,6 +113,32 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
 
   return (
     <>
+      {!onboarding.complete ? (
+        <Link
+          href={`/admin/v/${params.slug}/onboarding`}
+          className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-chartreuse/60 bg-chartreuse/15 px-5 py-4 transition-colors hover:border-chartreuse"
+        >
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Almost live</p>
+            <p className="mt-1 text-sm font-medium text-slate">
+              Finish launching {venue.name} — {onboarding.percent}% done.
+            </p>
+            <p className="mt-1 text-xs text-slate/65">
+              Pick up where you left off. Progress saves automatically.
+            </p>
+          </div>
+          <span className="flex shrink-0 items-center gap-3">
+            <span className="hidden h-1.5 w-28 overflow-hidden rounded-full bg-slate/10 sm:block">
+              <span
+                className="block h-full rounded-full bg-chartreuse"
+                style={{ width: `${Math.max(onboarding.percent, 6)}%` }}
+              />
+            </span>
+            <span className="rounded-full bg-slate px-4 py-2 text-xs font-medium text-oat">Resume →</span>
+          </span>
+        </Link>
+      ) : null}
+
       {!stripeReady ? (
         <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-coral/40 bg-coral/10 px-5 py-4">
           <div className="min-w-0">
