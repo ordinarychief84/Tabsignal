@@ -469,6 +469,7 @@ model GuestSession {
   // Guest Commerce Module back-refs (V2 schema).
   orders                Order[]
   billSplitsV2          BillSplitV2[]
+  bills                 Bill[]
   wishlist              Wishlist?
 
   @@index([venueId, tableId])
@@ -1031,6 +1032,14 @@ model Bill {
   venueId         String
   tableId         String?
   orderId         String?    @unique
+  // Phase 2 billing cutover: beacon-surface bills link to their
+  // GuestSession here. Null for native V2-surface bills.
+  guestSessionId  String?
+  // Provenance: 'beacon' (dual-write/canonical from the live surface) |
+  // 'backfill' (historical conversion). Null = native V2. Drives the
+  // read-flip ("prefer Bill when a beacon bill exists") and lets the
+  // backfill verifier scope its comparisons.
+  source          String?
   status          BillStatus @default(OPEN)
   subtotalCents   Int
   taxCents        Int        @default(0)
@@ -1045,10 +1054,12 @@ model Bill {
   venue           Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
   table           Table?     @relation(fields: [tableId], references: [id], onDelete: SetNull)
   order           Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  guestSession    GuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
   items           BillItem[]
   splits          BillSplitV2[]
 
   @@index([venueId, status, createdAt])
+  @@index([guestSessionId])
 }
 
 model BillItem {
