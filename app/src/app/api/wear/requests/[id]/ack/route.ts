@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { events } from "@/lib/realtime";
 import { getWearAuth, isWearAuthFail } from "@/lib/auth/wear";
+import { acknowledgeRequest } from "@/domain/requests/lifecycle";
 
 /**
  * POST /api/wear/requests/[id]/ack — "Got it" from the wrist.
  *
- * Same first-acker-wins compare-and-swap as the console route
- * (/api/requests/[id]/acknowledge) and the same realtime emit, so the
- * guest's beacon timeline and every staff surface update identically
- * whether the ack came from a phone, the console, or a watch. POST (not
- * PATCH) because several wearable HTTP stacks only speak GET/POST well.
+ * Same first-acker-wins CAS and realtime emit as the console route —
+ * literally: both call domain/requests/lifecycle since PR 1.4. POST
+ * (not PATCH) because several wearable HTTP stacks only speak GET/POST
+ * well. Race losses come back as alreadyAcked with the winner's name —
+ * a success state on the watch ("Dee got it"), not an error.
  */
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   const auth = await getWearAuth(req);
@@ -18,62 +17,20 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const existing = await db.request.findUnique({ where: { id: ctx.params.id } });
-  if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (existing.venueId !== auth.venueId) {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  }
-  if (existing.status === "RESOLVED") {
-    return NextResponse.json({ error: "ALREADY_RESOLVED" }, { status: 409 });
-  }
-
-  const cas = await db.request.updateMany({
-    where: { id: existing.id, acknowledgedById: null, status: "PENDING" },
-    data: {
-      status: "ACKNOWLEDGED",
-      acknowledgedAt: new Date(),
-      acknowledgedById: auth.staffId,
-    },
-  });
-
-  if (cas.count === 0) {
-    const cur = await db.request.findUnique({
-      where: { id: existing.id },
-      include: { acknowledgedBy: { select: { name: true } } },
-    });
-    return NextResponse.json({
-      id: cur?.id,
-      status: cur?.status,
-      mine: cur?.acknowledgedById === auth.staffId,
-      ackedBy: cur?.acknowledgedBy?.name ?? null,
-      alreadyAcked: true,
-    });
+  const result = await acknowledgeRequest(auth, ctx.params.id);
+  if (!result.ok) {
+    const status =
+      result.error === "NOT_FOUND" ? 404 :
+      result.error === "FORBIDDEN" ? 403 : 409;
+    return NextResponse.json({ error: result.error }, { status });
   }
 
-  const updated = await db.request.findUnique({
-    where: { id: existing.id },
-    include: {
-      table: { select: { label: true } },
-      acknowledgedBy: { select: { name: true } },
-    },
-  });
-  if (!updated) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-
-  void events.requestAcknowledged(updated.venueId, updated.sessionId, {
-    id: updated.id,
-    status: updated.status,
-    acknowledgedAt: updated.acknowledgedAt?.toISOString() ?? null,
-    acknowledgedById: updated.acknowledgedById,
-    tableLabel: updated.table.label,
-    type: updated.type,
-    acknowledgedBy: updated.acknowledgedBy ? { name: updated.acknowledgedBy.name } : null,
-  });
-
+  const r = result.request;
   return NextResponse.json({
-    id: updated.id,
-    status: updated.status,
-    mine: true,
-    ackedBy: updated.acknowledgedBy?.name ?? null,
-    alreadyAcked: false,
+    id: r.id,
+    status: r.status,
+    mine: r.acknowledgedById === auth.staffId,
+    ackedBy: r.ackedByName,
+    alreadyAcked: result.alreadyAcked,
   });
 }
