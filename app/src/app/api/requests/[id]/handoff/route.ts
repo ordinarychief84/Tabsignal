@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
-import { events, emit } from "@/lib/realtime";
 import { getStaffSession } from "@/lib/auth/session";
 import { originGuard } from "@/lib/csrf";
+import { handoffRequest } from "@/domain/requests/lifecycle";
 
 /**
  * Reassign an acknowledged request to a different staff member at the same
@@ -26,65 +25,28 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   try { parsed = Body.parse(await req.json()); }
   catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }
 
-  const existing = await db.request.findUnique({ where: { id: ctx.params.id } });
-  if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (existing.venueId !== session.venueId) {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
-  }
-  if (existing.status !== "ACKNOWLEDGED") {
-    return NextResponse.json({ error: "NOT_ACKNOWLEDGED" }, { status: 409 });
+  const result = await handoffRequest(session, ctx.params.id, parsed.toStaffId);
+  if (!result.ok) {
+    const status =
+      result.error === "NOT_FOUND" ? 404 :
+      result.error === "FORBIDDEN" ? 403 :
+      result.error === "NOT_ACKNOWLEDGED" ? 409 : 400;
+    return NextResponse.json({ error: result.error }, { status });
   }
 
-  const dest = await db.staffMember.findUnique({ where: { id: parsed.toStaffId } });
-  if (!dest || dest.venueId !== session.venueId) {
-    return NextResponse.json({ error: "INVALID_STAFF" }, { status: 400 });
-  }
-  if (dest.id === existing.acknowledgedById) {
+  const r = result.request;
+  if (result.noChange) {
     return NextResponse.json({
-      id: existing.id,
-      status: existing.status,
-      acknowledgedById: dest.id,
+      id: r.id,
+      status: r.status,
+      acknowledgedById: r.acknowledgedById,
       noChange: true,
     });
   }
 
-  const updated = await db.request.update({
-    where: { id: existing.id },
-    data: { acknowledgedById: dest.id },
-    include: {
-      table: { select: { label: true } },
-      acknowledgedBy: { select: { id: true, name: true } },
-    },
-  });
-
-  // Notify the venue (queue UIs reconcile name) AND the receiver's
-  // personal staff room (so they see a "handed off to you" toast).
-  void events.requestAcknowledged(updated.venueId, updated.sessionId, {
-    id: updated.id,
-    status: updated.status,
-    acknowledgedAt: updated.acknowledgedAt?.toISOString() ?? null,
-    acknowledgedById: updated.acknowledgedById,
-    acknowledgedBy: updated.acknowledgedBy ? { id: updated.acknowledgedBy.id, name: updated.acknowledgedBy.name } : null,
-    tableLabel: updated.table.label,
-    type: updated.type,
-  });
-  void emit({
-    kind: "staff",
-    id: dest.id,
-    event: "request_handed_off_to_you",
-    payload: {
-      request: {
-        id: updated.id,
-        tableLabel: updated.table.label,
-        type: updated.type,
-        fromStaffId: existing.acknowledgedById,
-      },
-    },
-  });
-
   return NextResponse.json({
-    id: updated.id,
-    status: updated.status,
-    acknowledgedById: updated.acknowledgedById,
+    id: r.id,
+    status: r.status,
+    acknowledgedById: r.acknowledgedById,
   });
 }

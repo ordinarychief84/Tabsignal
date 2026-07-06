@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
-import { events } from "@/lib/realtime";
 import { getStaffSession } from "@/lib/auth/session";
 import { originGuard } from "@/lib/csrf";
+import { resolveRequest } from "@/domain/requests/lifecycle";
 
 // Required action picker. The staff queue UI shows these as a small
 // menu after tapping "Resolve" so we always know WHAT happened, not
@@ -32,60 +30,26 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     );
   }
 
-  const existing = await db.request.findUnique({ where: { id: ctx.params.id } });
-  if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (existing.venueId !== session.venueId) {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  // Idempotent resolve CAS + realtime emit live in domain/requests/lifecycle.
+  const result = await resolveRequest(session, ctx.params.id, parsed.action, parsed.note);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.error === "NOT_FOUND" ? 404 : 403 });
   }
 
-  // Idempotent resolve: if already RESOLVED, return the original timestamp
-  // and skip the realtime emit. Otherwise compare-and-swap on non-resolved
-  // status so a second tap can't overwrite resolvedAt.
-  if (existing.status === "RESOLVED") {
+  const r = result.request;
+  if (result.alreadyResolved) {
     return NextResponse.json({
-      id: existing.id,
-      status: existing.status,
-      resolvedAt: existing.resolvedAt?.toISOString() ?? null,
-      resolutionAction: existing.resolutionAction,
+      id: r.id,
+      status: r.status,
+      resolvedAt: r.resolvedAt,
+      resolutionAction: r.resolutionAction,
       alreadyResolved: true,
     });
   }
-
-  const data: Prisma.RequestUpdateManyMutationInput = {
-    status: "RESOLVED",
-    resolvedAt: new Date(),
-    resolutionAction: parsed.action,
-    resolutionNote: parsed.note ?? null,
-  };
-  const cas = await db.request.updateMany({
-    where: { id: existing.id, status: { not: "RESOLVED" } },
-    data,
-  });
-
-  if (cas.count === 0) {
-    const cur = await db.request.findUnique({ where: { id: existing.id } });
-    return NextResponse.json({
-      id: cur?.id,
-      status: cur?.status,
-      resolvedAt: cur?.resolvedAt?.toISOString() ?? null,
-      resolutionAction: cur?.resolutionAction,
-      alreadyResolved: true,
-    });
-  }
-
-  const updated = await db.request.findUnique({ where: { id: existing.id } });
-  if (!updated) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-
-  void events.requestResolved(updated.venueId, {
-    id: updated.id,
-    status: updated.status,
-    resolvedAt: updated.resolvedAt?.toISOString() ?? null,
-    resolutionAction: updated.resolutionAction,
-  });
 
   return NextResponse.json({
-    id: updated.id,
-    status: updated.status,
-    resolutionAction: updated.resolutionAction,
+    id: r.id,
+    status: r.status,
+    resolutionAction: r.resolutionAction,
   });
 }

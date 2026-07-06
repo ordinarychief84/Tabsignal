@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
-import { events } from "@/lib/realtime";
 import { getWearAuth, isWearAuthFail } from "@/lib/auth/wear";
+import { resolveRequest } from "@/domain/requests/lifecycle";
 
 /**
  * POST /api/wear/requests/[id]/resolve — close out a request from the
- * watch. Mirrors /api/requests/[id]/resolve: the resolution action is
- * required (the watch UI shows a compact picker), resolve is idempotent,
- * and the CAS prevents a second tap from overwriting resolvedAt.
+ * watch. Shares domain/requests/lifecycle with the console route: the
+ * resolution action is required (the watch UI shows a compact picker),
+ * resolve is idempotent, and the CAS prevents a second tap from
+ * overwriting resolvedAt.
  */
 const Body = z.object({
   action: z.enum(["SERVED", "COMPED", "REFUSED", "ESCALATED", "NOT_ACTIONABLE", "OTHER"]),
@@ -31,56 +30,16 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     );
   }
 
-  const existing = await db.request.findUnique({ where: { id: ctx.params.id } });
-  if (!existing) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-  if (existing.venueId !== auth.venueId) {
-    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+  const result = await resolveRequest(auth, ctx.params.id, parsed.action, parsed.note);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.error === "NOT_FOUND" ? 404 : 403 });
   }
 
-  if (existing.status === "RESOLVED") {
-    return NextResponse.json({
-      id: existing.id,
-      status: existing.status,
-      resolutionAction: existing.resolutionAction,
-      alreadyResolved: true,
-    });
-  }
-
-  const data: Prisma.RequestUpdateManyMutationInput = {
-    status: "RESOLVED",
-    resolvedAt: new Date(),
-    resolutionAction: parsed.action,
-    resolutionNote: parsed.note ?? null,
-  };
-  const cas = await db.request.updateMany({
-    where: { id: existing.id, status: { not: "RESOLVED" } },
-    data,
-  });
-
-  if (cas.count === 0) {
-    const cur = await db.request.findUnique({ where: { id: existing.id } });
-    return NextResponse.json({
-      id: cur?.id,
-      status: cur?.status,
-      resolutionAction: cur?.resolutionAction,
-      alreadyResolved: true,
-    });
-  }
-
-  const updated = await db.request.findUnique({ where: { id: existing.id } });
-  if (!updated) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-
-  void events.requestResolved(updated.venueId, {
-    id: updated.id,
-    status: updated.status,
-    resolvedAt: updated.resolvedAt?.toISOString() ?? null,
-    resolutionAction: updated.resolutionAction,
-  });
-
+  const r = result.request;
   return NextResponse.json({
-    id: updated.id,
-    status: updated.status,
-    resolutionAction: updated.resolutionAction,
-    alreadyResolved: false,
+    id: r.id,
+    status: r.status,
+    resolutionAction: r.resolutionAction,
+    alreadyResolved: result.alreadyResolved,
   });
 }
