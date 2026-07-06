@@ -74,6 +74,13 @@ const Optional = z.object({
   // in dev (the cron only runs in prod via Vercel Cron).
   BENCHMARK_CRON_SECRET: optionalString,
 
+  // Phase 2 billing cutover stage (restructure plan). Absent = "off".
+  //   off       — legacy JSON tab only (today's behavior)
+  //   dualwrite — mutations also mirror into Bill/BillItem; JSON canonical
+  //   canonical — new sessions write the V2 model as source of truth
+  // Every flip is one redeploy; see domain/billing/mirror.ts.
+  BILLING_V2: z.preprocess(emptyAsAbsent, z.enum(["off", "dualwrite", "canonical"]).optional()),
+
   // Supabase Storage. NEXT_PUBLIC_SUPABASE_URL + the service role key
   // power server-side image uploads (venue logos, etc.). Service role is
   // server-only — never expose to the browser. Optional in dev: the
