@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
-import { parseLineItems, totalsFor } from "@/lib/bill";
+import { totalsFor } from "@/lib/bill";
+import { tabItems } from "@/domain/billing/tab";
 import { BillScreen } from "./bill-screen";
 
 const DEFAULT_TIP_PERCENT = 20;
@@ -99,7 +100,7 @@ export default async function BillPage({ params, searchParams }: PageProps) {
     );
   }
 
-  const items = parseLineItems(session.lineItems);
+  const items = tabItems(session.lineItems);
   // Honor a previously-chosen tip rather than always resetting to 20%.
   const tipPercent =
     typeof session.tipPercent === "number" && session.tipPercent >= 0

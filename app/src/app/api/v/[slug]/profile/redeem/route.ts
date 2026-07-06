@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { gateGuestVenuePlan } from "@/lib/plan-gate";
 import { verifyProfileToken, PROFILE_COOKIE } from "@/lib/profile-cookie";
 import { redeemPoints } from "@/lib/loyalty";
+import { appendTabLine } from "@/domain/billing/tab";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -22,14 +23,6 @@ const Body = z.object({
   sessionToken: z.string().min(1),
   points: z.number().int().min(1).max(100_000),
 });
-
-type LineItem = {
-  id?: string;
-  name: string;
-  quantity: number;
-  unitCents: number;
-  isLoyaltyDiscount?: boolean;
-};
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateGuestVenuePlan(ctx.params.slug, "pro");
@@ -64,21 +57,19 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     const redeem = await redeemPoints(tx, claims.profileId, gate.venueId, parsed.points);
     if (!redeem.ok) return { ok: false as const, reason: redeem.reason };
 
-    const items = (Array.isArray(session.lineItems) ? session.lineItems : []) as LineItem[];
-    items.push({
-      name: `Loyalty redemption (${parsed.points} pts)`,
-      quantity: 1,
-      unitCents: -redeem.discountCents,
-      isLoyaltyDiscount: true,
-    });
-
-    await tx.guestSession.update({
-      where: { id: session.id },
-      data: {
-        lineItems: items as unknown as never,
-        guestProfileId: claims.profileId,
+    // Raw append (existing marker fields survive) + guestProfileId in
+    // the same UPDATE — appendTabLine keeps both semantics.
+    await appendTabLine(
+      tx,
+      session,
+      {
+        name: `Loyalty redemption (${parsed.points} pts)`,
+        quantity: 1,
+        unitCents: -redeem.discountCents,
+        isLoyaltyDiscount: true,
       },
-    });
+      { guestProfileId: claims.profileId },
+    );
 
     return { ok: true as const, redeem };
   });

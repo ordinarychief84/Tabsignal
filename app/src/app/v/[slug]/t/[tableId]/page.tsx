@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { resolveGuestSession } from "@/lib/session";
-import { parseLineItems } from "@/lib/bill";
+import { tabItems } from "@/domain/billing/tab";
 import { GuestRequestPanel } from "./request-panel";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,7 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
     take: 6,
   });
 
-  const items = session ? parseLineItems(session.lineItems) : [];
+  const items = session ? tabItems(session.lineItems) : [];
   const lastRequestAt = session?.requests[0]?.createdAt ?? null;
   const minutesSinceLast = lastRequestAt
     ? (Date.now() - lastRequestAt.getTime()) / 60_000

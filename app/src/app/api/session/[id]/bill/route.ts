@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
-import { parseLineItems, totalsFor } from "@/lib/bill";
-
-const DEFAULT_TIP_PERCENT = 20; // PRD v2.0 — increased from 18% (phone-tipping anchor research)
+import { guestBillFor } from "@/domain/billing/tab";
 
 function tokensEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -34,15 +32,7 @@ export async function GET(req: Request, ctx: { params: { id: string } }) {
   }
   if (session.paidAt) return NextResponse.json({ error: "ALREADY_PAID" }, { status: 410 });
 
-  const items = parseLineItems(session.lineItems);
-  const totals = totalsFor(items, session.venue.zipCode ?? "", DEFAULT_TIP_PERCENT);
-
-  return NextResponse.json({
-    sessionId: session.id,
-    venueName: session.venue.name,
-    tableLabel: session.table.label,
-    items,
-    defaultTipPercent: DEFAULT_TIP_PERCENT,
-    totals,
-  });
+  // Response shape (incl. key order) is pinned by the guest bill screen
+  // and the domain tests — guestBillFor returns it verbatim.
+  return NextResponse.json(guestBillFor(session));
 }

@@ -12,7 +12,8 @@
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { parseLineItems, totalsFor } from "@/lib/bill";
+import { totalsFor } from "@/lib/bill";
+import { tabItems } from "@/domain/billing/tab";
 
 export const K_ANONYMITY = 5;
 
@@ -97,7 +98,7 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
   let tipsCents = 0;
   for (const s of sessions) {
     const t = totalsFor(
-      parseLineItems(s.lineItems),
+      tabItems(s.lineItems),
       venue?.zipCode ?? "",
       typeof s.tipPercent === "number" ? s.tipPercent : 0,
     );

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
-import { parseLineItems, totalsFor, dollars } from "@/lib/bill";
+import { totalsFor, dollars } from "@/lib/bill";
+import { tabItems } from "@/domain/billing/tab";
 import { SplitScreen } from "./split-screen";
 
 export const dynamic = "force-dynamic";
@@ -70,7 +71,7 @@ export default async function SplitPage({ params, searchParams }: PageProps) {
     );
   }
 
-  const items = parseLineItems(session.lineItems);
+  const items = tabItems(session.lineItems);
   const totals = totalsFor(items, venue.zipCode ?? "", 0);
   const subtotalPlusTax = totals.subtotalCents + totals.taxCents;
 
