@@ -3,9 +3,10 @@ import path from "node:path";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import QRCode from "qrcode";
 import { MarketingNav, MarketingFooter } from "./marketing-chrome";
 import { JsonLd } from "./json-ld";
-import { organizationLd, webSiteLd, softwareApplicationLd, pageMetadata } from "@/lib/seo";
+import { organizationLd, webSiteLd, softwareApplicationLd, pageMetadata, SITE_URL } from "@/lib/seo";
 
 /**
  * TabCall landing page. Faithful to the design mockup direction:
@@ -219,7 +220,18 @@ function HeroCssScene() {
   );
 }
 
-function HeroQRTent() {
+// A REAL, scannable code (not set dressing): points a curious visitor's
+// phone straight at signup, UTM-tagged so scans show up in analytics.
+// Generated once per server instance — the URL is constant.
+const HERO_QR_URL = `${SITE_URL}/signup?utm_source=landing_qr_tent`;
+const heroQrDataUrl = QRCode.toDataURL(HERO_QR_URL, {
+  errorCorrectionLevel: "M",
+  margin: 2, // quiet zone baked in — the white card alone is too thin at this render size
+  width: 480,
+  color: { dark: "#0d0b19", light: "#ffffff" }, // primary-deep on white
+});
+
+async function HeroQRTent() {
   return (
     <div className="relative w-[42%] max-w-[220px] -rotate-1 rounded-2xl bg-white p-4 shadow-lift ring-1 ring-outline-variant/30">
       <div className="flex items-center justify-between">
@@ -252,7 +264,16 @@ function HeroQRTent() {
         Order &amp; Pay
       </p>
       <div className="relative mt-3 rounded-xl bg-white p-2 ring-1 ring-outline-variant/30">
-        <QRPattern />
+        {/* Desktop visitors scan it; phone visitors (who can't scan
+            their own screen) tap it — same destination either way. */}
+        <Link href="/signup?utm_source=landing_qr_tent" aria-label="Create your free TabCall venue">
+          {/* eslint-disable-next-line @next/next/no-img-element -- data URL, no optimizer benefit */}
+          <img
+            src={await heroQrDataUrl}
+            alt="QR code — scan to create your free TabCall venue"
+            className="aspect-square w-full rounded-[4px]"
+          />
+        </Link>
       </div>
       <p className="mt-3 text-center text-[9px] text-on-surface-variant">
         Point camera · No app needed
@@ -302,38 +323,8 @@ function HeroPhone() {
   );
 }
 
-function QRPattern() {
-  const SIZE = 11;
-  const modules: boolean[][] = Array.from({ length: SIZE }, (_, y) =>
-    Array.from({ length: SIZE }, (_, x) => {
-      const inLocator =
-        (y < 3 && (x < 3 || x > SIZE - 4)) || (y > SIZE - 4 && x < 3);
-      if (inLocator) {
-        const ly = y < 3 ? y : y - (SIZE - 3);
-        const lx = x < 3 ? x : x > SIZE - 4 ? x - (SIZE - 3) : x;
-        if (ly === 1 && lx === 1) return true;
-        return ly === 0 || ly === 2 || lx === 0 || lx === 2;
-      }
-      return ((x * 7 + y * 13 + x * y) % 3 === 0) || ((x + y) % 5 === 0);
-    })
-  );
-  return (
-    <div
-      aria-hidden
-      className="grid aspect-square w-full gap-[2px]"
-      style={{ gridTemplateColumns: `repeat(${SIZE}, minmax(0, 1fr))` }}
-    >
-      {modules.map((row, y) =>
-        row.map((on, x) => (
-          <span
-            key={`${x}-${y}`}
-            className={`block aspect-square rounded-[1px] ${on ? "bg-primary-deep" : "bg-transparent"}`}
-          />
-        ))
-      )}
-    </div>
-  );
-}
+// (The decorative QRPattern this replaced was an 11×11 fake — replaced
+// by a real scannable code in HeroQRTent, restructure-era polish.)
 
 /* ---------------------------------------------------------------------- */
 /* Trusted by                                                             */
