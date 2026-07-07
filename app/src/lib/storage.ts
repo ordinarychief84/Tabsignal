@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Thin wrapper over Supabase Storage's REST API. We use REST directly
  * instead of @supabase/supabase-js to keep the dep tree small — every

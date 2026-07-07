@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Rate limiter. Tries Upstash Redis (works across Vercel serverless
  * cold starts and multiple regions); falls back to a single-process

@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Server-side helper for emitting Socket.io events from Next.js routes.
  *

@@ -1,3 +1,4 @@
+import "server-only";
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { randomUUID } from "node:crypto";
 

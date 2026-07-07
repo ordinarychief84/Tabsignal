@@ -1,3 +1,4 @@
+import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 
 const SECRET = process.env.NEXTAUTH_SECRET ?? "";

@@ -7,4 +7,9 @@
 # `rate-limit.test.ts` on Linux CI's readdir-driven file load order.
 
 [test]
-preload = ["./src/lib/__tests__/_setup/preserve-rate-limit.ts"]
+preload = [
+  # server-only must be shimmed FIRST — secret modules import it at the
+  # top and the real package throws outside a React Server condition.
+  "./src/lib/__tests__/_setup/mock-server-only.ts",
+  "./src/lib/__tests__/_setup/preserve-rate-limit.ts",
+]

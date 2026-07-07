@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateGuestVenuePlan } from "@/lib/plan-gate";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { verifyOtp } from "@/lib/sms-otp";
 import { normalizePhone } from "@/lib/sms";
 import { signProfileToken, profileCookieOptions, PROFILE_COOKIE } from "@/lib/profile-cookie";
@@ -15,6 +16,18 @@ const Body = z.object({
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateGuestVenuePlan(ctx.params.slug, "pro");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
+
+  // Belt-and-braces atop the per-OTP attempts cap (5 per code, enforced
+  // in lib/sms-otp): an IP guessing codes across MANY phone numbers
+  // gets cut off here instead of getting 5 tries × every number.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ipGate = await rateLimitAsync(`otp:verify:ip:${ip}`, { windowMs: 60 * 60_000, max: 30 });
+  if (!ipGate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED", retryAfterMs: ipGate.retryAfterMs },
+      { status: 429 },
+    );
+  }
 
   let parsed;
   try { parsed = Body.parse(await req.json()); }

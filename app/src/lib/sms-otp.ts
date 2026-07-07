@@ -1,3 +1,4 @@
+import "server-only";
 import { createHash, randomInt } from "node:crypto";
 import { db } from "@/lib/db";
 import { sendSms } from "@/lib/sms";
