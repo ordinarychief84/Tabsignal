@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Password-based sign-in for the TabCall super-admin console.
  *

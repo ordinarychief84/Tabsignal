@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Password-reset token lifecycle.
  *

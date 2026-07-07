@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * SMS adapter. Twilio is the production backend; in dev we no-op and log
  * so reservations / OTP flows are testable without burning Twilio credits.

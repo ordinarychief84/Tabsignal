@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateGuestVenuePlan } from "@/lib/plan-gate";
+import { rateLimitAsync } from "@/lib/rate-limit";
 import { checkConflict, rateCheck } from "@/lib/reservations";
 import { sendSms, normalizePhone } from "@/lib/sms";
 import { sendEmail } from "@/lib/email/send";
@@ -22,6 +23,18 @@ const Body = z.object({
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
   const gate = await gateGuestVenuePlan(ctx.params.slug, "pro");
   if (!gate.ok) return NextResponse.json(gate.body, { status: gate.status });
+
+  // Per-IP cap complementing the per-phone rateCheck below: a booking
+  // confirmation costs an SMS, so one address rotating phone numbers
+  // must not be able to pump the Twilio bill.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ipGate = await rateLimitAsync(`resv:ip:${ip}`, { windowMs: 60 * 60_000, max: 10 });
+  if (!ipGate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED", retryAfterMs: ipGate.retryAfterMs },
+      { status: 429 },
+    );
+  }
 
   let parsed;
   try { parsed = Body.parse(await req.json()); }
