@@ -79,6 +79,13 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     where: { id: gate.venueId },
     data: { logoUrl: result.publicUrl },
   });
+  // Mirror into VenueBranding (restructure P3.3b) — same convergence
+  // rationale as the settings PATCH route.
+  await db.venueBranding.upsert({
+    where: { venueId: gate.venueId },
+    create: { venueId: gate.venueId, logoUrl: result.publicUrl },
+    update: { logoUrl: result.publicUrl },
+  });
 
   return NextResponse.json({ logoUrl: result.publicUrl });
 }

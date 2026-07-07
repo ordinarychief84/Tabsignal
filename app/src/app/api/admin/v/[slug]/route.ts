@@ -175,5 +175,22 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
     },
   });
 
+  // Branding consolidation (restructure P3.3b): settings edits mirror
+  // into VenueBranding so the two admin tools (Settings + Branding
+  // editor) converge last-write-wins instead of silently diverging.
+  // Legacy Venue columns stay written too — every reader stays truthful
+  // until the reads are 100% resolver-based and the columns drop.
+  const brandingPatch: { primaryColor?: string | null; logoUrl?: string | null; welcomeMessage?: string | null } = {};
+  if (parsed.brandColor !== undefined) brandingPatch.primaryColor = parsed.brandColor;
+  if (parsed.logoUrl !== undefined) brandingPatch.logoUrl = parsed.logoUrl;
+  if (parsed.guestWelcomeMessage !== undefined) brandingPatch.welcomeMessage = parsed.guestWelcomeMessage;
+  if (Object.keys(brandingPatch).length > 0) {
+    await db.venueBranding.upsert({
+      where: { venueId: venue.id },
+      create: { venueId: venue.id, ...brandingPatch },
+      update: brandingPatch,
+    });
+  }
+
   return NextResponse.json(updated);
 }
