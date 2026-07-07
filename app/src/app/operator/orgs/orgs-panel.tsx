@@ -21,15 +21,15 @@ type Org = {
 // Plan enum on Organization. Subscription-tier labels (Growth, Pro)
 // live separately under planById() and are sent to the billing flip
 // endpoint as { planId: "growth" | "pro" }.
-const PLANS = ["STARTER", "FLAT", "FOUNDING"] as const;
+const PLANS = ["free", "growth", "pro"] as const;
 const FLIP_TIERS = ["free", "growth", "pro"] as const;
 const FLIP_LABEL: Record<string, string> = { free: "Starter (free)", growth: "Growth", pro: "Pro" };
 const STATUSES = ["NONE", "TRIALING", "ACTIVE", "PAST_DUE", "CANCELED"] as const;
 
 const PLAN_TONE: Record<string, string> = {
-  FOUNDING: "bg-umber/20 text-slate",
-  STARTER:  "bg-slate/10 text-slate/70",
-  FLAT:     "bg-sea/30 text-slate",
+  free:   "bg-slate/10 text-slate/70",
+  growth: "bg-sea/30 text-slate",
+  pro:    "bg-umber/20 text-slate",
 };
 
 const STATUS_TONE: Record<string, string> = {

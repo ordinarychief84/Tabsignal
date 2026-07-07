@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { planFromOrg } from "@/lib/plans";
 import { Prisma } from "@prisma/client";
 import { getStaffSession } from "@/lib/auth/session";
 import { isPlatformStaffAsync } from "@/lib/auth/operator";
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
     take: q.limit,
     orderBy: { createdAt: "desc" },
     include: {
-      org: { select: { id: true, name: true, plan: true, subscriptionStatus: true } },
+      org: { select: { id: true, name: true, subscriptionPriceId: true, subscriptionStatus: true } },
       _count: { select: { staff: true, tables: true, sessions: true, requests: true } },
     },
   });
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
       preorderEnabled: v.preorderEnabled,
       reservationsEnabled: v.reservationsEnabled,
       createdAt: v.createdAt.toISOString(),
-      org: { id: v.org.id, name: v.org.name, plan: v.org.plan, subscriptionStatus: v.org.subscriptionStatus },
+      org: { id: v.org.id, name: v.org.name, plan: planFromOrg(v.org), subscriptionStatus: v.org.subscriptionStatus },
       counts: { staff: v._count.staff, tables: v._count.tables, sessions: v._count.sessions, requests: v._count.requests },
     })),
   });

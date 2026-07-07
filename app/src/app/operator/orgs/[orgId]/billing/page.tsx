@@ -20,7 +20,6 @@ export default async function OrgBillingPage({ params }: { params: { orgId: stri
     select: {
       id: true,
       name: true,
-      plan: true,
       stripeCustomerId: true,
       stripeSubscriptionId: true,
       subscriptionStatus: true,

@@ -20,11 +20,11 @@ type Venue = {
   counts: { staff: number; tables: number; sessions: number; requests: number };
 };
 
-const PLANS = ["STARTER", "FLAT", "FOUNDING"] as const;
+const PLANS = ["free", "growth", "pro"] as const;
 const PLAN_LABEL: Record<string, string> = {
-  FOUNDING: "Founding",
-  STARTER: "Starter",
-  FLAT: "Flat",
+  free: "Starter",
+  growth: "Growth",
+  pro: "Pro",
 };
 
 export function VenuesPanel() {

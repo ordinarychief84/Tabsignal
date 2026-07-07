@@ -31,7 +31,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const updated = await db.organization.update({
     where: { id: ctx.params.orgId },
     data: parsed,
-    select: { id: true, name: true, plan: true },
+    select: { id: true, name: true, subscriptionPriceId: true, subscriptionStatus: true },
   });
   return NextResponse.json({ org: updated });
 }

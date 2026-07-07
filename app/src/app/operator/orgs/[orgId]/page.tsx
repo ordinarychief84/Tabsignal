@@ -5,6 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { checkOrgAccess } from "@/lib/operator-rbac";
 import { venueAnalytics, type AnalyticsRange } from "@/lib/analytics";
 import { dollars } from "@/lib/bill";
+import { planFromOrg } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · org overview" };
@@ -33,7 +34,7 @@ export default async function OrgOverviewPage({
   const [org, venues] = await Promise.all([
     db.organization.findUnique({
       where: { id: params.orgId },
-      select: { name: true, plan: true, subscriptionStatus: true },
+      select: { name: true, subscriptionPriceId: true, subscriptionStatus: true },
     }),
     db.venue.findMany({
       where: { orgId: params.orgId },
@@ -76,7 +77,7 @@ export default async function OrgOverviewPage({
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Overview</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">{org.name}</h1>
         <p className="mt-2 text-sm text-slate/60">
-          Plan: {org.plan.toLowerCase()} · {venues.length} venue{venues.length === 1 ? "" : "s"} · subscription {org.subscriptionStatus.toLowerCase()}
+          Plan: {planFromOrg(org)} · {venues.length} venue{venues.length === 1 ? "" : "s"} · subscription {org.subscriptionStatus.toLowerCase()}
         </p>
       </header>
 
