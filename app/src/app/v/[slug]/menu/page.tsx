@@ -47,7 +47,6 @@ export default async function PublicMenuPage({
     select: {
       id: true,
       name: true,
-      brandColor: true,
       org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
     },
   });

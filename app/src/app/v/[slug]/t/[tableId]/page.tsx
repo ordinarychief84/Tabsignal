@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { resolveGuestSession } from "@/domain/sessions/resolve";
 import { tabItems } from "@/domain/billing/tab";
+import { getVenueBranding, resolveBrandingWithFallback } from "@/lib/branding";
 import { GuestRequestPanel } from "./request-panel";
 
 export const dynamic = "force-dynamic";
@@ -77,10 +78,20 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
   const isStale =
     items.length > 0 &&
     (lastRequestAt === null || (minutesSinceLast ?? 0) > STALE_AFTER_MIN);
-  const welcomeMessage = session?.venue?.guestWelcomeMessage ?? null;
+  // Branding resolves through VenueBranding with legacy-field fallback
+  // (restructure P3.3) — partial branding degrades gracefully.
+  const branding = resolveBrandingWithFallback(
+    {
+      brandColor: session?.venue?.brandColor ?? null,
+      logoUrl: session?.venue?.logoUrl ?? null,
+      guestWelcomeMessage: session?.venue?.guestWelcomeMessage ?? null,
+    },
+    await getVenueBranding(resolved.venueId),
+  );
+  const welcomeMessage = branding.welcomeMessage;
   const confirmationMessage = session?.venue?.guestConfirmationMessage ?? null;
-  const brandColor = session?.venue?.brandColor ?? "#F2E7B7";
-  const logoUrl = session?.venue?.logoUrl ?? null;
+  const brandColor = branding.primaryColor ?? "#F2E7B7";
+  const logoUrl = branding.logoUrl;
 
   return (
     <main

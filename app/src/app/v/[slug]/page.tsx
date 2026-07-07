@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
+import { getVenueBranding, resolveBrandingWithFallback } from "@/lib/branding";
 import { SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -34,14 +35,21 @@ export default async function VenueRootPage({ params }: { params: { slug: string
   const hasMenu = meetsAtLeast(plan, "growth");
   const hasReservations = meetsAtLeast(plan, "pro");
 
+  // VenueBranding overrides win; legacy Venue fields are the fallback
+  // (restructure P3.3).
+  const branding = resolveBrandingWithFallback(
+    { brandColor: venue.brandColor, logoUrl: venue.logoUrl, guestWelcomeMessage: null },
+    await getVenueBranding(venue.id),
+  );
+
   return (
     <main className="min-h-screen bg-oat text-slate">
       <div className="mx-auto max-w-md px-6 py-12">
         <header className="mb-8 flex flex-col items-center text-center">
-          {venue.logoUrl ? (
+          {branding.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={venue.logoUrl}
+              src={branding.logoUrl}
               alt={`${venue.name} logo`}
               className="mb-5 h-16 w-16 rounded-2xl object-cover"
             />
