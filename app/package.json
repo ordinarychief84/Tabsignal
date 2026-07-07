@@ -14,6 +14,7 @@
     "db:migrate": "node scripts/assert-dev-db.mjs && prisma migrate dev",
     "db:deploy": "node scripts/assert-dev-db.mjs && prisma migrate deploy",
     "db:bootstrap": "node scripts/assert-dev-db.mjs && node scripts/bootstrap-dev-db.mjs",
+    "db:backfill-branding": "node scripts/assert-dev-db.mjs && node scripts/backfill-branding.mjs",
     "db:seed": "node scripts/assert-dev-db.mjs && bun prisma/seed.ts",
     "db:studio": "node scripts/assert-dev-db.mjs && prisma studio"
   },
