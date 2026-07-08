@@ -82,6 +82,13 @@ const Optional = z.object({
   // Every flip is one redeploy; see domain/billing/mirror.ts.
   BILLING_V2: z.preprocess(emptyAsAbsent, z.enum(["off", "dualwrite", "canonical"]).optional()),
 
+  // Google OAuth sign-in (lib/auth/oauth-google). Both absent = feature
+  // invisible ("Continue with Google" hidden, /api/auth/google/start
+  // returns 503). The client id is not sensitive; the secret is
+  // server-only (fenced + pinned by server-only-coverage.test.ts).
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
+
   // Supabase Storage. NEXT_PUBLIC_SUPABASE_URL + the service role key
   // power server-side image uploads (venue logos, etc.). Service role is
   // server-only — never expose to the browser. Optional in dev: the

@@ -28,6 +28,7 @@ const SECRET_ENV_NAMES = [
   "UPSTASH_REDIS_REST_TOKEN",
   "FIREBASE_PRIVATE_KEY",
   "DATABASE_URL",
+  "GOOGLE_CLIENT_SECRET",
 ];
 
 function walk(dir: string): string[] {

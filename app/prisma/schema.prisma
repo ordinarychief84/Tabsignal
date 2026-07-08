@@ -352,9 +352,31 @@ model StaffMember {
   assignments   TableAssignment[]
   passwordResets PasswordResetToken[]
   wearDevices   WearDevice[]
+  identities    AuthIdentity[]
 
   @@index([venueId])
   @@index([venueId, status])
+}
+
+// Federated sign-in identities (OAuth/OIDC). One row per (provider,
+// external-subject) → the StaffMember it authenticates. Dedicated table
+// (not columns on StaffMember) so the hot staff row stays lean and a
+// second provider — Apple later — is a row insert, not a migration.
+// Google's `email_verified` claim makes auto-linking an existing
+// email-matched staff row safe; the row records the email at link time
+// for audit.
+model AuthIdentity {
+  id        String      @id @default(cuid())
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  provider  String      // "google" (Apple slots in later)
+  subject   String      // provider's stable user id (Google `sub`)
+  email     String      // email at link time — audit only, not a lookup key
+  createdAt DateTime    @default(now())
+  lastLoginAt DateTime?
+
+  @@unique([provider, subject])
+  @@index([staffId])
 }
 
 // =====================================================================

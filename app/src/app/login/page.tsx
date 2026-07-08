@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
+import { oauthGoogleEnabled } from "@/lib/auth/oauth-google";
+import { GoogleSignInButton, AuthDivider } from "../google-signin-button";
 
 // Utility page: keep it out of the index (thin content, brand-only
 // intent) but let crawlers pass through to linked marketing pages.
@@ -81,6 +83,12 @@ export default function LoginPage() {
                 Enter your work email and we&rsquo;ll send a sign-in link.
               </p>
             </div>
+            {oauthGoogleEnabled() ? (
+              <>
+                <GoogleSignInButton intent="login" />
+                <AuthDivider />
+              </>
+            ) : null}
             <LoginForm />
             <p className="mt-6 text-center text-[12px] text-slate/55">
               Don&rsquo;t have an account?{" "}

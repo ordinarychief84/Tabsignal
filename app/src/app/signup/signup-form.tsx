@@ -30,13 +30,24 @@ type FieldErrors = Partial<Record<FieldName, string>>;
  * clicks the verification link, /api/auth/login returns 401
  * EMAIL_UNVERIFIED.
  */
-export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
-  const [ownerName, setOwnerName] = useState("");
+export function SignupForm({
+  defaultCountry,
+  oauthPrefill,
+}: {
+  defaultCountry: Country;
+  // Set when the user arrived from the Google callback for an unknown
+  // email: identity is already verified, so name + email are prefilled
+  // and locked, and the password field is hidden (the pending cookie
+  // authorizes the passwordless signup server-side).
+  oauthPrefill?: { email: string; name: string };
+}) {
+  const isOauth = !!oauthPrefill;
+  const [ownerName, setOwnerName] = useState(oauthPrefill?.name ?? "");
   const [restaurantName, setRestaurantName] = useState("");
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState<Country>(defaultCountry);
   const [phoneNational, setPhoneNational] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(oauthPrefill?.email ?? "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -70,6 +81,7 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return "Use a real email address.";
     }
     if (name === "password") {
+      if (isOauth) return undefined; // Google is the credential — no password
       if (v.length < 12) return "Password must be at least 12 characters.";
     }
     return undefined;
@@ -99,7 +111,10 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
     }
 
     const errs: FieldErrors = {};
-    (["ownerName", "restaurantName", "address", "phoneNational", "email", "password"] as FieldName[]).forEach(n => {
+    const fieldsToCheck: FieldName[] = isOauth
+      ? ["ownerName", "restaurantName", "address", "phoneNational", "email"]
+      : ["ownerName", "restaurantName", "address", "phoneNational", "email", "password"];
+    fieldsToCheck.forEach(n => {
       const v =
         n === "ownerName" ? ownerName :
         n === "restaurantName" ? restaurantName :
@@ -144,7 +159,9 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
           phoneNumber: phoneE164,
           country: country.iso,
           email: payloadEmail,
-          password,
+          // OAuth signups carry no password — the pending cookie (sent
+          // with this request) authorizes the passwordless create.
+          ...(isOauth ? {} : { password }),
           agreeTerms: true,
         }),
       });
@@ -164,6 +181,33 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
   }
 
   /* -------------------------- success state -------------------------- */
+
+  if (status === "sent" && isOauth) {
+    return (
+      <div className="space-y-5" role="status" aria-live="polite">
+        <div className="rounded-2xl bg-chartreuse/20 p-5">
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-chartreuse text-slate">
+              <svg width="14" height="14" viewBox="0 0 12 12">
+                <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <p className="text-base font-semibold text-slate">Venue created</p>
+          </div>
+          <p className="mt-2 text-[14px] leading-relaxed text-slate/75">
+            Your account is linked to Google and already verified. Continue
+            with Google to jump straight into your dashboard.
+          </p>
+        </div>
+        <a
+          href="/api/auth/google/start?intent=login"
+          className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-chartreuse text-[15px] font-semibold text-slate shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-lift"
+        >
+          Continue with Google
+        </a>
+      </div>
+    );
+  }
 
   if (status === "sent") {
     return (
@@ -214,6 +258,17 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {isOauth ? (
+        <div className="flex items-center gap-2 rounded-xl bg-sea-soft/40 px-3.5 py-2.5 text-[13px] text-slate/80">
+          <span aria-hidden className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-chartreuse text-slate">
+            <svg width="10" height="10" viewBox="0 0 12 12">
+              <path d="M2.5 6.2l2.4 2.4 4.6-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          Verified with Google as <span className="font-medium text-slate">{oauthPrefill!.email}</span>. Add your venue details.
+        </div>
+      ) : null}
+
       <Field
         id="ownerName"
         label="Your full name"
@@ -320,8 +375,11 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
         onBlur={v => onBlur("email", v)}
         error={fieldErrors.email}
         placeholder="owner@luna-lounge.com"
+        readOnly={isOauth}
+        hint={isOauth ? "Verified by Google — can't be changed here." : undefined}
       />
 
+      {isOauth ? null : (
       <div>
         <div className="flex items-baseline justify-between">
           <label htmlFor="signup-password" className="block text-[12px] font-medium text-slate/70">
@@ -363,6 +421,7 @@ export function SignupForm({ defaultCountry }: { defaultCountry: Country }) {
           </p>
         )}
       </div>
+      )}
 
       <label className="mt-1 flex items-start gap-3 rounded-xl bg-slate/[0.03] p-3 text-[13px] text-slate/75">
         <input
@@ -428,6 +487,7 @@ function Field({
   autoComplete,
   inputMode,
   hint,
+  readOnly,
 }: {
   id: string;
   label: string;
@@ -440,6 +500,7 @@ function Field({
   autoComplete?: string;
   inputMode?: "email" | "text" | "tel";
   hint?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div>
@@ -455,11 +516,13 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => onBlur(e.target.value)}
         placeholder={placeholder}
+        readOnly={readOnly}
         aria-invalid={error ? "true" : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
         className={[
           "mt-1.5 block w-full rounded-xl border bg-white px-3.5 py-3 text-[15px] text-slate placeholder-slate/35 outline-none transition-shadow",
           "focus:ring-4",
+          readOnly ? "cursor-not-allowed bg-slate/[0.03] text-slate/70" : "",
           error
             ? "border-coral/60 focus:border-coral focus:ring-coral/15"
             : "border-slate/15 focus:border-slate/40 focus:ring-slate/[0.08]",
