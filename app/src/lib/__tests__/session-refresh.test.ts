@@ -13,7 +13,10 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { SignJWT } from "jose";
-import { maybeRenewSession } from "../auth/session";
+// Import from the dedicated pure module, NOT ../auth/session — the
+// latter is mocked process-wide by sibling tests, which hid this export
+// on Linux CI's file-load order (the cross-file mock-leak class).
+import { maybeRenewSession } from "../auth/session-renewal";
 
 const DAY = 24 * 60 * 60_000;
 const NOW = 1_800_000_000_000; // fixed clock (ms)

@@ -78,39 +78,10 @@ export async function getStaffSession(): Promise<SessionClaims | null> {
   return null;
 }
 
-/**
- * Session sliding-renewal decision (the "token refresh" in TabCall's
- * model — we hold no OAuth refresh tokens). Pure + unit-tested so the
- * refresh route stays thin. Applies identically to every session
- * regardless of how it was minted (magic-link / password / OAuth).
- *
- *   - revoked  : iat predates a "sign out everywhere" cutoff → reject
- *   - expired  : older than the 30-day cookie lifetime → reject
- *   - aged     : older than the 7-day renewal threshold → reissue
- *   - fresh    : younger than the threshold → leave the cookie alone
- *
- * `iat` is the JWT seconds-since-epoch; `now` is ms. Revocation is
- * checked FIRST so a freshly-minted-but-revoked token can't renew.
- */
-const RENEW_AFTER_MS = 7 * 24 * 60 * 60_000;
-const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60_000;
-
-export type RenewDecision = { renew: boolean; reason: "revoked" | "expired" | "aged" | "fresh" };
-
-export function maybeRenewSession(
-  claims: { iat: number },
-  staffValidAfter: Date | null,
-  now: number,
-): RenewDecision {
-  const iatMs = claims.iat * 1000;
-  if (staffValidAfter && iatMs < staffValidAfter.getTime()) {
-    return { renew: false, reason: "revoked" };
-  }
-  const ageMs = now - iatMs;
-  if (ageMs > SESSION_MAX_AGE_MS) return { renew: false, reason: "expired" };
-  if (ageMs > RENEW_AFTER_MS) return { renew: true, reason: "aged" };
-  return { renew: false, reason: "fresh" };
-}
+// Session sliding-renewal lives in its own leak-proof module (several
+// test files mock @/lib/auth/session process-wide). Re-exported here so
+// the documented "in session.ts" API still resolves for any importer.
+export { maybeRenewSession, type RenewDecision } from "./session-renewal";
 
 export function sessionCookieOptions(maxAgeDays = 30) {
   return {

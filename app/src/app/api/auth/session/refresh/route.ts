@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifySessionTokenWithIat, signSessionToken } from "@/lib/auth/token";
-import {
-  SESSION_COOKIE,
-  sessionCookieOptions,
-  maybeRenewSession,
-} from "@/lib/auth/session";
+import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
+import { maybeRenewSession } from "@/lib/auth/session-renewal";
 import { readCookie } from "@/lib/auth/oauth-google";
 import { originGuard } from "@/lib/csrf";
 
