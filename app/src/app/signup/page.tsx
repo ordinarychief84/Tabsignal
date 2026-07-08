@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { detectCountryFromHeaders } from "@/lib/countries";
+import { oauthGoogleEnabled, verifyOauthPending, OAUTH_PENDING_COOKIE } from "@/lib/auth/oauth-google";
+import { GoogleSignInButton, AuthDivider } from "../google-signin-button";
 import { SignupForm } from "./signup-form";
 
 export const metadata: Metadata = {
@@ -27,10 +29,18 @@ export const dynamic = "force-dynamic";
  * but route through the same magic-link flow — see PR commit notes for
  * the password-auth follow-up scope.
  */
-export default function SignupPage() {
+export default async function SignupPage() {
   // GeoIP-defaulted country for the phone-input dropdown. Vercel edge
   // sets x-vercel-ip-country; falls back to US for local dev / non-Vercel.
   const defaultCountry = detectCountryFromHeaders(headers());
+
+  // OAuth handoff: the Google callback for an unknown email sets a signed
+  // pending cookie and redirects here. Verify it server-side so the form
+  // prefills a trusted, Google-verified name + email (never client data).
+  const pendingToken = cookies().get(OAUTH_PENDING_COOKIE)?.value;
+  const pending = pendingToken ? await verifyOauthPending(pendingToken) : null;
+  const oauthPrefill = pending ? { email: pending.email, name: pending.name } : undefined;
+  const googleEnabled = oauthGoogleEnabled();
 
   return (
     <main className="grid min-h-screen grid-cols-1 bg-surface-warm lg:grid-cols-[1.05fr_1fr]">
@@ -121,7 +131,16 @@ export default function SignupPage() {
                 Get started in minutes. No setup fees.
               </p>
             </div>
-            <SignupForm defaultCountry={defaultCountry} />
+            {/* First-time Google visitors (no pending handoff yet) can
+                start OAuth here; once handed off, the form itself shows
+                the verified state and the button would be redundant. */}
+            {googleEnabled && !oauthPrefill ? (
+              <>
+                <GoogleSignInButton intent="signup" />
+                <AuthDivider />
+              </>
+            ) : null}
+            <SignupForm defaultCountry={defaultCountry} oauthPrefill={oauthPrefill} />
             <p className="mt-6 text-center text-[12px] text-slate/55">
               Already have an account?{" "}
               <Link href="/login" className="text-umber underline-offset-4 hover:underline">

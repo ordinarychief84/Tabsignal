@@ -78,6 +78,11 @@ export async function getStaffSession(): Promise<SessionClaims | null> {
   return null;
 }
 
+// Session sliding-renewal lives in its own leak-proof module (several
+// test files mock @/lib/auth/session process-wide). Re-exported here so
+// the documented "in session.ts" API still resolves for any importer.
+export { maybeRenewSession, type RenewDecision } from "./session-renewal";
+
 export function sessionCookieOptions(maxAgeDays = 30) {
   return {
     httpOnly: true,

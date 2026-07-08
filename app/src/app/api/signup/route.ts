@@ -6,6 +6,12 @@ import { newQrToken } from "@/lib/qr";
 import { signInviteToken, signLinkToken } from "@/lib/auth/token";
 import { sendMagicLinkEmail } from "@/lib/auth/email";
 import { hashStaffPassword } from "@/lib/auth/staff-password";
+import {
+  verifyOauthPending,
+  readCookie,
+  OAUTH_PENDING_COOKIE,
+  clearedCookieOptions,
+} from "@/lib/auth/oauth-google";
 import { isE164 } from "@/lib/countries";
 import { appOrigin } from "@/lib/origin";
 import { rateLimitAsync } from "@/lib/rate-limit";
@@ -44,7 +50,11 @@ const Body = z.object({
   }),
   country: z.string().regex(/^[A-Z]{2}$/, "country must be ISO 3166-1 alpha-2 (e.g. US, GB)"),
   email: z.string().email().max(200),
-  password: z.string().min(12).max(128),
+  // Optional at the schema level so the OAuth path (identity already
+  // Google-verified) can omit it. When there is NO valid oauth-pending
+  // cookie, the handler enforces password-required — the non-OAuth
+  // contract is unchanged.
+  password: z.string().min(12).max(128).optional(),
   // Server-side terms gate. The form has a checkbox; without this a
   // direct POST could bypass it. Require literal `true`.
   agreeTerms: z.literal(true, {
@@ -112,6 +122,22 @@ export async function POST(req: Request) {
 
   const email = parsed.email.toLowerCase().trim();
 
+  // OAuth signup handoff: a valid oauth-pending cookie (set by the Google
+  // callback for an unknown email) makes password optional and the
+  // account born email-verified + provider-linked. The cookie email must
+  // match the submitted email, else we treat it as a normal signup
+  // (password required) — no trusting a stale/foreign pending cookie.
+  const pendingCookie = readCookie(req, OAUTH_PENDING_COOKIE);
+  const oauthPending = pendingCookie ? await verifyOauthPending(pendingCookie) : null;
+  const isOauthSignup = !!oauthPending && oauthPending.email.toLowerCase() === email;
+
+  if (!isOauthSignup && !parsed.password) {
+    return NextResponse.json(
+      { error: "INVALID_BODY", detail: "password: Required (min 12 chars)" },
+      { status: 400 },
+    );
+  }
+
   // If this email already has a staff record, do NOT create a duplicate
   // venue. Send a sign-in link instead so they can recover access.
   // Response shape stays identical to a fresh signup so we don't
@@ -159,15 +185,18 @@ export async function POST(req: Request) {
   }
 
   // Hash the password OUTSIDE the transaction — bcrypt at cost 12
-  // takes ~250ms and we don't want to hold a DB connection idle.
-  let passwordHash: string;
-  try {
-    passwordHash = await hashStaffPassword(parsed.password);
-  } catch (err) {
-    return NextResponse.json(
-      { error: "INVALID_BODY", detail: err instanceof Error ? err.message : "password failed validation" },
-      { status: 400 },
-    );
+  // takes ~250ms and we don't want to hold a DB connection idle. OAuth
+  // signups carry no password (Google is the credential).
+  let passwordHash: string | null = null;
+  if (!isOauthSignup) {
+    try {
+      passwordHash = await hashStaffPassword(parsed.password!);
+    } catch (err) {
+      return NextResponse.json(
+        { error: "INVALID_BODY", detail: err instanceof Error ? err.message : "password failed validation" },
+        { status: 400 },
+      );
+    }
   }
 
   const zipCode = extractZip(parsed.address);
@@ -213,6 +242,14 @@ export async function POST(req: Request) {
     // until 20260511 migration flipped it to 'SERVER'. Either default
     // is wrong for the venue creator — they need manager permissions
     // to invite staff, configure Stripe, and edit settings.
+    // Explicit role='OWNER': the column default was 'STAFF' (legacy)
+    // until 20260511 migration flipped it to 'SERVER'. Either default
+    // is wrong for the venue creator — they need manager permissions
+    // to invite staff, configure Stripe, and edit settings.
+    //
+    // OAuth signups are born email-verified (Google asserted it) and
+    // carry no password; magic-link signups leave both null until the
+    // owner clicks their verification link.
     const staff = await tx.staffMember.create({
       data: {
         venueId: venue.id,
@@ -220,12 +257,21 @@ export async function POST(req: Request) {
         name: ownerName,
         role: "OWNER",
         passwordHash,
-        passwordChangedAt: new Date(),
-        // emailVerifiedAt deliberately left NULL — set by
-        // /api/auth/callback when the user clicks the verification
-        // link. Password login refuses to mint a session until then.
+        // OAuth: emailVerifiedAt now; magic-link: passwordChangedAt now.
+        // carry no password; the magic-link path leaves both null until
+        // the owner clicks their verification link.
+        ...(isOauthSignup
+          ? { emailVerifiedAt: new Date() }
+          : { passwordChangedAt: new Date() }),
       },
     });
+    // Link the federated identity so the next Google sign-in resolves
+    // directly (no email-match fallback needed).
+    if (isOauthSignup && oauthPending) {
+      await tx.authIdentity.create({
+        data: { provider: "google", subject: oauthPending.sub, staffId: staff.id, email },
+      });
+    }
     await tx.orgMember.create({
       data: {
         orgId: org.id,
@@ -236,6 +282,16 @@ export async function POST(req: Request) {
 
     return { orgId: org.id, venue, staffId: staff.id };
   });
+
+  // OAuth signup: account is already verified + provider-linked, so skip
+  // the magic-link verification email entirely and clear the pending
+  // cookie. The owner is returned to /signup which shows success and can
+  // "Continue with Google" straight into the session.
+  if (isOauthSignup) {
+    const res = NextResponse.json({ ok: true, slug: result.venue.slug }, { status: 201 });
+    res.cookies.set(OAUTH_PENDING_COOKIE, "", clearedCookieOptions());
+    return res;
+  }
 
   // Mint a magic-link for email verification. Clicking it routes the
   // owner to the onboarding launchpad with a session cookie set +
