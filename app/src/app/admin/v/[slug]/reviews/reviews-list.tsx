@@ -10,6 +10,10 @@ type Review = {
   aiCategory: string | null;
   aiSuggestion: string | null;
   aiServerName: string | null;
+  // R2 attribution: real service history (who acknowledged this table's
+  // requests) + shift bucket in the venue's timezone.
+  servedByName: string | null;
+  shiftBucket: string | null;
   seenByMgr: boolean;
   flagged: boolean;
   flaggedAt: string | null;
@@ -199,8 +203,15 @@ export function ReviewsList({
                       {CATEGORY_LABEL[r.aiCategory] ?? r.aiCategory}
                     </span>
                   ) : null}
-                  {r.aiServerName ? (
-                    <span className="text-[11px] text-slate/55">· {r.aiServerName}</span>
+                  {r.servedByName ? (
+                    // Real attribution (acknowledged this table's requests)
+                    // beats the AI's name guess parsed from the note.
+                    <span className="text-[11px] text-slate/55">· served by {r.servedByName}</span>
+                  ) : r.aiServerName ? (
+                    <span className="text-[11px] text-slate/55">· AI guess: {r.aiServerName}</span>
+                  ) : null}
+                  {r.shiftBucket ? (
+                    <span className="text-[11px] text-slate/45">· {r.shiftBucket}</span>
                   ) : null}
                 </p>
               </div>

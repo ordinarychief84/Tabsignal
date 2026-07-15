@@ -76,7 +76,7 @@ export default async function ReviewsPage({
       <div className="mb-8 grid gap-3 sm:grid-cols-3">
         <Stat label="1–3 stars" value={String(initialItems.length + (hasMore ? "+" : ""))} hint="Routed here" />
         <Stat label="Unseen (on screen)" value={String(unseen)} hint="Tap a card to mark seen" />
-        <Stat label="4–5 stars" value={String(total5)} hint="Sent to Google" />
+        <Stat label="4–5 stars" value={String(total5)} hint="Happy visits" />
       </div>
 
       {initialItems.length === 0 ? (
@@ -95,6 +95,8 @@ export default async function ReviewsPage({
             aiCategory: r.aiCategory,
             aiSuggestion: r.aiSuggestion,
             aiServerName: r.aiServerName,
+            servedByName: r.servedByName,
+            shiftBucket: r.shiftBucket,
             seenByMgr: r.seenByMgr,
             flagged: r.flagged,
             flaggedAt: r.flaggedAt?.toISOString() ?? null,
