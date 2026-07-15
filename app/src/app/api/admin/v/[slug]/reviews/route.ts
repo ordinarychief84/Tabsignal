@@ -63,6 +63,8 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
       aiCategory: r.aiCategory,
       aiSuggestion: r.aiSuggestion,
       aiServerName: r.aiServerName,
+      servedByName: r.servedByName,
+      shiftBucket: r.shiftBucket,
       seenByMgr: r.seenByMgr,
       flagged: r.flagged,
       flaggedAt: r.flaggedAt?.toISOString() ?? null,

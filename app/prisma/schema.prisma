@@ -206,6 +206,8 @@ model Venue {
   posSyncLogs            PosSyncLog[]
   venueBranding          VenueBranding?
   posIntegration         PosIntegration?
+  gbpConnection          GbpConnection?
+  googleReviews          GoogleReview[]
 
   @@index([orgId])
 }
@@ -697,6 +699,14 @@ model FeedbackReport {
   sessionId    String       @unique
   rating       Int
   note         String?
+  // Reviews suite R2: employee + shift attribution, stamped at submit
+  // time from the session's service history (who actually acknowledged
+  // requests at this table) and the venue's timezone. Name denormalized
+  // so attribution survives staff churn/deletion.
+  servedByStaffId String?
+  servedByName    String?
+  // "morning" | "afternoon" | "evening" | "late" in the VENUE's tz.
+  shiftBucket     String?
   // AI classification (PRD v2.0 F4 — bad-review intercept)
   aiCategory   String? // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
   aiSuggestion String?
@@ -712,6 +722,75 @@ model FeedbackReport {
   session      GuestSession @relation(fields: [sessionId], references: [id])
 
   @@index([venueId, createdAt])
+  @@index([venueId, servedByStaffId])
+}
+
+// =====================================================================
+// Reviews & reputation suite (2026-07) — Google Business Profile
+// =====================================================================
+
+enum GbpConnectionStatus {
+  PENDING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+// One Google Business Profile connection per venue. Created by the
+// owner via a venue-level OAuth consent (offline access, business.manage
+// scope) — a SEPARATE grant from the sign-in OAuth, though it reuses the
+// same Google Cloud client. The refresh token is AES-256-GCM encrypted
+// via lib/pos/crypto (same posture as PosIntegration credentials): the
+// frontend never sees it; only the sync/reply code decrypts at call time.
+model GbpConnection {
+  id                    String              @id @default(cuid())
+  venueId               String              @unique
+  venue                 Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  // Google account that granted access — display + support only.
+  googleEmail           String?
+  // GBP resource names: "accounts/{id}" and "locations/{id}". Location
+  // is bound by the owner from a picker after consent.
+  gbpAccountName        String?
+  gbpLocationName       String?
+  // Human label of the bound location ("TabCall Taproom — Austin").
+  locationTitle         String?
+  encryptedRefreshToken String?             @db.Text
+  status                GbpConnectionStatus @default(PENDING)
+  lastSyncAt            DateTime?
+  lastError             String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([status])
+}
+
+// Google reviews mirrored locally by the sync cron so the inbox, reports
+// and multi-location comparison read fast without hitting the GBP API.
+// gbpReviewName is the API resource name — the natural idempotency key.
+model GoogleReview {
+  id               String    @id @default(cuid())
+  venueId          String
+  venue            Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  gbpReviewName    String    @unique
+  starRating       Int
+  comment          String?   @db.Text
+  reviewerName     String?
+  reviewerPhotoUrl String?
+  gbpCreatedAt     DateTime
+  gbpUpdatedAt     DateTime?
+  // Reply state. replySource distinguishes replies posted through
+  // TabCall from ones that already existed on GBP.
+  replyText        String?   @db.Text
+  repliedAt        DateTime?
+  replySource      String?
+  // Latest AI-drafted reply awaiting owner review (R4). Cleared on post.
+  aiDraft          String?   @db.Text
+  seenByMgr        Boolean   @default(false)
+  syncedAt         DateTime  @default(now())
+
+  @@index([venueId, gbpCreatedAt])
+  @@index([venueId, seenByMgr])
+  @@index([venueId, repliedAt])
 }
 
 // =====================================================================

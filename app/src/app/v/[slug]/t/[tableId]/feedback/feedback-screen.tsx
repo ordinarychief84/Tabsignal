@@ -39,12 +39,11 @@ export function FeedbackScreen({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
-      if (data.reviewUrl) {
-        setReviewUrl(data.reviewUrl);
-        setPhase("google");
-      } else {
-        setPhase("thanks");
-      }
+      // Honest review links: the API returns the SAME Google link for
+      // every rating (no gating). Tone differs by rating — the link
+      // affordance doesn't.
+      setReviewUrl(data.reviewUrl ?? null);
+      setPhase(stars >= 4 ? "google" : "thanks");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
       setPhase(stars >= 4 ? "rating" : "note");
@@ -94,6 +93,23 @@ export function FeedbackScreen({
           <p className="mt-2 max-w-xs text-sm text-slate/60">
             A manager will see your note and follow up if needed.
           </p>
+          {reviewUrl ? (
+            <>
+              {/* Same link, same button, every rating — Google's review
+                  policy prohibits gating, and we don't do it. */}
+              <a
+                href={reviewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-7 inline-block rounded-xl bg-chartreuse px-6 py-3 text-base font-medium text-slate"
+              >
+                Leave a Google review
+              </a>
+              <p className="mt-3 text-[11px] tracking-wide text-slate/40">
+                Public and in your words — good or bad.
+              </p>
+            </>
+          ) : null}
         </Centered>
         {showIdentify ? <IdentifyCta slug={slug} /> : null}
       </>
@@ -158,7 +174,7 @@ export function FeedbackScreen({
         })}
       </div>
       <p className="mt-6 text-center text-[11px] tracking-wide text-slate/40">
-        4–5 stars: leave a Google review. 1–3 stars: tell the manager privately.
+        Share it on Google, tell the manager privately, or both — your call.
       </p>
       {error ? (
         <p className="mt-4 rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{error}</p>

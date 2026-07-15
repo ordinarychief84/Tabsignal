@@ -8,6 +8,8 @@ import { badRatingHtml, badRatingSubject, badRatingText } from "@/lib/email/bad-
 import { sendEmail } from "@/lib/email/send";
 import { venueAlertRecipients } from "@/lib/email/recipients";
 import { signCompToken } from "@/lib/auth/comp-token";
+import { attributionForSession, shiftBucketFor } from "@/domain/reviews/attribution";
+import { googleReviewUrl } from "@/domain/reviews/links";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -39,7 +41,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
   const session = await db.guestSession.findUnique({
     where: { id: ctx.params.id },
-    include: { venue: { select: { id: true, name: true, googlePlaceId: true } }, table: { select: { label: true } } },
+    include: {
+      venue: { select: { id: true, name: true, googlePlaceId: true, timezone: true } },
+      table: { select: { label: true } },
+    },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (!tokensEqual(session.sessionToken, parsed.sessionToken)) {
@@ -61,7 +66,27 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const existing = await db.feedbackReport.findFirst({ where: { sessionId: session.id } });
   if (existing) return NextResponse.json({ error: "ALREADY_RATED" }, { status: 409 });
 
-  // Happy path: 4–5 stars → return Google deep link, no AI/email.
+  // HONEST REVIEW LINK: computed once, returned for EVERY rating.
+  // Google's policy prohibits review gating (selectively soliciting
+  // positive reviews); the old ≥4-only branch was exactly that. Unhappy
+  // guests still get the private-note + manager-intercept path as
+  // additional support — but the public link is never withheld.
+  const reviewUrl = googleReviewUrl(session.venue.googlePlaceId);
+
+  // R2 attribution: who served this table (last acknowledging staff)
+  // and which shift, in the venue's timezone. Never blocks feedback.
+  let servedBy: Awaited<ReturnType<typeof attributionForSession>> = null;
+  try {
+    servedBy = await attributionForSession(session.id);
+  } catch { /* attribution is best-effort */ }
+  const shiftBucket = shiftBucketFor(new Date(), session.venue.timezone);
+  const attribution = {
+    servedByStaffId: servedBy?.staffId ?? null,
+    servedByName: servedBy?.staffName ?? null,
+    shiftBucket,
+  };
+
+  // Happy path: 4–5 stars → no AI/email.
   if (parsed.rating >= 4) {
     await db.feedbackReport.create({
       data: {
@@ -69,11 +94,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         sessionId: session.id,
         rating: parsed.rating,
         note: parsed.note ?? null,
+        ...attribution,
       },
     });
-    const reviewUrl = session.venue.googlePlaceId
-      ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(session.venue.googlePlaceId)}`
-      : null;
     return NextResponse.json({ ok: true, reviewUrl });
   }
 
@@ -100,6 +123,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       aiCategory: classification.category,
       aiSuggestion: classification.suggestion,
       aiServerName: classification.serverName,
+      ...attribution,
     },
   });
 
@@ -152,5 +176,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  // Honest link on the low-rating path too — same URL as 5★.
+  return NextResponse.json({ ok: true, reviewUrl });
 }
