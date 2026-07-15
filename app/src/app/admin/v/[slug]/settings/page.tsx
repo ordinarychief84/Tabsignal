@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { EditableField } from "./editable-field";
 import { ToggleField } from "./toggle-field";
 import { ConnectStripeButton } from "./connect-stripe-button";
+import { GbpCard } from "./gbp-card";
 import { LogoUpload } from "./logo-upload";
 import { SessionsCard } from "./sessions-card";
 
@@ -109,6 +110,10 @@ export default async function SettingsPage({ params }: { params: { slug: string 
             pattern="^#[0-9a-fA-F]{6}$"
           />
           <LogoUpload slug={params.slug} initialUrl={venue.logoUrl} />
+        </Card>
+
+        <Card title="Google Business Profile">
+          <GbpCard slug={params.slug} />
         </Card>
 
         <Card title="Compliance">
