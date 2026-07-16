@@ -28,7 +28,7 @@ export function BillingFlipPanel({
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  async function flip() {
+  async function apply(payload: { planId: string; status: Status; trialEndsAt?: string | null; reason?: string }) {
     setBusy(true);
     setError(null);
     setNote(null);
@@ -36,16 +36,13 @@ export function BillingFlipPanel({
       const res = await fetch(`/api/operator/orgs/${orgId}/billing`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planId,
-          status,
-          trialEndsAt: trialEndsAt ? new Date(trialEndsAt).toISOString() : null,
-          reason: reason.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       if (body.note) setNote(body.note);
+      setPlanId(payload.planId);
+      setStatus(payload.status);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
@@ -54,15 +51,76 @@ export function BillingFlipPanel({
     }
   }
 
+  // One-click grant/revoke. Paid → ACTIVE (access takes immediately);
+  // Starter → NONE. Reason is stamped for the audit trail.
+  function quickFlip(targetPlan: "free" | "growth" | "pro") {
+    void apply({
+      planId: targetPlan,
+      status: targetPlan === "free" ? "NONE" : "ACTIVE",
+      trialEndsAt: null,
+      reason: `Operator ${targetPlan === "free" ? "downgrade → Starter" : "upgrade → " + targetPlan} from console`,
+    });
+  }
+
+  function flip() {
+    void apply({
+      planId,
+      status,
+      trialEndsAt: trialEndsAt ? new Date(trialEndsAt).toISOString() : null,
+      reason: reason.trim() || undefined,
+    });
+  }
+
   return (
     <section className="rounded-2xl border border-slate/10 bg-white p-5">
       <p className="text-[11px] uppercase tracking-[0.16em] text-umber">Set tier</p>
       <p className="mt-1 text-xs text-slate/55">
-        Pick the plan you agreed to on the call. Status defaults to ACTIVE
-        for paid plans, NONE for free.
+        Grant or revoke plan access instantly. Access takes effect immediately —
+        no Stripe charge until a subscription is wired up separately.
       </p>
 
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      {/* One-click quick actions — the common path. */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-[11px] uppercase tracking-[0.16em] text-umber">Currently {currentPlanId}</span>
+        <span className="mx-1 text-slate/30">·</span>
+        {currentPlanId !== "growth" ? (
+          <button
+            type="button"
+            onClick={() => quickFlip("growth")}
+            disabled={busy}
+            className="rounded-full bg-sea-soft/70 px-3.5 py-1.5 text-sm font-medium text-slate hover:bg-sea-soft disabled:opacity-50"
+          >
+            ↑ Upgrade to Growth
+          </button>
+        ) : null}
+        {currentPlanId !== "pro" ? (
+          <button
+            type="button"
+            onClick={() => quickFlip("pro")}
+            disabled={busy}
+            className="rounded-full bg-chartreuse px-3.5 py-1.5 text-sm font-medium text-slate hover:bg-chartreuse/85 disabled:opacity-50"
+          >
+            ↑ Upgrade to Pro
+          </button>
+        ) : null}
+        {currentPlanId !== "free" ? (
+          <button
+            type="button"
+            onClick={() => quickFlip("free")}
+            disabled={busy}
+            className="rounded-full border border-coral/30 px-3.5 py-1.5 text-sm font-medium text-coral hover:bg-coral/10 disabled:opacity-50"
+          >
+            ↓ Downgrade to Starter
+          </button>
+        ) : null}
+      </div>
+
+      <details className="mt-5 rounded-xl border border-slate/10 bg-oat/40 px-4 py-3">
+        <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.16em] text-umber">
+          Advanced: set exact tier + status
+        </summary>
+        <div className="mt-4">
+      <div className="grid grid-cols-3 gap-3">
         {plans.map(p => {
           const sel = planId === p.id;
           return (
@@ -122,24 +180,26 @@ export function BillingFlipPanel({
         />
       </label>
 
-      {error ? <p className="mt-4 text-sm text-coral">{error}</p> : null}
-      {note ? (
-        <p className="mt-4 rounded-lg bg-coral/10 px-3 py-2 text-xs text-slate/75">{note}</p>
-      ) : null}
-
       <button
         onClick={flip}
         disabled={busy}
-        className="mt-5 w-full rounded-xl bg-chartreuse py-3 text-sm font-medium text-slate disabled:opacity-50"
+        className="mt-5 w-full rounded-xl bg-slate py-3 text-sm font-medium text-oat disabled:opacity-50"
       >
-        {busy ? "Flipping…" : `Flip ${planId} · ${status}`}
+        {busy ? "Applying…" : `Apply ${planId} · ${status}`}
       </button>
+        </div>
+      </details>
 
-      <p className="mt-3 text-[11px] text-slate/45">
-        This records the plan in our DB only. To actually invoice, also create
-        a Stripe Subscription on this Customer in the Stripe Dashboard. The
-        webhook will sync subscriptionPriceId / subscriptionPeriodEnd on
-        the next billing event.
+      {error ? <p className="mt-4 text-sm text-coral">{error}</p> : null}
+      {note ? (
+        <p className="mt-4 rounded-lg bg-sea-soft/40 px-3 py-2 text-xs text-slate/75">{note}</p>
+      ) : null}
+
+      <p className="mt-4 text-[11px] text-slate/45">
+        Access takes effect immediately across the venue&rsquo;s admin. To also
+        INVOICE the org, create a Stripe Subscription on this Customer in the
+        Stripe Dashboard; the webhook then syncs the real price on the next
+        billing event.
       </p>
     </section>
   );

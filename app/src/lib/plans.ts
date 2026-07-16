@@ -69,12 +69,42 @@ export function planById(id: string): PlanDefinition | null {
   return PLANS.find(p => p.id === id) ?? null;
 }
 
-const PRICE_TO_PLAN: Record<string, PlanId> = Object.fromEntries(
-  PLANS.filter(p => p.stripePriceId).map(p => [p.stripePriceId!, p.id])
-);
+// Sentinel price IDs for OPERATOR-GRANTED (comp / concierge) plans that
+// have no Stripe subscription behind them. Without these, an operator
+// flip to Growth/Pro stored subscriptionPriceId=null, and planFromOrg
+// then read a null price on an ACTIVE org and fell back to "free" — the
+// upgrade silently granted nothing. Storing a resolvable sentinel makes
+// the manual grant actually take. A real Stripe webhook later overwrites
+// it with the true price ID if the org is put on paid billing.
+export const MANUAL_PRICE_ID: Record<Exclude<PlanId, "free">, string> = {
+  growth: "manual_growth",
+  pro: "manual_pro",
+};
+
+const PRICE_TO_PLAN: Record<string, PlanId> = {
+  ...Object.fromEntries(PLANS.filter(p => p.stripePriceId).map(p => [p.stripePriceId!, p.id])),
+  // Manual grants resolve regardless of whether STRIPE_PRICE_* is set.
+  [MANUAL_PRICE_ID.growth]: "growth",
+  [MANUAL_PRICE_ID.pro]: "pro",
+};
 
 export function planByPriceId(priceId: string): PlanId | null {
   return PRICE_TO_PLAN[priceId] ?? null;
+}
+
+/**
+ * The price ID to persist when granting a plan. Prefers the real Stripe
+ * price (so genuine billing round-trips), else the manual sentinel so an
+ * operator comp grant still resolves to the right tier. `free` clears it.
+ */
+export function priceIdForPlan(planId: PlanId): string | null {
+  if (planId === "free") return null;
+  return planById(planId)?.stripePriceId ?? MANUAL_PRICE_ID[planId];
+}
+
+/** True when a stored price ID is an operator comp grant, not real Stripe. */
+export function isManualPriceId(priceId: string | null): boolean {
+  return priceId === MANUAL_PRICE_ID.growth || priceId === MANUAL_PRICE_ID.pro;
 }
 
 export function rankOf(plan: PlanId): number {
