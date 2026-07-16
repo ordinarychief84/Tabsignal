@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { checkOrgAccess } from "@/lib/operator-rbac";
 import { isPlatformStaffAsync } from "@/lib/auth/operator";
-import { planById } from "@/lib/plans";
+import { planById, priceIdForPlan, isManualPriceId } from "@/lib/plans";
 import { sendEmail } from "@/lib/email/send";
 import { orgAlertRecipients } from "@/lib/email/recipients";
 
@@ -61,11 +61,17 @@ export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
   // unless caller explicitly chose TRIALING/PAST_DUE/etc.
   const status = parsed.status ?? (parsed.planId === "free" ? "NONE" : "ACTIVE");
 
+  // priceIdForPlan returns the real Stripe price when configured, else a
+  // manual sentinel — so the grant ACTUALLY takes (planFromOrg resolves
+  // it) even without STRIPE_PRICE_* env. Previously this stored null and
+  // the upgrade silently did nothing.
+  const priceId = priceIdForPlan(parsed.planId);
+
   const updated = await db.organization.update({
     where: { id: ctx.params.orgId },
     data: {
       subscriptionStatus: status,
-      subscriptionPriceId: parsed.planId === "free" ? null : (plan.stripePriceId ?? null),
+      subscriptionPriceId: priceId,
       trialEndsAt: parsed.trialEndsAt === undefined ? undefined : (parsed.trialEndsAt ? new Date(parsed.trialEndsAt) : null),
     },
     select: { id: true, name: true, subscriptionStatus: true, subscriptionPriceId: true, trialEndsAt: true },
@@ -92,8 +98,11 @@ export async function PATCH(req: Request, ctx: { params: { orgId: string } }) {
   return NextResponse.json({
     org: updated,
     plan: parsed.planId,
-    note: parsed.planId !== "free" && !plan.stripePriceId
-      ? "Plan flipped, but STRIPE_PRICE_" + parsed.planId.toUpperCase() + " env is unset. Billing won't actually charge until that's configured."
+    // Access is granted immediately (manual sentinel). The only caveat
+    // is that a comp grant won't auto-INVOICE via Stripe until a real
+    // subscription + STRIPE_PRICE_* is wired up.
+    note: parsed.planId !== "free" && isManualPriceId(updated.subscriptionPriceId)
+      ? `${plan.name} access granted (comp). No Stripe charge until STRIPE_PRICE_${parsed.planId.toUpperCase()} + a subscription are configured.`
       : null,
   });
 }
