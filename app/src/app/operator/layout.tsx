@@ -1,21 +1,39 @@
 /**
- * Top-level layout for the TabCall operator console.
+ * Operator console shell — SaaS-standard sidebar layout.
  *
- * Renders a thin header with operator-tier nav (Console / Audit /
- * Settings) and an "operator" pill identifying the role. Auth gate is
- * intentionally light here — each page re-checks `isOperator()` so a
- * non-operator who bookmarks a sub-route still gets the same denial
- * card the existing /operator page renders.
- *
- * Org-scoped pages under /operator/orgs/[orgId] keep their own
- * layout so the org-context doesn't leak up here.
+ * Auth gate stays here (each page re-checks too): non-operators are
+ * bounced before any operator chrome renders. Org-scoped pages under
+ * /operator/orgs/[orgId] keep their own layout so org context doesn't
+ * leak into this rail.
  */
 
-import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getStaffSession } from "@/lib/auth/session";
 import { isOperatorAsync } from "@/lib/auth/operator";
+import { AdminShell, type NavGroup } from "@/components/admin/sidebar";
+
+const NAV: NavGroup[] = [
+  {
+    items: [{ href: "/operator", label: "Overview", exact: true }],
+  },
+  {
+    heading: "Manage",
+    items: [
+      { href: "/operator/orgs", label: "Organizations" },
+      { href: "/operator/venues", label: "Venues" },
+      { href: "/operator/admins", label: "Operators" },
+    ],
+  },
+  {
+    heading: "Platform",
+    items: [
+      { href: "/operator/audit", label: "Audit log" },
+      { href: "/operator/security", label: "Security" },
+      { href: "/operator/settings", label: "Settings" },
+    ],
+  },
+];
 
 export default async function OperatorLayout({ children }: { children: React.ReactNode }) {
   const session = await getStaffSession();
@@ -23,61 +41,18 @@ export default async function OperatorLayout({ children }: { children: React.Rea
     const reachedPath = headers().get("x-pathname") ?? "/operator";
     redirect(`/staff/login?next=${encodeURIComponent(reachedPath)}`);
   }
-  // Gate the chrome itself, not just the child pages. A non-operator who
-  // bookmarked /operator was getting the operator nav rendered before the
-  // child page denied them — confusing UX + tiny info leak about the
-  // existence of operator sub-routes. Send them to their own admin
-  // dashboard if they have a venue, else /staff.
   if (!(await isOperatorAsync(session))) {
     redirect("/staff");
   }
+
   return (
-    <div className="min-h-screen bg-oat text-slate">
-      <header className="sticky top-0 z-30 border-b border-slate/10 bg-white">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-6 px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/operator" className="inline-flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
-                <svg width="20" height="20" viewBox="0 0 24 24">
-                  <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
-                </svg>
-              </span>
-              <span className="text-lg font-medium tracking-tight">TabCall</span>
-            </Link>
-            <span className="rounded-full bg-chartreuse/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate">
-              operator
-            </span>
-          </div>
-          <nav className="hidden items-center gap-5 text-[13px] text-slate/70 md:flex">
-            <Link href="/operator"          className="hover:text-slate">Console</Link>
-            <Link href="/operator/orgs"     className="hover:text-slate">Orgs</Link>
-            <Link href="/operator/venues"   className="hover:text-slate">Venues</Link>
-            <Link href="/operator/admins"   className="hover:text-slate">Admins</Link>
-            <Link href="/operator/audit"    className="hover:text-slate">Audit</Link>
-            <Link href="/operator/security" className="hover:text-slate">Security</Link>
-            <Link href="/operator/settings" className="hover:text-slate">Settings</Link>
-          </nav>
-          <div className="flex items-center gap-3 text-[12px] text-slate/55">
-            <span className="hidden font-mono md:inline">{session.email}</span>
-            <Link
-              href="/admin/account/password"
-              className="rounded-lg border border-slate/15 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-            >
-              Change password
-            </Link>
-            <form action="/api/auth/logout" method="post">
-              <button
-                type="submit"
-                className="rounded-lg border border-slate/15 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-6 py-10">{children}</main>
-    </div>
+    <AdminShell
+      brand={{ href: "/operator", name: "TabCall" }}
+      roleLabel="operator"
+      groups={NAV}
+      account={{ email: session.email, changePasswordHref: "/admin/account/password" }}
+    >
+      {children}
+    </AdminShell>
   );
 }
