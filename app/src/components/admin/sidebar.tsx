@@ -26,12 +26,18 @@ export type NavGroup = { heading?: string; items: NavItem[] };
 export function AdminShell({
   brand,
   roleLabel,
+  context,
+  navTop,
   groups,
   account,
   children,
 }: {
   brand: { href: string; name: string };
   roleLabel?: string;
+  /** Optional context under the brand (e.g. the venue name + plan). */
+  context?: { label: string; sublabel?: string };
+  /** Optional element pinned above the nav groups (e.g. a trial nudge). */
+  navTop?: ReactNode;
   groups: NavGroup[];
   account: { email: string; changePasswordHref?: string };
   children: ReactNode;
@@ -63,6 +69,16 @@ export function AdminShell({
             </span>
           ) : null}
         </div>
+
+        {context ? (
+          <div className="mx-3 mb-1 rounded-lg bg-white/5 px-3 py-2">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-oat/40">Venue</p>
+            <p className="truncate text-[13px] font-medium text-oat">{context.label}</p>
+            {context.sublabel ? <p className="mt-0.5 text-[11px] text-oat/50">{context.sublabel}</p> : null}
+          </div>
+        ) : null}
+
+        {navTop ? <div className="px-3 pt-2">{navTop}</div> : null}
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {groups.map((group, gi) => (
