@@ -7,6 +7,8 @@ import { ConnectStripeButton } from "./connect-stripe-button";
 import { GbpCard } from "./gbp-card";
 import { LogoUpload } from "./logo-upload";
 import { SessionsCard } from "./sessions-card";
+import { TaxRateField } from "./tax-rate-field";
+import { taxRateForZip } from "@/lib/tax";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · settings" };
@@ -40,8 +42,17 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           <EditableField slug={params.slug} field="name" label="Name" initial={venue.name} placeholder="Otto's Lounge" />
           <Row label="Slug" value={venue.slug} mono />
           <EditableField slug={params.slug} field="address" label="Address" initial={venue.address ?? ""} placeholder="123 Main St" help="Optional. Used to derive city for benchmarks." />
-          <EditableField slug={params.slug} field="zipCode" label="ZIP code" initial={venue.zipCode ?? ""} placeholder="77006" pattern="^\d{5}(-\d{4})?$" help="Five digits or ZIP+4. Drives sales tax." />
+          <EditableField slug={params.slug} field="zipCode" label="ZIP code" initial={venue.zipCode ?? ""} placeholder="77006" pattern="^\d{5}(-\d{4})?$" help="Five digits or ZIP+4. Used for benchmarks, and as a sales-tax fallback." />
           <EditableField slug={params.slug} field="timezone" label="Timezone" initial={venue.timezone} placeholder="America/Chicago" help="IANA name. Affects how analytics buckets the day." />
+          <TaxRateField
+            slug={params.slug}
+            initialBps={venue.taxRateBps}
+            fallbackNote={
+              venue.taxRateBps === null && taxRateForZip(venue.zipCode ?? "") !== null
+                ? `${((taxRateForZip(venue.zipCode ?? "") ?? 0) * 100).toFixed(2)}% from ZIP ${venue.zipCode}`
+                : null
+            }
+          />
         </Card>
 
         <Card title="Payments · Stripe Connect">

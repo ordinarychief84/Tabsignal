@@ -40,9 +40,12 @@ export async function POST(
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
   }
-  if (session.venue.stripeAccountId && !session.venue.stripeChargesEnabled) {
+  // Refuse unless the venue can actually receive the money. A venue with
+  // NO connected account used to fall straight through here, and Stripe
+  // would settle the guest's payment into the PLATFORM balance.
+  if (!session.venue.stripeAccountId || !session.venue.stripeChargesEnabled) {
     return NextResponse.json(
-      { error: "VENUE_NOT_READY", detail: "This venue's Stripe account isn't onboarded yet." },
+      { error: "VENUE_NOT_READY", detail: "This venue isn't set up to take payments yet." },
       { status: 503 }
     );
   }
@@ -59,7 +62,12 @@ export async function POST(
   } catch (err) {
     return stripeErrorResponse(err, "[session/splits/payment]");
   }
-  if (!result.ok) return NextResponse.json({ error: "EMPTY_SPLIT" }, { status: 400 });
+  if (!result.ok) {
+    // VENUE_NOT_READY is a setup fault, not a guest fault — 503 so the
+    // split screen says "can't take payment yet" instead of failing generically.
+    const status = result.error === "EMPTY_SPLIT" ? 400 : 503;
+    return NextResponse.json({ error: result.error }, { status });
+  }
 
   await db.billSplit.update({
     where: { id: split.id },

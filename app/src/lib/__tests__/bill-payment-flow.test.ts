@@ -47,7 +47,14 @@ type SessionRow = {
   paidAt: Date | null;
   expiresAt: Date;
   guestProfileId: string | null;
-  venue: { id: string; name: string; zipCode: string; stripeAccountId: string | null; stripeChargesEnabled: boolean };
+  venue: {
+    id: string;
+    name: string;
+    zipCode: string;
+    taxRateBps: number | null;
+    stripeAccountId: string | null;
+    stripeChargesEnabled: boolean;
+  };
   table: { label: string };
 };
 
@@ -82,7 +89,11 @@ beforeEach(() => {
       id: "ven_1",
       name: "Luna Lounge",
       zipCode: "77002",
-      stripeAccountId: null, // standalone (non-Connect) for simpler test wiring
+      taxRateBps: null, // resolves 8.25% via the Texas ZIP fallback
+      // A charge-enabled Connect account is now a precondition for any
+      // PaymentIntent — without one the money would land in the platform
+      // balance, so the routes refuse. See the VENUE_NOT_READY test below.
+      stripeAccountId: "acct_test_venue",
       stripeChargesEnabled: true,
     },
     table: { label: "Table 4" },
@@ -176,7 +187,12 @@ beforeEach(() => {
               if (where.id !== state.session.id) return null;
               return {
                 ...state.session,
-                venue: { id: state.session.venue.id, name: state.session.venue.name, zipCode: state.session.venue.zipCode },
+                venue: {
+                  id: state.session.venue.id,
+                  name: state.session.venue.name,
+                  zipCode: state.session.venue.zipCode,
+                  taxRateBps: state.session.venue.taxRateBps,
+                },
                 table: { label: state.session.table.label },
               };
             },
@@ -263,6 +279,49 @@ describe("Bill → Payment → Webhook round-trip", () => {
     const updateWithIntent = state.guestSessionUpdates.find(u => u.data.stripePaymentIntentId);
     expect(updateWithIntent).toBeDefined();
     expect(updateWithIntent!.data.stripePaymentIntentId).toBe("pi_test_1");
+  });
+
+  test("POST /api/session/[id]/payment refuses when the venue has no Connect account", async () => {
+    // Regression guard: this used to mint a PaymentIntent with no
+    // transfer_data, settling a restaurant's takings into TabCall's own
+    // Stripe balance with no payout path and full chargeback exposure.
+    const { POST } = await import("../../app/api/session/[id]/payment/route");
+    const original = state.session.venue.stripeAccountId;
+    state.session.venue.stripeAccountId = null;
+    try {
+      const req = new Request(`https://tab-call.test/api/session/${state.session.id}/payment`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tipPercent: 20, sessionToken: state.session.sessionToken }),
+      });
+      const res = await POST(req, { params: { id: state.session.id } });
+      expect(res.status).toBe(503);
+      expect((await res.json()).error).toBe("VENUE_NOT_READY");
+      expect(state.createdIntents.length).toBe(0);
+    } finally {
+      state.session.venue.stripeAccountId = original;
+    }
+  });
+
+  test("POST /api/session/[id]/payment refuses when no sales-tax rate resolves", async () => {
+    // A venue outside Texas with nothing configured would otherwise charge
+    // the guest a tax-free total the venue is legally liable for.
+    const { POST } = await import("../../app/api/session/[id]/payment/route");
+    const originalZip = state.session.venue.zipCode;
+    state.session.venue.zipCode = "90210"; // California, no explicit rate
+    try {
+      const req = new Request(`https://tab-call.test/api/session/${state.session.id}/payment`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tipPercent: 20, sessionToken: state.session.sessionToken }),
+      });
+      const res = await POST(req, { params: { id: state.session.id } });
+      expect(res.status).toBe(503);
+      expect((await res.json()).error).toBe("TAX_RATE_UNSET");
+      expect(state.createdIntents.length).toBe(0);
+    } finally {
+      state.session.venue.zipCode = originalZip;
+    }
   });
 
   test("POST /api/session/[id]/payment refuses on bad sessionToken (FORBIDDEN, no PI minted)", async () => {

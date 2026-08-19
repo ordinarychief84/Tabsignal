@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
 
   const venue = await db.venue.findUnique({
     where: { id: gate.venueId },
-    select: { zipCode: true, slug: true },
+    select: { zipCode: true, taxRateBps: true, slug: true },
   });
   if (!venue) return new Response(JSON.stringify({ error: "NOT_FOUND" }), { status: 404 });
 
@@ -41,7 +41,7 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
     ...sessions.map(s => {
       const items = tabItems(s.lineItems);
       const tip = typeof s.tipPercent === "number" ? s.tipPercent : 0;
-      const t = tabTotals(items, venue.zipCode ?? "", tip);
+      const t = tabTotals(items, venue, tip);
       return [
         s.id,
         s.paidAt!.toISOString(),

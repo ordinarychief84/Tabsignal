@@ -68,7 +68,7 @@ describe("guestBillFor", () => {
     const bill = guestBillFor({
       id: "gs_1",
       lineItems: [{ name: "IPA", quantity: 2, unitCents: 800 }],
-      venue: { name: "Velvet Hour", zipCode: "78701" },
+      venue: { name: "Velvet Hour", zipCode: "78701", taxRateBps: null },
       table: { label: "T7" },
     });
     // Key ORDER is part of the pinned contract (byte-identical JSON).

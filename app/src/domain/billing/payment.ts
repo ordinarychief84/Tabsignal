@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
-import { dollars } from "@/lib/bill";
+import { dollars, totalsForCharge } from "@/lib/bill";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { events, emit } from "@/lib/realtime";
 import { tabItems, tabTotals, appendTabLine } from "@/domain/billing/tab";
@@ -35,24 +35,46 @@ export type TabPaymentSession = {
   venueId: string;
   tableId: string;
   lineItems: unknown;
-  venue: { zipCode: string | null; stripeAccountId: string | null };
+  venue: {
+    zipCode: string | null;
+    taxRateBps: number | null;
+    stripeAccountId: string | null;
+    stripeChargesEnabled: boolean;
+  };
 };
 
 export type CreateIntentResult =
   | { ok: true; clientSecret: string | null; paymentIntentId: string }
-  | { ok: false; error: "EMPTY_TAB" };
+  | { ok: false; error: "EMPTY_TAB" | "VENUE_NOT_READY" | "TAX_RATE_UNSET" };
 
 /**
  * Create (or idempotently re-fetch) the PaymentIntent for a full-tab
  * payment. Stripe SDK errors intentionally propagate — the route maps
  * them via stripeErrorResponse, exactly as before.
+ *
+ * Two hard preconditions, both enforced here rather than only at the
+ * route so no future call site can skip them:
+ *
+ *   - The venue must have a Connect account that can take charges.
+ *     Without one, Stripe would happily create an intent that settles
+ *     into the PLATFORM balance — TabCall would become merchant of
+ *     record for a restaurant sale it doesn't own, owe a manual payout,
+ *     and eat any chargeback. Refuse instead.
+ *   - The venue must have a resolvable sales-tax rate, or the guest gets
+ *     charged a tax-free total the venue is liable for.
  */
 export async function createTabPaymentIntent(
   session: TabPaymentSession,
   tipPercent: number,
 ): Promise<CreateIntentResult & { totalCents?: number; tipCents?: number }> {
+  if (!session.venue.stripeAccountId || !session.venue.stripeChargesEnabled) {
+    return { ok: false, error: "VENUE_NOT_READY" };
+  }
+
   const items = tabItems(session.lineItems);
-  const { totalCents, tipCents } = tabTotals(items, session.venue.zipCode ?? "", tipPercent);
+  const charge = totalsForCharge(items, session.venue, tipPercent);
+  if (!charge.ok) return { ok: false, error: charge.error };
+  const { totalCents, tipCents } = charge.totals;
   if (totalCents <= 0) return { ok: false, error: "EMPTY_TAB" };
 
   // Stripe Connect: settle to the venue's connected account, take a 0.5%
@@ -77,12 +99,11 @@ export async function createTabPaymentIntent(
         tip_cents: String(tipCents),
         tip_percent: String(tipPercent),
       },
-      ...(session.venue.stripeAccountId
-        ? {
-            application_fee_amount: platformFeeCents,
-            transfer_data: { destination: session.venue.stripeAccountId },
-          }
-        : {}),
+      // Unconditional: the guard at the top of this function guarantees a
+      // charge-enabled connected account, so there is no path where an
+      // intent is created without a destination.
+      application_fee_amount: platformFeeCents,
+      transfer_data: { destination: session.venue.stripeAccountId },
     },
     { idempotencyKey },
   );
@@ -111,7 +132,7 @@ export async function markSessionPaidFromIntent(
   const session = await tx.guestSession.findUnique({
     where: { id: sessionId },
     include: {
-      venue: { select: { id: true, name: true, zipCode: true } },
+      venue: { select: { id: true, name: true, zipCode: true, taxRateBps: true } },
       table: { select: { label: true } },
     },
   });
@@ -123,7 +144,7 @@ export async function markSessionPaidFromIntent(
   });
 
   const tipPercent = Number(intent.metadata?.tip_percent ?? session.tipPercent ?? 20);
-  const totals = tabTotals(tabItems(session.lineItems), session.venue.zipCode ?? "", tipPercent);
+  const totals = tabTotals(tabItems(session.lineItems), session.venue, tipPercent);
 
   // Tier 3c: award loyalty for the full session payment. Points are
   // computed off the subtotal+tax (not the tip) and never block the

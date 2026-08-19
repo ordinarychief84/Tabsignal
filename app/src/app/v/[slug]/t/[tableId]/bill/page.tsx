@@ -106,7 +106,7 @@ export default async function BillPage({ params, searchParams }: PageProps) {
     typeof session.tipPercent === "number" && session.tipPercent >= 0
       ? session.tipPercent
       : DEFAULT_TIP_PERCENT;
-  const totals = totalsFor(items, venue.zipCode ?? "", tipPercent);
+  const totals = totalsFor(items, venue, tipPercent);
 
   return (
     <main className="min-h-screen bg-oat text-slate">
@@ -119,7 +119,7 @@ export default async function BillPage({ params, searchParams }: PageProps) {
 
         <BillScreen
           slug={venue.slug}
-          zipCode={venue.zipCode ?? ""}
+          venueTax={{ zipCode: venue.zipCode, taxRateBps: venue.taxRateBps }}
           data={{
             sessionId: session.id,
             sessionToken: session.sessionToken,

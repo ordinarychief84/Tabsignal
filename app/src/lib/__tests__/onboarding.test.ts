@@ -8,6 +8,7 @@ function baseInputs(overrides: Partial<OnboardingInputs> = {}): OnboardingInputs
     brandColor: null,
     staffCount: 1, // just the owner
     stripeChargesEnabled: false,
+    taxRateSet: false,
     onboardingCompletedAt: null,
     ...overrides,
   };
@@ -66,8 +67,21 @@ describe("deriveOnboarding", () => {
     expect(solo.steps.find(s => s.id === "team")!.done).toBe(true);
   });
 
-  test("stripeChargesEnabled counts as payments done", () => {
-    const p = deriveOnboarding(baseInputs({ stripeChargesEnabled: true }));
+  test("stripe + a known tax rate counts as payments done", () => {
+    const p = deriveOnboarding(baseInputs({ stripeChargesEnabled: true, taxRateSet: true }));
+    expect(p.steps.find(s => s.id === "payments")!.done).toBe(true);
+  });
+
+  test("stripe alone is NOT payments done — the charge routes refuse without a tax rate", () => {
+    const p = deriveOnboarding(baseInputs({ stripeChargesEnabled: true, taxRateSet: false }));
+    expect(p.steps.find(s => s.id === "payments")!.done).toBe(false);
+  });
+
+  test("checking step 4 by hand still means 'deferring payments'", () => {
+    // A signals-only venue never connects Stripe; it must still reach 100%.
+    const p = deriveOnboarding(
+      baseInputs({ state: { currentStep: 5, completedSteps: [4], solo: false } }),
+    );
     expect(p.steps.find(s => s.id === "payments")!.done).toBe(true);
   });
 

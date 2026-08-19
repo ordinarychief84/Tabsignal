@@ -44,6 +44,7 @@ export function GuestRequestPanel({
   tableLabel,
   prevTab = null,
   confirmationMessage = null,
+  regularsEnabled = false,
 }: {
   sessionId: string;
   sessionToken: string;
@@ -51,6 +52,8 @@ export function GuestRequestPanel({
   tableLabel: string;
   prevTab?: PrevTab | null;
   confirmationMessage?: string | null;
+  /** Pro-only "welcome back" recognition. Off ⇒ skip the pairing call entirely. */
+  regularsEnabled?: boolean;
 }) {
   const [selected, setSelected] = useState<RequestType>("DRINK");
   const [phase, setPhase] = useState<Phase>("pick");
@@ -76,6 +79,10 @@ export function GuestRequestPanel({
 
   /* ------------------------- returning regular ------------------------ */
   useEffect(() => {
+    // Non-Pro venues have nothing to pair against — the route would 404
+    // after a three-join lookup, once per scan, for every guest.
+    if (!regularsEnabled) return;
+
     let cancelled = false;
     void (async () => {
       try {
@@ -97,7 +104,7 @@ export function GuestRequestPanel({
       } catch { /* not identified / not Pro — fine */ }
     })();
     return () => { cancelled = true; };
-  }, [sessionId, sessionToken]);
+  }, [sessionId, sessionToken, regularsEnabled]);
 
   /* --------------------------- socket: acks --------------------------- */
   useEffect(() => {

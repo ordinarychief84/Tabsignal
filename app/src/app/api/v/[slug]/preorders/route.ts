@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { stripe, stripeErrorResponse } from "@/lib/stripe";
-import { taxRateForZip } from "@/lib/tax";
+import { randomInt } from "node:crypto";
+import { resolveTaxRate } from "@/lib/tax";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { rateLimitAsync } from "@/lib/rate-limit";
 
@@ -23,8 +24,25 @@ const Body = z.object({
   tableId: z.string().optional(),
 });
 
-function pickupCode(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+/**
+ * Pickup code. This is the ONLY credential on the public pre-order read
+ * (GET /api/v/[slug]/preorders/[id]), so it must be unguessable, not just
+ * unique: `Math.random()` is a predictable PRNG and 4 digits is a 9,000-
+ * value space. Six crypto-random digits, retried against the venue's
+ * currently-open orders so two guests never hold the same code at once.
+ */
+async function uniquePickupCode(venueId: string): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = randomInt(100_000, 1_000_000).toString();
+    const clash = await db.preOrder.findFirst({
+      where: { venueId, pickupCode: code, pickedUpAt: null },
+      select: { id: true },
+    });
+    if (!clash) return code;
+  }
+  // 10 collisions against open orders is not a real-world state; fail
+  // loudly rather than handing out a duplicate code.
+  throw new Error("pickup_code_exhausted");
 }
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
@@ -64,6 +82,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     select: {
       id: true,
       zipCode: true,
+      taxRateBps: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
       org: { select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true } },
@@ -74,7 +93,9 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     // Pre-order requires Growth — 404 so we don't leak feature availability.
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
-  if (venue.stripeAccountId && !venue.stripeChargesEnabled) {
+  // A venue with no connected account would settle this payment into the
+  // PLATFORM balance, so refuse rather than take money we can't route.
+  if (!venue.stripeAccountId || !venue.stripeChargesEnabled) {
     return NextResponse.json(
       { error: "VENUE_NOT_READY", detail: "Pre-orders aren't accepted yet at this venue." },
       { status: 503 }
@@ -106,7 +127,15 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   if (subtotalCents <= 0) {
     return NextResponse.json({ error: "EMPTY_ORDER" }, { status: 400 });
   }
-  const taxRate = taxRateForZip(venue.zipCode ?? "");
+  const taxRate = resolveTaxRate(venue);
+  if (taxRate === null) {
+    // No resolvable sales-tax rate — charging now would under-collect tax
+    // the venue is liable for. Setup fault, so 503 not 400.
+    return NextResponse.json(
+      { error: "TAX_RATE_UNSET", detail: "This venue hasn't set its sales-tax rate yet." },
+      { status: 503 }
+    );
+  }
   const taxCents = Math.round(subtotalCents * taxRate);
   const subtotalPlusTax = subtotalCents + taxCents;
   const tipCents = Math.round(subtotalPlusTax * (parsed.tipPercent / 100));
@@ -125,7 +154,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
       guestName: parsed.guestName ?? null,
       guestPhone: parsed.guestPhone ?? null,
       notes: parsed.notes ?? null,
-      pickupCode: pickupCode(),
+      pickupCode: await uniquePickupCode(venue.id),
     },
   });
 
@@ -142,12 +171,9 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
           tip_cents: String(tipCents),
           tip_percent: String(parsed.tipPercent),
         },
-        ...(venue.stripeAccountId
-          ? {
-              application_fee_amount: platformFeeCents,
-              transfer_data: { destination: venue.stripeAccountId },
-            }
-          : {}),
+        // Unconditional — guarded above.
+        application_fee_amount: platformFeeCents,
+        transfer_data: { destination: venue.stripeAccountId },
       },
       { idempotencyKey: `pi_preorder_${preOrder.id}` }
     );

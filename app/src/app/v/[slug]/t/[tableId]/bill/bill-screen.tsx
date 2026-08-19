@@ -8,7 +8,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { dollars, totalsFor, type LineItem } from "@/lib/bill";
+import { dollars, totalsFor, type LineItem, type VenueTax } from "@/lib/bill";
 
 type BillData = {
   sessionId: string;
@@ -37,7 +37,7 @@ function getStripe() {
 
 type Stage = "review" | "pay";
 
-export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: string; slug: string }) {
+export function BillScreen({ data, venueTax, slug }: { data: BillData; venueTax: VenueTax; slug: string }) {
   const [tipPercent, setTipPercent] = useState<number>(data.defaultTipPercent);
   const [customTip, setCustomTip] = useState<string>("");
   const [stage, setStage] = useState<Stage>("review");
@@ -46,8 +46,8 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
   const [error, setError] = useState<string | null>(null);
 
   const totals = useMemo(
-    () => totalsFor(data.items, zipCode, tipPercent),
-    [data.items, zipCode, tipPercent]
+    () => totalsFor(data.items, venueTax, tipPercent),
+    [data.items, venueTax, tipPercent]
   );
 
   function pickPreset(n: number) {

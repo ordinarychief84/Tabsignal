@@ -59,6 +59,10 @@ export type OnboardingInputs = {
   /** ACTIVE + INVITED staff count, including the owner. */
   staffCount: number;
   stripeChargesEnabled: boolean;
+  /** True when lib/tax can resolve a rate for this venue (explicit
+   *  taxRateBps, or a Texas ZIP). Without it the payment routes refuse,
+   *  so the "Get paid" step is not actually done. */
+  taxRateSet: boolean;
   onboardingCompletedAt: Date | null;
 };
 
@@ -96,9 +100,15 @@ export function deriveOnboarding(input: OnboardingInputs): OnboardingProgress {
       done: checked.has(3) || state.solo || input.staffCount > 1,
       derived: !checked.has(3) && !state.solo && input.staffCount > 1,
     },
+    // Taking money needs BOTH a charge-enabled Connect account and a
+    // known sales-tax rate — the payment routes refuse without either, so
+    // showing this step as done on Stripe alone would be a lie the venue
+    // only discovers when a guest can't pay. Manually checking the step
+    // still means "we're deferring payments", which is a valid
+    // signals-only setup.
     payments: {
-      done: checked.has(4) || input.stripeChargesEnabled,
-      derived: !checked.has(4) && input.stripeChargesEnabled,
+      done: checked.has(4) || (input.stripeChargesEnabled && input.taxRateSet),
+      derived: !checked.has(4) && input.stripeChargesEnabled && input.taxRateSet,
     },
     launch: { done: complete, derived: false },
   };
