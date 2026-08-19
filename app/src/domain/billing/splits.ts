@@ -3,6 +3,7 @@ import type { BillSplit, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { dollars } from "@/lib/bill";
+import { canTakePaymentsInCountry } from "@/lib/countries";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { events } from "@/lib/realtime";
 import { tabItems, tabTotals } from "@/domain/billing/tab";
@@ -97,7 +98,7 @@ export async function resetEvenSplits(
 
 export type SplitIntentResult =
   | { ok: true; clientSecret: string | null; paymentIntentId: string; tipPercent: number }
-  | { ok: false; error: "EMPTY_SPLIT" | "VENUE_NOT_READY" };
+  | { ok: false; error: "EMPTY_SPLIT" | "VENUE_NOT_READY" | "COUNTRY_UNSUPPORTED" };
 
 /**
  * PaymentIntent for one split. Tip layers on TOP of the split's
@@ -115,11 +116,15 @@ export async function createSplitPaymentIntent(
     id: string;
     venueId: string;
     tableId: string;
-    venue: { stripeAccountId: string | null; stripeChargesEnabled: boolean };
+    venue: { country: string | null; stripeAccountId: string | null; stripeChargesEnabled: boolean };
   },
   split: { id: string; amountCents: number; tipPercent: number },
   tipPercentOverride: number | undefined,
 ): Promise<SplitIntentResult> {
+  if (!canTakePaymentsInCountry(session.venue.country)) {
+    return { ok: false, error: "COUNTRY_UNSUPPORTED" };
+  }
+
   if (!session.venue.stripeAccountId || !session.venue.stripeChargesEnabled) {
     return { ok: false, error: "VENUE_NOT_READY" };
   }

@@ -50,6 +50,7 @@ type SessionRow = {
   venue: {
     id: string;
     name: string;
+    country: string | null;
     zipCode: string;
     taxRateBps: number | null;
     stripeAccountId: string | null;
@@ -88,6 +89,7 @@ beforeEach(() => {
     venue: {
       id: "ven_1",
       name: "Luna Lounge",
+      country: "US",
       zipCode: "77002",
       taxRateBps: null, // resolves 8.25% via the Texas ZIP fallback
       // A charge-enabled Connect account is now a precondition for any
@@ -279,6 +281,28 @@ describe("Bill → Payment → Webhook round-trip", () => {
     const updateWithIntent = state.guestSessionUpdates.find(u => u.data.stripePaymentIntentId);
     expect(updateWithIntent).toBeDefined();
     expect(updateWithIntent!.data.stripePaymentIntentId).toBe("pi_test_1");
+  });
+
+  test("POST /api/session/[id]/payment refuses a venue outside the supported payment countries", async () => {
+    // The amount is USD with tax added on top of the subtotal — the US
+    // model. A Singapore venue needs SGD and GST-inclusive display, so
+    // charging it through this path bills the wrong thing twice over.
+    const { POST } = await import("../../app/api/session/[id]/payment/route");
+    const original = state.session.venue.country;
+    state.session.venue.country = "SG";
+    try {
+      const req = new Request(`https://tab-call.test/api/session/${state.session.id}/payment`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tipPercent: 20, sessionToken: state.session.sessionToken }),
+      });
+      const res = await POST(req, { params: { id: state.session.id } });
+      expect(res.status).toBe(503);
+      expect((await res.json()).error).toBe("COUNTRY_UNSUPPORTED");
+      expect(state.createdIntents.length).toBe(0);
+    } finally {
+      state.session.venue.country = original;
+    }
   });
 
   test("POST /api/session/[id]/payment refuses when the venue has no Connect account", async () => {

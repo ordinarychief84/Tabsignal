@@ -1,6 +1,5 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 /**
@@ -24,8 +23,19 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    // Always log first — this must not depend on Sentry resolving.
     console.error("[app/global-error] caught:", error);
+
+    // Imported lazily rather than at module scope. A top-level
+    // `@sentry/nextjs` import pulls @prisma/instrumentation's OpenTelemetry
+    // dynamic require into this module's trace, which webpack flags as a
+    // critical dependency on every build. The boundary itself must stay
+    // cheap, so we pay for Sentry only when something has actually broken.
+    void import("@sentry/nextjs")
+      .then(Sentry => Sentry.captureException(error))
+      .catch(() => {
+        // Chunk didn't load — the console line above is the fallback.
+      });
   }, [error]);
 
   return (

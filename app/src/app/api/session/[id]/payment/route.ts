@@ -30,6 +30,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     include: {
       venue: {
         select: {
+          country: true,
           zipCode: true,
           taxRateBps: true,
           stripeAccountId: true,

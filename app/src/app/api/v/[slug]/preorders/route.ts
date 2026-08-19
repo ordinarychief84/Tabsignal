@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { stripe, stripeErrorResponse } from "@/lib/stripe";
 import { randomInt } from "node:crypto";
 import { resolveTaxRate } from "@/lib/tax";
+import { canTakePaymentsInCountry } from "@/lib/countries";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { rateLimitAsync } from "@/lib/rate-limit";
 
@@ -81,6 +82,7 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     where: { slug: ctx.params.slug },
     select: {
       id: true,
+      country: true,
       zipCode: true,
       taxRateBps: true,
       stripeAccountId: true,
@@ -93,6 +95,14 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
     // Pre-order requires Growth — 404 so we don't leak feature availability.
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
+  // USD-denominated with tax added on top — see PAYMENT_COUNTRIES.
+  if (!canTakePaymentsInCountry(venue.country)) {
+    return NextResponse.json(
+      { error: "COUNTRY_UNSUPPORTED", detail: "TabCall can't take payments in this country yet." },
+      { status: 503 },
+    );
+  }
+
   // A venue with no connected account would settle this payment into the
   // PLATFORM balance, so refuse rather than take money we can't route.
   if (!venue.stripeAccountId || !venue.stripeChargesEnabled) {

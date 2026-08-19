@@ -12,7 +12,7 @@ import {
   OAUTH_PENDING_COOKIE,
   clearedCookieOptions,
 } from "@/lib/auth/oauth-google";
-import { isE164 } from "@/lib/countries";
+import { isE164, PAYMENT_COUNTRIES } from "@/lib/countries";
 import { appOrigin } from "@/lib/origin";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { PLATFORM_TRIAL_DAYS } from "@/lib/plans";
@@ -48,7 +48,15 @@ const Body = z.object({
   phoneNumber: z.string().refine(isE164, {
     message: "phoneNumber must be E.164 (e.g. +12125551234)",
   }),
-  country: z.string().regex(/^[A-Z]{2}$/, "country must be ISO 3166-1 alpha-2 (e.g. US, GB)"),
+  // Restricted to the markets whose money path we actually support —
+  // see PAYMENT_COUNTRIES in lib/countries. Signing up a venue we can't
+  // charge for correctly is worse than turning it away at the door.
+  country: z
+    .string()
+    .regex(/^[A-Z]{2}$/, "country must be ISO 3166-1 alpha-2 (e.g. US, GB)")
+    .refine(iso => PAYMENT_COUNTRIES.has(iso.toUpperCase()), {
+      message: "TabCall isn't available in this country yet.",
+    }),
   email: z.string().email().max(200),
   // Optional at the schema level so the OAuth path (identity already
   // Google-verified) can omit it. When there is NO valid oauth-pending

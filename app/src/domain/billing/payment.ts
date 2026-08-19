@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
 import { dollars, totalsForCharge } from "@/lib/bill";
+import { canTakePaymentsInCountry } from "@/lib/countries";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { events, emit } from "@/lib/realtime";
 import { tabItems, tabTotals, appendTabLine } from "@/domain/billing/tab";
@@ -36,6 +37,7 @@ export type TabPaymentSession = {
   tableId: string;
   lineItems: unknown;
   venue: {
+    country: string | null;
     zipCode: string | null;
     taxRateBps: number | null;
     stripeAccountId: string | null;
@@ -45,7 +47,7 @@ export type TabPaymentSession = {
 
 export type CreateIntentResult =
   | { ok: true; clientSecret: string | null; paymentIntentId: string }
-  | { ok: false; error: "EMPTY_TAB" | "VENUE_NOT_READY" | "TAX_RATE_UNSET" };
+  | { ok: false; error: "EMPTY_TAB" | "VENUE_NOT_READY" | "TAX_RATE_UNSET" | "COUNTRY_UNSUPPORTED" };
 
 /**
  * Create (or idempotently re-fetch) the PaymentIntent for a full-tab
@@ -67,6 +69,14 @@ export async function createTabPaymentIntent(
   session: TabPaymentSession,
   tipPercent: number,
 ): Promise<CreateIntentResult & { totalCents?: number; tipCents?: number }> {
+  // The amount below is denominated in USD with tax added on top of the
+  // subtotal — the US model. A venue outside it would be billed in the
+  // wrong currency at the wrong tax treatment, so refuse rather than
+  // guess. See PAYMENT_COUNTRIES in lib/countries.
+  if (!canTakePaymentsInCountry(session.venue.country)) {
+    return { ok: false, error: "COUNTRY_UNSUPPORTED" };
+  }
+
   if (!session.venue.stripeAccountId || !session.venue.stripeChargesEnabled) {
     return { ok: false, error: "VENUE_NOT_READY" };
   }

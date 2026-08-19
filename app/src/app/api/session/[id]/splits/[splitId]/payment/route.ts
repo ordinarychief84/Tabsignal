@@ -28,7 +28,7 @@ export async function POST(
   const session = await db.guestSession.findUnique({
     where: { id: ctx.params.id },
     include: {
-      venue: { select: { stripeAccountId: true, stripeChargesEnabled: true } },
+      venue: { select: { country: true, stripeAccountId: true, stripeChargesEnabled: true } },
       splits: true,
     },
   });

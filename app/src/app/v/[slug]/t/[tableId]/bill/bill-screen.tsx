@@ -72,12 +72,13 @@ export function BillScreen({ data, venueTax, slug }: { data: BillData; venueTax:
       });
       const body = await res.json();
       if (!res.ok) {
-        // Venue's Stripe Connect onboarding isn't done — Stripe would
-        // reject the PaymentIntent. Surface a friendly "ask staff" panel
-        // instead of the raw API error code.
-        if (res.status === 503 && body?.error === "VENUE_NOT_READY") {
-          throw new Error("VENUE_NOT_READY");
-        }
+        // Every 503 here is a venue-setup fault, not something the guest
+        // did or can fix: Stripe onboarding incomplete, no sales-tax rate,
+        // or a country whose currency/tax model we don't support yet. They
+        // all mean the same thing to the person holding the phone — settle
+        // with staff — so they share one panel rather than leaking an
+        // internal error code onto the guest's screen.
+        if (res.status === 503) throw new Error("PAY_IN_PERSON");
         throw new Error(body?.error ?? `HTTP ${res.status}`);
       }
       if (!body.clientSecret) throw new Error("Stripe did not return a client secret");
@@ -90,7 +91,7 @@ export function BillScreen({ data, venueTax, slug }: { data: BillData; venueTax:
     }
   }
 
-  if (error === "VENUE_NOT_READY") {
+  if (error === "PAY_IN_PERSON") {
     return (
       <ErrorPanel
         title="Pay your tab in person tonight"
