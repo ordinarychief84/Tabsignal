@@ -11,5 +11,8 @@ preload = [
   # server-only must be shimmed FIRST — secret modules import it at the
   # top and the real package throws outside a React Server condition.
   "./src/lib/__tests__/_setup/mock-server-only.ts",
+  # Must come AFTER the server-only shim (lib/env imports it) and before
+  # any suite can flip NODE_ENV — see preload-env.ts for why.
+  "./src/lib/__tests__/_setup/preload-env.ts",
   "./src/lib/__tests__/_setup/preserve-rate-limit.ts",
 ]

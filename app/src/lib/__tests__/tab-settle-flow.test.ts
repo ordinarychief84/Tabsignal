@@ -74,9 +74,23 @@ beforeEach(() => {
       },
     },
   }));
-  mock.module("@/lib/auth/session", () => ({ getStaffSession: async () => state.staff }));
-  // Same-origin by default; one test overrides to prove the guard bites.
-  mock.module("@/lib/csrf", () => ({ originGuard: () => null }));
+  // IMPORTANT: include ALL exports of the real module. Bun's mock.module
+  // is process-wide and persists across files in a shared worker, so a
+  // partial mock here breaks whichever suite runs next.
+  mock.module("@/lib/auth/session", () => ({
+    getStaffSession: async () => state.staff,
+    SESSION_COOKIE: "tabsignal_session",
+    sessionCookieOptions: () => ({
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict" as const,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    }),
+  }));
+  // @/lib/csrf is deliberately NOT mocked — the real originGuard is
+  // exercised by sending the header a browser would. Mocking it stubbed
+  // the guard out from under sibling suites that rely on it biting.
   mock.module("@/lib/audit", () => ({
     audit: async (args: Record<string, unknown>) => { state.audits.push(args); },
   }));
@@ -97,7 +111,11 @@ beforeEach(() => {
 
 afterEach(() => { mock.restore(); });
 
-const req = () => new Request("https://tab-call.test/api/session/gs_1/settle", { method: "POST" });
+const req = (fetchSite = "same-origin") =>
+  new Request("https://tab-call.test/api/session/gs_1/settle", {
+    method: "POST",
+    headers: { "sec-fetch-site": fetchSite },
+  });
 const ctx = { params: { id: "gs_1" } };
 
 describe("POST /api/session/[id]/settle", () => {
@@ -165,11 +183,9 @@ describe("POST /api/session/[id]/settle", () => {
   });
 
   test("fails closed on a cross-origin post", async () => {
-    mock.module("@/lib/csrf", () => ({
-      originGuard: () => ({ status: 403, error: "BAD_ORIGIN", detail: "cross-site" }),
-    }));
+    // The real guard, not a stub: a cross-site POST must never settle a tab.
     const { POST } = await import("../../app/api/session/[id]/settle/route");
-    const res = await POST(req(), ctx);
+    const res = await POST(req("cross-site"), ctx);
     expect(res.status).toBe(403);
     expect(state.updates.length).toBe(0);
   });
