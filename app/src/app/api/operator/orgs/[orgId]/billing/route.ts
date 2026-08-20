@@ -120,8 +120,8 @@ async function notifyPlanChange(args: {
   const perks = args.planId === "pro"
     ? "Multi-location operator console, regulars dossier, custom branding, reservations, loyalty, benchmarking."
     : args.planId === "growth"
-    ? "Menu management, pre-order at QR, analytics, bill split, tip pooling, unlimited staff."
-    : "Realtime request queue + AI bad-rating intercept. 0.5% per transaction, no monthly fee.";
+    ? "Menu management, analytics, tip pooling, unlimited staff."
+    : "Realtime request queue + AI bad-rating intercept. Free for up to 5 tables.";
   const subject = `[${args.org.name}] Plan updated → ${planLabel}`;
   const html = `
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;color:#232130;background:#F7F5F2;">

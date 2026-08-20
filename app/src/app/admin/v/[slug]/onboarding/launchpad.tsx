@@ -39,10 +39,6 @@ type Props = {
   welcomeMessage: string | null;
   tableCount: number;
   staffCount: number;
-  stripeChargesEnabled: boolean;
-  stripeStarted: boolean;
-  /** Sales-tax rate resolvable for this venue — payments are refused without it. */
-  taxRateSet: boolean;
   previewPath: string | null;
 };
 
@@ -66,11 +62,9 @@ export function Launchpad(props: Props) {
         venueType,
         brandColor,
         staffCount,
-        stripeChargesEnabled: props.stripeChargesEnabled,
-        taxRateSet: props.taxRateSet,
         onboardingCompletedAt: completedAt ? new Date() : null,
       }),
-    [state, venueType, brandColor, staffCount, props.stripeChargesEnabled, props.taxRateSet, completedAt],
+    [state, venueType, brandColor, staffCount, completedAt],
   );
 
   async function patchVenue(body: Record<string, unknown>): Promise<boolean> {
@@ -320,62 +314,13 @@ export function Launchpad(props: Props) {
           </StepActions>
         </StepCard>
 
-        {/* Step 4 — Payments */}
+        {/* Step 4 — Launch */}
         <StepCard
           step={4}
           title={ONBOARDING_STEPS[3].title}
-          done={!!doneMap.get(4)}
+          done={false}
           open={openStep === 4}
           onToggle={() => setOpenStep(openStep === 4 ? 0 : 4)}
-          summary={
-            props.stripeChargesEnabled && props.taxRateSet
-              ? "Stripe connected — payments on"
-              : props.stripeChargesEnabled
-                ? "Stripe connected — add your sales-tax rate"
-                : props.stripeStarted
-                  ? "Stripe started, not finished"
-                  : "Optional — guests can pay from their phone"
-          }
-        >
-          <p className="text-sm text-slate/60">
-            Connect Stripe and guests can view their tab, split it, tip, and pay
-            without waiting for the card machine. Takes 3–5 minutes with ID + bank
-            details handy. Requests and QR calls work fine without it.
-          </p>
-          {props.stripeChargesEnabled && !props.taxRateSet && (
-            <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Add your sales-tax rate in{" "}
-              <a className="underline" href={`/admin/v/${props.slug}/settings`}>
-                venue settings
-              </a>{" "}
-              before guests can pay — we won&rsquo;t charge a bill until we know
-              what tax to collect.
-            </p>
-          )}
-          <StepActions>
-            <Link
-              href={`/admin/v/${props.slug}/settings`}
-              className="rounded-xl bg-slate px-5 py-2.5 text-sm font-medium text-oat hover:bg-slate/90"
-            >
-              {props.stripeStarted ? "Finish Stripe setup" : "Connect Stripe"}
-            </Link>
-            <button
-              type="button"
-              onClick={() => completeStep(4)}
-              className="text-sm text-slate/55 underline-offset-4 hover:text-slate hover:underline"
-            >
-              Take payments later
-            </button>
-          </StepActions>
-        </StepCard>
-
-        {/* Step 5 — Launch */}
-        <StepCard
-          step={5}
-          title={ONBOARDING_STEPS[4].title}
-          done={false}
-          open={openStep === 5}
-          onToggle={() => setOpenStep(openStep === 5 ? 0 : 5)}
           summary="Flip the switch"
           accent
         >

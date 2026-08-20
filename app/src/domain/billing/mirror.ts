@@ -46,14 +46,13 @@ export async function mirrorTabToBill(client: MirrorClient, sessionId: string): 
         venueId: true,
         tableId: true,
         lineItems: true,
-        venue: { select: { zipCode: true, taxRateBps: true } },
       },
     });
     if (!session) return;
 
     const items = tabItems(session.lineItems);
-    const totals = tabTotals(items, session.venue, 0); // tip mirrors at payment time (PR 2.3)
-    const totalCents = totals.subtotalCents + totals.taxCents;
+    const totals = tabTotals(items);
+    const totalCents = totals.totalCents;
 
     const existing = await client.bill.findFirst({
       where: { guestSessionId: session.id, source: "beacon" },
@@ -65,7 +64,8 @@ export async function mirrorTabToBill(client: MirrorClient, sessionId: string): 
           where: { id: existing.id },
           data: {
             subtotalCents: totals.subtotalCents,
-            taxCents: totals.taxCents,
+            // No tax is charged anywhere any more; 0 is the true value, not a placeholder.
+            taxCents: 0,
             totalCents,
             amountDueCents: Math.max(0, totalCents - existing.amountPaidCents),
           },
@@ -78,7 +78,7 @@ export async function mirrorTabToBill(client: MirrorClient, sessionId: string): 
             source: "beacon",
             status: "OPEN",
             subtotalCents: totals.subtotalCents,
-            taxCents: totals.taxCents,
+            taxCents: 0,
             totalCents,
             amountDueCents: totalCents,
           },
@@ -141,96 +141,3 @@ async function beaconBillFor(client: MirrorClient, sessionId: string) {
  * Full-session payment landed (webhook payment_intent.succeeded):
  * tip becomes known here — fold it into the bill, settle in full.
  */
-export async function mirrorBillPaidInFull(
-  client: MirrorClient,
-  sessionId: string,
-  tipCents: number,
-): Promise<void> {
-  if (billingV2Mode() === "off") return;
-  try {
-    const bill = await beaconBillFor(client, sessionId);
-    if (!bill) return;
-    const totalCents = bill.subtotalCents + bill.taxCents + bill.serviceCents + tipCents;
-    await client.bill.update({
-      where: { id: bill.id },
-      data: {
-        tipTotalCents: tipCents,
-        totalCents,
-        amountPaidCents: totalCents,
-        amountDueCents: 0,
-        status: "PAID",
-      },
-    });
-  } catch (err) {
-    console.error("[billing:mirror] paid-in-full mirror failed", {
-      sessionId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
-
-/**
- * One legacy split settled: accumulate the paid amount + tip;
- * PARTIAL until the session's last split lands (sessionFullyPaid).
- */
-export async function mirrorBillSplitPayment(
-  client: MirrorClient,
-  sessionId: string,
-  paidCents: number,
-  tipCents: number,
-  sessionFullyPaid: boolean,
-): Promise<void> {
-  if (billingV2Mode() === "off") return;
-  try {
-    const bill = await beaconBillFor(client, sessionId);
-    if (!bill) return;
-    const tipTotalCents = bill.tipTotalCents + tipCents;
-    const totalCents = bill.subtotalCents + bill.taxCents + bill.serviceCents + tipTotalCents;
-    const amountPaidCents = bill.amountPaidCents + paidCents;
-    const amountDueCents = Math.max(0, totalCents - amountPaidCents);
-    await client.bill.update({
-      where: { id: bill.id },
-      data: {
-        tipTotalCents,
-        totalCents,
-        amountPaidCents,
-        amountDueCents: sessionFullyPaid ? 0 : amountDueCents,
-        status: sessionFullyPaid || amountDueCents <= 0 ? "PAID" : "PARTIAL",
-      },
-    });
-  } catch (err) {
-    console.error("[billing:mirror] split-payment mirror failed", {
-      sessionId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
-
-/**
- * charge.refunded landed for the session. The refund line itself was
- * already mirrored by the appendTabLine rebuild; this flips status —
- * REFUNDED on full refunds, PAID kept on partials (guest just got some
- * money back; paidAt semantics unchanged on the session side too).
- */
-export async function mirrorBillRefund(
-  client: MirrorClient,
-  sessionId: string,
-  fullRefund: boolean,
-): Promise<void> {
-  if (billingV2Mode() === "off") return;
-  try {
-    const bill = await beaconBillFor(client, sessionId);
-    if (!bill) return;
-    if (fullRefund) {
-      await client.bill.update({
-        where: { id: bill.id },
-        data: { status: "REFUNDED" },
-      });
-    }
-  } catch (err) {
-    console.error("[billing:mirror] refund mirror failed", {
-      sessionId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-}

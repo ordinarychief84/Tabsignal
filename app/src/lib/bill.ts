@@ -1,7 +1,4 @@
 import { z } from "zod";
-import { resolveTaxRate, type VenueTax } from "./tax";
-
-export type { VenueTax };
 
 // unitCents is a signed integer to support comps / discounts as negative
 // line items. Endpoints that accept staff-entered items should impose
@@ -15,10 +12,17 @@ export type LineItem = z.infer<typeof LineItem>;
 
 export const LineItems = z.array(LineItem);
 
+/**
+ * A tab total is now just the sum of what was ordered.
+ *
+ * TabCall no longer takes money from guests, so there is no charge to
+ * add sales tax or a tip to — the guest settles with staff, on the
+ * venue's own terminal, which is where tax and tipping now happen. Both
+ * fields are gone rather than zeroed, so nothing can quietly render a
+ * "$0.00 tax" line that implies we calculated one.
+ */
 export type Totals = {
   subtotalCents: number;
-  taxCents: number;
-  tipCents: number;
   totalCents: number;
 };
 
@@ -28,41 +32,13 @@ export function parseLineItems(json: unknown): LineItem[] {
 }
 
 /**
- * Computes totals client-side AND server-side. Truth is server-side at payment time.
- * tipPercent: 0..50 (we clamp). For "custom", pass the exact percent.
- *
- * A venue with no resolvable tax rate is billed at 0% HERE — this
- * function backs displays and reporting (exports, analytics,
- * benchmarks), where a missing rate must not crash a dashboard. Money
- * paths must NOT use it: call `totalsForCharge`, which refuses instead
- * of quietly under-taxing a real guest.
+ * Sum of the line items on a tab. Used by the guest bill view, the staff
+ * floor, exports, analytics and benchmarks alike — there is only one
+ * number now, so there is only one function.
  */
-export function totalsFor(items: LineItem[], venue: VenueTax, tipPercent: number): Totals {
-  return computeTotals(items, resolveTaxRate(venue) ?? 0, tipPercent);
-}
-
-/**
- * Totals for an actual charge. Returns an error rather than a number
- * when the venue's tax rate is unknown, so no guest is ever charged a
- * silently tax-free total. See lib/tax.ts for why unknown ≠ zero.
- */
-export function totalsForCharge(
-  items: LineItem[],
-  venue: VenueTax,
-  tipPercent: number,
-): { ok: true; totals: Totals } | { ok: false; error: "TAX_RATE_UNSET" } {
-  const taxRate = resolveTaxRate(venue);
-  if (taxRate === null) return { ok: false, error: "TAX_RATE_UNSET" };
-  return { ok: true, totals: computeTotals(items, taxRate, tipPercent) };
-}
-
-function computeTotals(items: LineItem[], taxRate: number, tipPercent: number): Totals {
-  const subtotalCents = items.reduce((s, it) => s + it.quantity * it.unitCents, 0);
-  const taxCents = Math.round(subtotalCents * taxRate);
-  const tip = Math.max(0, Math.min(50, tipPercent));
-  const tipCents = Math.round(subtotalCents * (tip / 100));
-  const totalCents = subtotalCents + taxCents + tipCents;
-  return { subtotalCents, taxCents, tipCents, totalCents };
+export function totalsFor(items: LineItem[]): Totals {
+  const subtotalCents = items.reduce((sum, it) => sum + it.quantity * it.unitCents, 0);
+  return { subtotalCents, totalCents: subtotalCents };
 }
 
 export function dollars(cents: number): string {

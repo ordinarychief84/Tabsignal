@@ -170,7 +170,8 @@ describe("dualwrite", () => {
     expect(bill.source).toBe("beacon");
     expect(bill.status).toBe("OPEN");
     expect(bill.subtotalCents).toBe(2 * 1200 + 950);
-    expect(bill.totalCents).toBe(bill.subtotalCents + bill.taxCents);
+    expect(bill.totalCents).toBe(bill.subtotalCents);
+    expect(bill.taxCents).toBe(0);
     expect(bill.amountDueCents).toBe(bill.totalCents);
 
     const items = itemsOf(bill.id);
@@ -224,50 +225,7 @@ describe("dualwrite", () => {
     expect(itemsOf(bill.id).some(i => i.priceCents === -100)).toBe(true);
   });
 
-  test("paid-in-full mirror folds the tip in and settles (self-creates the bill if missing)", async () => {
-    const { mirrorBillPaidInFull } = await import("../../domain/billing/mirror");
-    const { db } = await import("@/lib/db");
-    // No prior mirror — beaconBillFor must self-heal via rebuild.
-    await mirrorBillPaidInFull(db as never, "gs_1", 480);
-
-    expect(state.bills.size).toBe(1);
-    const bill = [...state.bills.values()][0]!;
-    expect(bill.tipTotalCents ?? 0).toBe(480);
-    expect(bill.totalCents).toBe(bill.subtotalCents + bill.taxCents + 480);
-    expect(bill.amountPaidCents).toBe(bill.totalCents);
-    expect(bill.amountDueCents).toBe(0);
-    expect(bill.status).toBe("PAID");
-  });
-
-  test("split mirror accumulates PARTIAL → PAID across splits", async () => {
-    const { mirrorTabToBill, mirrorBillSplitPayment } = await import("../../domain/billing/mirror");
-    const { db } = await import("@/lib/db");
-    await mirrorTabToBill(db as never, "gs_1");
-    const bill = [...state.bills.values()][0]!;
-    const half = Math.floor((bill.subtotalCents + bill.taxCents) / 2);
-
-    await mirrorBillSplitPayment(db as never, "gs_1", half + 100, 100, false);
-    expect(state.bills.get(bill.id)!.status).toBe("PARTIAL");
-    expect(state.bills.get(bill.id)!.amountPaidCents).toBe(half + 100);
-
-    await mirrorBillSplitPayment(db as never, "gs_1", half + 100, 100, true);
-    const settled = state.bills.get(bill.id)!;
-    expect(settled.status).toBe("PAID");
-    expect(settled.amountDueCents).toBe(0);
-    expect(settled.tipTotalCents).toBe(200);
-  });
-
-  test("full refund flips the mirrored bill to REFUNDED; partial keeps status", async () => {
-    const { mirrorTabToBill, mirrorBillPaidInFull, mirrorBillRefund } = await import("../../domain/billing/mirror");
-    const { db } = await import("@/lib/db");
-    await mirrorTabToBill(db as never, "gs_1");
-    await mirrorBillPaidInFull(db as never, "gs_1", 0);
-    const billId = [...state.bills.keys()][0]!;
-
-    await mirrorBillRefund(db as never, "gs_1", false); // partial
-    expect(state.bills.get(billId)!.status).toBe("PAID");
-
-    await mirrorBillRefund(db as never, "gs_1", true); // full
-    expect(state.bills.get(billId)!.status).toBe("REFUNDED");
-  });
+  // The paid-in-full, split-payment and refund mirrors were removed with
+  // guest payments — there is no payment for the V2 Bill to mirror any
+  // more, so only the tab mirror remains.
 });

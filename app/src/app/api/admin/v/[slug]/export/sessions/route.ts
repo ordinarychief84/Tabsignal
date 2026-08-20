@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
 
   const venue = await db.venue.findUnique({
     where: { id: gate.venueId },
-    select: { zipCode: true, taxRateBps: true, slug: true },
+    select: { slug: true },
   });
   if (!venue) return new Response(JSON.stringify({ error: "NOT_FOUND" }), { status: 404 });
 
@@ -37,21 +37,16 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
   });
 
   const out = csv([
-    ["sessionId", "paidAtIso", "table", "subtotalUsd", "taxUsd", "tipUsd", "totalUsd", "tipPercent", "stripePaymentIntent"],
+    // Tax, tip and Stripe columns are gone with guest payments — the venue
+    // takes those on its own terminal, so we have no honest figure for them.
+    ["sessionId", "closedAtIso", "table", "totalUsd"],
     ...sessions.map(s => {
-      const items = tabItems(s.lineItems);
-      const tip = typeof s.tipPercent === "number" ? s.tipPercent : 0;
-      const t = tabTotals(items, venue, tip);
+      const t = tabTotals(tabItems(s.lineItems));
       return [
         s.id,
         s.paidAt!.toISOString(),
         s.table.label,
-        (t.subtotalCents / 100).toFixed(2),
-        (t.taxCents / 100).toFixed(2),
-        (t.tipCents / 100).toFixed(2),
         (t.totalCents / 100).toFixed(2),
-        tip,
-        s.stripePaymentIntentId ?? "",
       ];
     }),
   ]);

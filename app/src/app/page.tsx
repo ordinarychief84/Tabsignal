@@ -25,9 +25,9 @@ import { organizationLd, webSiteLd, softwareApplicationLd, pageMetadata, SITE_UR
 // root layout is bypassed here (brand already in the string).
 export const metadata: Metadata = {
   ...pageMetadata({
-    title: "QR Ordering, Pay-at-Table & Waiter Calls for Restaurants | TabCall",
+    title: "QR Ordering, Waiter Calls & Live Service for Restaurants | TabCall",
     description:
-      "TabCall turns every table into a service point: QR code ordering, pay-at-table payments, a call-waiter button and live staff alerts on top of your POS. Free at up to 5 tables — live tonight.",
+      "TabCall turns every table into a service point: QR code ordering, a call-waiter button and live staff alerts on top of your POS. Free at up to 5 tables — live tonight.",
     path: "/",
     keywords: [
       "restaurant QR code system",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     ],
   }),
   // Prevent the "%s | TabCall" template from double-branding this one.
-  title: { absolute: "QR Ordering, Pay-at-Table & Waiter Calls for Restaurants | TabCall" },
+  title: { absolute: "QR Ordering, Waiter Calls & Live Service for Restaurants | TabCall" },
 };
 
 /** Resolve a feature image from /public/landing/features/ if a file was saved
@@ -386,13 +386,6 @@ const FEATURE_CARDS = [
     body:
       "Efficiently manage shifts, track tips, and empower your team with mobile request notifications.",
     href: "/features/call-waiter",
-  },
-  {
-    icon: "credit_card",
-    title: "Integrated Payments",
-    body:
-      "Support Apple Pay, Google Pay, and all major cards. Enable split-bill functionality from the table.",
-    href: "/features/qr-payments",
   },
   {
     icon: "inventory",

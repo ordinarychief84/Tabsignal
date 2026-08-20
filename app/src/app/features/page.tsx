@@ -5,7 +5,7 @@ import { MarketingNav, MarketingFooter } from "../marketing-chrome";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Features — QR Ordering, Pay-at-Table, Waiter Calls & More",
+  title: "Features — QR Ordering, Waiter Calls, Reviews & More",
   description:
     "Everything TabCall does for restaurants and bars: QR code payments, table ordering, digital menus, waiter call button, promotions, POS integration, review intercept and floor analytics.",
   path: "/features",

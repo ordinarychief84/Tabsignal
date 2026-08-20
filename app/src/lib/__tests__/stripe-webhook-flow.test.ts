@@ -134,16 +134,22 @@ beforeEach(() => {
           venue: {
             findUnique: async () => null,
             update: async () => ({}),
+            updateMany: async () => ({ count: 0 }),
+          },
+          organization: {
+            findUnique: async () => null,
+            findFirst: async () => null,
+            update: async () => ({}),
+            // The probe for "processEvent actually ran". Was venue.updateMany
+            // via account.updated until Connect went away with guest payments;
+            // customer.subscription.deleted is the surviving equivalent — a
+            // branch that reaches the database on its first touch.
             updateMany: async () => {
-              // First touch processEvent makes for account.updated — use
-              // this as the proxy for "processEvent actually ran" so the
-              // duplicate test can assert the path was skipped.
               if (state.verifyAs) state.processedEventIds.push(state.verifyAs.id);
               if (state.processEventThrows) throw new Error("downstream blew up");
               return { count: 0 };
             },
           },
-          organization: { findUnique: async () => null, update: async () => ({}) },
           bill: { findUnique: async () => null, update: async () => ({}) },
         };
         return fn(tx);
@@ -198,8 +204,8 @@ describe("POST /api/webhooks/stripe", () => {
   test("200 on first delivery — inserts event, runs processEvent, marks processedAt", async () => {
     state.verifyAs = {
       id: "evt_first_1",
-      type: "account.updated",
-      data: { object: { id: "acct_1" } },
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_1", customer: "cus_1" } },
     };
     const { POST } = await import("../../app/api/webhooks/stripe/route");
     const res = await POST(makeReq("{}"));
@@ -214,8 +220,8 @@ describe("POST /api/webhooks/stripe", () => {
   test("200 duplicate=true on a retry of an already-processed event (P2002 + processedAt set)", async () => {
     state.verifyAs = {
       id: "evt_dup_1",
-      type: "account.updated",
-      data: { object: { id: "acct_2" } },
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_2", customer: "cus_2" } },
     };
     state.duplicateInsert = true;        // create() raises P2002
     state.processedAt = new Date();       // FOR UPDATE row says we're done
@@ -232,8 +238,8 @@ describe("POST /api/webhooks/stripe", () => {
   test("first delivery still runs processEvent when create succeeds even if a stale processedAt is null", async () => {
     state.verifyAs = {
       id: "evt_fresh_1",
-      type: "account.updated",
-      data: { object: { id: "acct_3" } },
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_3", customer: "cus_3" } },
     };
     state.processedAt = null;
     const { POST } = await import("../../app/api/webhooks/stripe/route");
@@ -245,8 +251,8 @@ describe("POST /api/webhooks/stripe", () => {
   test("500 PROCESSING_FAILED + error field populated when processEvent throws", async () => {
     state.verifyAs = {
       id: "evt_err_1",
-      type: "account.updated",
-      data: { object: { id: "acct_4" } },
+      type: "customer.subscription.deleted",
+      data: { object: { id: "sub_4", customer: "cus_4" } },
     };
     state.processEventThrows = true;
     const { POST } = await import("../../app/api/webhooks/stripe/route");

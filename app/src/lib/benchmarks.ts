@@ -23,13 +23,14 @@ export type Segment = {
   capacityBucket: "lt20" | "20to50" | "50to100" | "gte100";
 };
 
-export type MetricName = "revenueCents" | "tickets" | "avgTicketCents" | "tipsCents" | "avgRating";
+// `tipsCents` was removed with guest payments — TabCall collects no tips
+// to measure, so benchmarking them would compare zeros.
+export type MetricName = "revenueCents" | "tickets" | "avgTicketCents" | "avgRating";
 
 export const METRICS: MetricName[] = [
   "revenueCents",
   "tickets",
   "avgTicketCents",
-  "tipsCents",
   "avgRating",
 ];
 
@@ -82,7 +83,7 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
 
   const venue = await db.venue.findUnique({
     where: { id: venueId },
-    select: { zipCode: true, taxRateBps: true },
+    select: { zipCode: true },
   });
 
   const sessions = await db.guestSession.findMany({
@@ -95,15 +96,8 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
   });
 
   let revenueCents = 0;
-  let tipsCents = 0;
   for (const s of sessions) {
-    const t = totalsFor(
-      tabItems(s.lineItems),
-      venue ?? { zipCode: null, taxRateBps: null },
-      typeof s.tipPercent === "number" ? s.tipPercent : 0,
-    );
-    revenueCents += t.totalCents;
-    tipsCents += t.tipCents;
+    revenueCents += totalsFor(tabItems(s.lineItems)).totalCents;
   }
   const tickets = sessions.length;
   const avgTicketCents = tickets > 0 ? Math.round(revenueCents / tickets) : 0;
@@ -111,7 +105,7 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
     ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length
     : 0;
 
-  return { revenueCents, tickets, avgTicketCents, tipsCents, avgRating };
+  return { revenueCents, tickets, avgTicketCents, avgRating };
 }
 
 // Compute percentiles across a sorted sample. Linear interpolation.
@@ -145,7 +139,7 @@ export async function aggregateForDate(date: Date): Promise<{ snapshotsWritten: 
     const metrics = await venueMetricsForDate(v.id, dayStart);
     const bucket = bySegment.get(key) ?? {
       segment: seg,
-      values: { revenueCents: [], tickets: [], avgTicketCents: [], tipsCents: [], avgRating: [] },
+      values: { revenueCents: [], tickets: [], avgTicketCents: [], avgRating: [] },
     };
     for (const m of METRICS) bucket.values[m].push(metrics[m]);
     bySegment.set(key, bucket);

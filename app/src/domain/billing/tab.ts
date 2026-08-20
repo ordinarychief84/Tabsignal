@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { LineItem as LineItemSchema, parseLineItems, totalsFor, type LineItem, type VenueTax } from "@/lib/bill";
+import { LineItem as LineItemSchema, parseLineItems, totalsFor, type LineItem } from "@/lib/bill";
 import { mirrorTabToBill } from "@/domain/billing/mirror";
 
 /**
@@ -13,27 +13,19 @@ import { mirrorTabToBill } from "@/domain/billing/mirror";
  * cutover to the canonical Order/Bill model changes exactly one file's
  * internals instead of sixteen call sites.
  *
- * Deliberately NOT here (their own modules, later PRs): PaymentIntent
- * creation (payment.ts), splits (splits.ts), webhook mutations. Routes
- * keep their auth + HTTP-shape logic; this module owns tab data only.
+ * PaymentIntent creation and splits used to live alongside this module.
+ * They are gone: TabCall no longer charges guests, so a tab is a record
+ * of what was ordered and nothing more. Guests settle with staff.
  */
-
-export const DEFAULT_TIP_PERCENT = 20; // PRD v2.0 — phone-tipping anchor research
 
 /** Parse a session's lineItems JSON. Sole legitimate parse entry point. */
 export function tabItems(lineItemsJson: unknown): LineItem[] {
   return parseLineItems(lineItemsJson);
 }
 
-/**
- * Standard bill math for a tab (subtotal, tax, tip, total).
- *
- * Display/reporting only — a venue with no resolvable tax rate computes
- * at 0%. Charge paths go through `totalsForCharge` instead so an unset
- * rate refuses rather than under-taxes. See lib/tax.ts.
- */
-export function tabTotals(items: LineItem[], venue: VenueTax, tipPercent: number) {
-  return totalsFor(items, venue, tipPercent);
+/** Standard math for a tab — the sum of its line items. */
+export function tabTotals(items: LineItem[]) {
+  return totalsFor(items);
 }
 
 /* ------------------------------ guest bill ------------------------------ */
@@ -43,7 +35,6 @@ export type GuestBill = {
   venueName: string;
   tableLabel: string;
   items: LineItem[];
-  defaultTipPercent: number;
   totals: ReturnType<typeof totalsFor>;
 };
 
@@ -52,14 +43,14 @@ export type GuestBillResult =
   | { ok: false; error: "SESSION_NOT_FOUND" | "ALREADY_PAID" };
 
 /**
- * The guest-facing bill (venue name + table + ledger + default-tip
- * totals). Token verification stays in the route (it owns HTTP-auth
- * semantics); pass the session row it already validated.
+ * The guest-facing bill: venue, table, and the running ledger. Token
+ * verification stays in the route (it owns HTTP-auth semantics); pass the
+ * session row it already validated.
  */
 export function guestBillFor(session: {
   id: string;
   lineItems: unknown;
-  venue: { name: string; zipCode: string | null; taxRateBps: number | null };
+  venue: { name: string };
   table: { label: string };
 }): GuestBill {
   const items = tabItems(session.lineItems);
@@ -68,8 +59,7 @@ export function guestBillFor(session: {
     venueName: session.venue.name,
     tableLabel: session.table.label,
     items,
-    defaultTipPercent: DEFAULT_TIP_PERCENT,
-    totals: tabTotals(items, session.venue, DEFAULT_TIP_PERCENT),
+    totals: tabTotals(items),
   };
 }
 

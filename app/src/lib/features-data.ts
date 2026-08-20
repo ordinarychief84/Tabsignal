@@ -12,7 +12,6 @@
 export type FeatureTone = "butter" | "sage";
 
 export type FeatureSlug =
-  | "qr-payments"
   | "qr-orders"
   | "digital-menu"
   | "wishlist"
@@ -37,27 +36,6 @@ export type FeatureCard = {
 };
 
 export const FEATURES: FeatureCard[] = [
-  {
-    slug: "qr-payments",
-    title: "QR Payments at the Table",
-    tagline: "Pay from the table. No app. No wait.",
-    body:
-      "Guests can pay securely from their phone in seconds. No app. No hassle.",
-    tone: "butter",
-    highlights: [
-      "Apple Pay, Google Pay, all major cards and wallets",
-      "Split by item or by share, two guests can pay different items",
-      "Add tips with three taps — 15 / 20 / 25 or custom",
-      "Stripe-secured, PCI compliant, no card data stored on TabCall",
-    ],
-    detailLead:
-      "TabCall takes the last 8 minutes off your service cycle. Guests scan the table QR, see their bill, split if they want, tip, and pay. Your server never walks the check back — they just close the tab in the live queue.",
-    outcomes: [
-      "1m 32s average bill close, down from 8 minutes on a paper tab",
-      "Server time saved goes to running food and turning tables faster",
-      "Digital tips average 1.3 percentage points higher than paper",
-    ],
-  },
   {
     slug: "qr-orders",
     title: "QR Orders from the Table",
@@ -236,7 +214,6 @@ export function getFeature(slug: string): FeatureCard | undefined {
 
 /** Just the six "primary" features shown in the landing spotlight grid. */
 export const PRIMARY_FEATURE_SLUGS: FeatureSlug[] = [
-  "qr-payments",
   "qr-orders",
   "digital-menu",
   "wishlist",

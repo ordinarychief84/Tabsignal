@@ -101,7 +101,6 @@ export default async function AnalyticsPage({
         <Card label="Revenue" value={dollars(data.revenueCents)} />
         <Card label="Tickets" value={String(data.paidSessions)} />
         <Card label="Avg ticket" value={dollars(data.avgTicketCents)} />
-        <Card label="Tips" value={dollars(data.tipsCents)} />
       </section>
 
       <section className="mb-8 grid gap-6 md:grid-cols-2">
@@ -261,7 +260,6 @@ function metricLabel(m: MetricName): string {
     case "revenueCents":   return "Revenue";
     case "tickets":        return "Tickets";
     case "avgTicketCents": return "Avg ticket";
-    case "tipsCents":      return "Tips";
     case "avgRating":      return "Avg rating";
   }
 }

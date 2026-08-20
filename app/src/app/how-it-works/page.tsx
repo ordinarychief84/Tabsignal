@@ -103,7 +103,7 @@ function WhatWeDo() {
   return (
     <Block eyebrow="What we do" title="One platform, the entire guest interaction.">
       <p>
-        Guests scan, browse the menu, order, split the bill, pay, and
+        Guests scan, browse the menu, order, call for anything they need and
         leave a review without flagging a server. Servers run a live
         queue on their phones with sub-second push and three-minute
         escalation. Managers get real-time analytics, a heatmap of the
@@ -242,10 +242,6 @@ const STATS = [
   {
     value: "3×",
     label: "Fewer 1-star reviews landing on Google",
-  },
-  {
-    value: "+1.3%",
-    label: "Digital tip lift versus paper, per server",
   },
   {
     value: "10K+",

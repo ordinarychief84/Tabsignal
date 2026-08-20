@@ -45,7 +45,7 @@ export async function venueAnalytics(
 ): Promise<VenueAnalytics> {
   const venue = await db.venue.findUnique({
     where: { id: venueId },
-    select: { timezone: true, zipCode: true, taxRateBps: true },
+    select: { timezone: true },
   });
   const tz = venue?.timezone ?? "America/Chicago";
   const start = rangeStart(range, tz);
@@ -84,10 +84,8 @@ export async function venueAnalytics(
 
   for (const s of paidSessions) {
     const items = tabItems(s.lineItems);
-    const tipPct = typeof s.tipPercent === "number" ? s.tipPercent : 0;
-    const t = totalsFor(items, venue ?? { zipCode: null, taxRateBps: null }, tipPct);
+    const t = totalsFor(items);
     revenueCents += t.totalCents;
-    tipsCents += t.tipCents;
     if (s.paidAt) {
       const h = s.paidAt.getHours();
       const bucket = hourlyMap.get(h)!;
