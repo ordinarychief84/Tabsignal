@@ -111,12 +111,29 @@ beforeEach(() => {
 
   mock.module("@/lib/rate-limit", () => ({
     rateLimitAsync: async () => ({ ok: state.rateLimitOk, retryAfterMs: 15_000 }),
+    // Same completeness rule as the fcm mock below — rate-limit.test.ts
+    // imports the sync variant too.
+    rateLimit: () => ({ ok: state.rateLimitOk, retryAfterMs: 15_000 }),
   }));
   mock.module("@/lib/realtime", () => ({
-    events: { orderPlaced: async () => undefined },
     emit: async () => undefined,
+    events: {
+      orderPlaced: async () => undefined,
+      orderStatusChanged: async () => undefined,
+      newRequest: async () => undefined,
+      requestAcknowledged: async () => undefined,
+      requestResolved: async () => undefined,
+      regularArrived: async () => undefined,
+    },
   }));
-  mock.module("@/lib/fcm", () => ({ sendPushToStaff: async () => ({ sent: 0, invalidTokens: [] }) }));
+  // Mirror the module's FULL export surface. bun's mock.module replaces the
+  // real module process-wide, and file order varies between machines — a
+  // partial mock here made fcm.test.ts fail on Linux CI with
+  // "Export named '_resetFcmForTest' not found" while passing locally.
+  mock.module("@/lib/fcm", () => ({
+    sendPushToStaff: async () => ({ sent: 0, invalidTokens: [] }),
+    _resetFcmForTest: () => {},
+  }));
 });
 
 afterEach(() => { mock.restore(); });
