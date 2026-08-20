@@ -5,6 +5,7 @@ import { getStaffSession } from "@/lib/auth/session";
 import { StaffQueue } from "./queue";
 import { LiveClock } from "./live-clock";
 import { FcmRegister } from "./fcm-register";
+import { OpenTabs } from "./open-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,11 @@ export default async function StaffPage() {
           staffId={staff.id}
           assignedTableIds={assignedTableIds}
         />
+
+        {/* Below the queue on purpose — see the note in open-tabs.tsx for
+            why this isn't a fifth tab inside it. Renders nothing when no
+            table has anything on its tab. */}
+        <OpenTabs venueId={staff.venue.id} assignedTableIds={assignedTableIds} />
         <p className="mt-8 text-center text-[10px] tracking-[0.16em] text-slate/40">
           {staff.name}
           {assignedTableLabels.length > 0

@@ -48,7 +48,10 @@ export type Permission =
   | "specials.edit"
   | "promotions.manage"
   | "tip_pools.manage"
-  | "preorders.manage"
+  // Closing out a guest tab: stamps GuestSession.paidAt, which is what
+  // Regulars, tip pools and the session export all count from. Replaces
+  // the orphaned "preorders.manage" — pre-orders went with guest payments.
+  | "tabs.settle"
   | "reservations.manage"
   | "reviews.view"
   | "reviews.respond"
@@ -95,7 +98,7 @@ const ALL_PERMS = new Set<Permission>([
   "specials.edit",
   "promotions.manage",
   "tip_pools.manage",
-  "preorders.manage",
+  "tabs.settle",
   "reservations.manage",
   "reviews.view",
   "reviews.respond",
@@ -140,7 +143,7 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
     "specials.edit",
     "promotions.manage",
     "tip_pools.manage",
-    "preorders.manage",
+    "tabs.settle",
     "reservations.manage",
     "reviews.view",
     "reviews.respond",
@@ -158,7 +161,7 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
 
   // Servers + Bartenders (mapped to SERVER) live on the floor app.
   SERVER: new Set<Permission>([
-    "preorders.manage",
+    "tabs.settle",
     "reservations.manage", // can mark ARRIVED/SEATED, not create
     "regulars.view",
     "requests.acknowledge",
@@ -187,7 +190,7 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
   // until the migration backfill flips these rows to OWNER.
   STAFF: new Set<Permission>([
     "staff.list",
-    "preorders.manage",
+    "tabs.settle",
     "reservations.manage",
     "regulars.view",
     "requests.acknowledge",
