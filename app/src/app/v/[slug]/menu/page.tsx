@@ -6,6 +6,7 @@ import { dollars } from "@/lib/bill";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { SITE_URL } from "@/lib/seo";
 import { WishlistHeart } from "./wishlist-heart";
+import { GuestBackLink } from "@/components/guest/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +126,15 @@ export default async function PublicMenuPage({
     <main className="min-h-screen bg-oat text-slate">
       <div className="mx-auto max-w-md px-6 py-10">
         <header className="mb-8">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
+          <GuestBackLink
+            href={
+              guest?.tableLabel
+                ? `/v/${params.slug}/t/${encodeURIComponent(guest.tableLabel)}?s=${encodeURIComponent(guest.sessionToken)}`
+                : `/v/${params.slug}`
+            }
+            label={guest?.tableLabel ? `Back to table ${guest.tableLabel}` : "Back"}
+          />
+          <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">Menu</h1>
         </header>
 
@@ -277,12 +286,17 @@ async function loadGuestContext(
 ): Promise<{
   sessionId: string;
   sessionToken: string;
+  /** Lets the back link return a QR guest to their own beacon screen. */
+  tableLabel: string | null;
   savedMenuItemIds: Set<string>;
 } | null> {
   if (!sid || !token) return null;
   const session = await db.guestSession.findUnique({
     where: { id: sid },
-    select: { id: true, sessionToken: true, venueId: true, expiresAt: true, paidAt: true },
+    select: {
+      id: true, sessionToken: true, venueId: true, expiresAt: true, paidAt: true,
+      table: { select: { label: true } },
+    },
   });
   if (!session || session.venueId !== venueId) return null;
   if (!tokensEqual(session.sessionToken, token)) return null;
@@ -299,6 +313,7 @@ async function loadGuestContext(
   return {
     sessionId: session.id,
     sessionToken: session.sessionToken,
+    tableLabel: session.table?.label ?? null,
     savedMenuItemIds: ids,
   };
 }

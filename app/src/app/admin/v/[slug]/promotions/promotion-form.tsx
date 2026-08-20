@@ -169,21 +169,32 @@ export function PromotionForm({
       ) : null}
 
       <Field label="Type">
-        <div className="flex flex-wrap gap-2">
+        {/* A single-select group, so it carries radio semantics rather than
+            six unrelated buttons — assistive tech now announces the choice
+            and which option is active.
+
+            `title={opt.hint}` used to sit on each button. It hijacked the
+            accessible name (screen readers announced "Chartreuse pill on the
+            guest screens." instead of "Happy hour"), it never appeared on
+            touch devices at all, and the hint is already rendered visibly
+            below for the selected option — so it was pure cost. */}
+        <div role="radiogroup" aria-label="Promotion type" className="flex flex-wrap gap-2">
           {TYPE_OPTIONS.map(opt => {
             const active = opt.value === type;
             return (
               <button
                 key={opt.value}
                 type="button"
+                role="radio"
+                aria-checked={active}
                 onClick={() => setType(opt.value)}
                 className={[
-                  "rounded-full border px-3 py-1.5 text-xs",
+                  "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chartreuse-deep",
                   active
                     ? "border-chartreuse bg-chartreuse/40 text-slate"
                     : "border-slate/15 bg-white text-slate/70 hover:border-slate/30",
                 ].join(" ")}
-                title={opt.hint}
               >
                 {opt.label}
               </button>

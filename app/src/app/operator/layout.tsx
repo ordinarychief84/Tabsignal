@@ -50,7 +50,10 @@ export default async function OperatorLayout({ children }: { children: React.Rea
       brand={{ href: "/operator", name: "TabCall" }}
       roleLabel="operator"
       groups={NAV}
-      account={{ email: session.email, changePasswordHref: "/admin/account/password" }}
+      // /admin/account/password requires a PlatformAdmin session; both
+      // venue managers and operators hold STAFF sessions, so that link
+      // bounced every one of them to a super-admin login they cannot pass.
+      account={{ email: session.email, changePasswordHref: "/staff/account/password" }}
     >
       {children}
     </AdminShell>

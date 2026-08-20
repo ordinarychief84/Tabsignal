@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmButton } from "@/components/admin/confirm-button";
 
 type TableRow = {
   id: string;
@@ -219,19 +220,27 @@ function Row({
         >
           Rename
         </button>
-        <button
-          onClick={() => {
-            const ok = confirm(
-              hasHistory
-                ? `${t.label} has past activity. Delete will be refused. Continue?`
-                : `Delete ${t.label}? This can't be undone.`
-            );
-            if (ok) onDelete(t.id);
-          }}
-          className="rounded-full border border-coral/30 px-3 py-1 text-xs text-coral hover:bg-coral/5"
-        >
-          Delete
-        </button>
+        {/* The old prompt said "Delete will be refused. Continue?" — asking
+            someone to confirm an action it had already decided to reject.
+            A table with history simply isn't deletable, so the control is
+            disabled and says why instead of staging a doomed confirmation. */}
+        {hasHistory ? (
+          <span
+            title="Tables with past activity can't be deleted — rename it instead, so historical records keep their table."
+            className="rounded-full border border-slate/10 px-3 py-1 text-xs text-slate/35"
+          >
+            Delete
+          </span>
+        ) : (
+          <ConfirmButton
+            onConfirm={() => onDelete(t.id)}
+            title={`Delete ${t.label}?`}
+            body="Its QR tent stops working the moment this is saved. Anyone who scans the printed code will get a dead link until you print a new one."
+            className="rounded-full border border-coral/30 px-3 py-1 text-xs text-coral hover:bg-coral/5"
+          >
+            Delete
+          </ConfirmButton>
+        )}
       </div>
     </li>
   );

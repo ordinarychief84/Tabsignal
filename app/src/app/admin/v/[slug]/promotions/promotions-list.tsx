@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ConfirmButton } from "@/components/admin/confirm-button";
 
 type PromotionRow = {
   id: string;
@@ -55,7 +56,6 @@ export function PromotionsList({
   }
 
   async function remove(id: string, title: string) {
-    if (!confirm(`Delete "${title}"? This can't be undone.`)) return;
     setError(null);
     try {
       const res = await fetch(`/api/admin/v/${slug}/promotions/${id}`, { method: "DELETE" });
@@ -146,12 +146,14 @@ export function PromotionsList({
                     Activate
                   </button>
                 )}
-                <button
-                  onClick={() => remove(p.id, p.title)}
+                <ConfirmButton
+                  onConfirm={() => remove(p.id, p.title)}
+                  title={`Delete "${p.title}"?`}
+                  body="It comes off the guest screens immediately and can't be restored."
                   className="rounded-full border border-coral/30 px-3 py-1 text-xs text-coral hover:bg-coral/5"
                 >
                   Delete
-                </button>
+                </ConfirmButton>
               </div>
             </div>
           </li>

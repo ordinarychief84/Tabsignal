@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmButton } from "@/components/admin/confirm-button";
 
 /**
  * Google Business Profile card on venue Settings: connect → pick the
@@ -121,7 +122,6 @@ export function GbpCard({ slug }: { slug: string }) {
   }
 
   async function disconnect() {
-    if (!window.confirm("Disconnect Google Business Profile? Synced reviews stay; syncing stops.")) return;
     setBusy("disconnect");
     try {
       await fetch(`/api/admin/v/${slug}/gbp`, { method: "DELETE" });
@@ -219,14 +219,16 @@ export function GbpCard({ slug }: { slug: string }) {
             >
               {busy === "sync" ? "Syncing…" : "Sync now"}
             </button>
-            <button
-              type="button"
-              onClick={disconnect}
+            <ConfirmButton
+              onConfirm={disconnect}
               disabled={busy === "disconnect"}
+              title="Disconnect Google Business Profile?"
+              body="Reviews already synced stay where they are. New ones stop arriving until you reconnect."
+              confirmLabel="Disconnect"
               className="rounded-full border border-coral/30 px-4 py-1.5 text-sm text-coral hover:bg-coral/10 disabled:opacity-60"
             >
               Disconnect
-            </button>
+            </ConfirmButton>
           </div>
         </>
       ) : null}
