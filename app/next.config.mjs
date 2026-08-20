@@ -32,8 +32,14 @@ const csp = [
   // Belt and braces with X-Frame-Options below — this is the directive
   // modern browsers actually honor.
   "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-].join("; ");
+];
+
+// `upgrade-insecure-requests` is ignored in a report-only policy and the
+// browser logs an error saying so — on every page load. It only earns its
+// place once the CSP is enforced; HSTS already covers us until then.
+if (!CSP_REPORT_ONLY) csp.push("upgrade-insecure-requests");
+
+const cspHeader = csp.join("; ");
 
 const securityHeaders = [
   // Clickjacking: the staff and admin dashboards carry one-tap destructive
@@ -55,7 +61,7 @@ const securityHeaders = [
   },
   {
     key: CSP_REPORT_ONLY ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy",
-    value: csp,
+    value: cspHeader,
   },
 ];
 
