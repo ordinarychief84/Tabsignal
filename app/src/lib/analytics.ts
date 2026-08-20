@@ -45,7 +45,7 @@ export async function venueAnalytics(
 ): Promise<VenueAnalytics> {
   const venue = await db.venue.findUnique({
     where: { id: venueId },
-    select: { timezone: true, zipCode: true, taxRateBps: true },
+    select: { timezone: true },
   });
   const tz = venue?.timezone ?? "America/Chicago";
   const start = rangeStart(range, tz);
@@ -54,7 +54,7 @@ export async function venueAnalytics(
   const [paidSessions, ratingsRaw, ackedByStaff, badRatingsOpen] = await Promise.all([
     db.guestSession.findMany({
       where: { venueId, paidAt: { gte: start, lte: end } },
-      select: { lineItems: true, tipPercent: true, paidAt: true },
+      select: { lineItems: true, paidAt: true },
     }),
     db.feedbackReport.findMany({
       where: { venueId, createdAt: { gte: start, lte: end } },
@@ -75,7 +75,7 @@ export async function venueAnalytics(
   ]);
 
   // Revenue = sum of (subtotal + tax + tip) computed from each session's
-  // saved tipPercent. Prefer this over reading Stripe charges so the
+  // line items. Prefer this over external sources so the
   // analytics survive even if Stripe data is unavailable.
   let revenueCents = 0;
   let tipsCents = 0;
@@ -84,10 +84,8 @@ export async function venueAnalytics(
 
   for (const s of paidSessions) {
     const items = tabItems(s.lineItems);
-    const tipPct = typeof s.tipPercent === "number" ? s.tipPercent : 0;
-    const t = totalsFor(items, venue ?? { zipCode: null, taxRateBps: null }, tipPct);
+    const t = totalsFor(items);
     revenueCents += t.totalCents;
-    tipsCents += t.tipCents;
     if (s.paidAt) {
       const h = s.paidAt.getHours();
       const bucket = hourlyMap.get(h)!;

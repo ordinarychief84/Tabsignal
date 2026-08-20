@@ -63,22 +63,22 @@ beforeEach(() => {
 });
 
 describe("guestBillFor", () => {
-  test("returns the exact bill-route response shape with default 20% tip", async () => {
+  test("returns the exact bill-route response shape", async () => {
     const { guestBillFor } = await import("../../domain/billing/tab");
     const bill = guestBillFor({
       id: "gs_1",
       lineItems: [{ name: "IPA", quantity: 2, unitCents: 800 }],
-      venue: { name: "Velvet Hour", zipCode: "78701", taxRateBps: null },
+      venue: { name: "Velvet Hour" },
       table: { label: "T7" },
     });
     // Key ORDER is part of the pinned contract (byte-identical JSON).
     expect(Object.keys(bill)).toEqual([
-      "sessionId", "venueName", "tableLabel", "items", "defaultTipPercent", "totals",
+      "sessionId", "venueName", "tableLabel", "items", "totals",
     ]);
-    expect(bill.defaultTipPercent).toBe(20);
     expect(bill.items).toEqual([{ name: "IPA", quantity: 2, unitCents: 800 }]);
     expect(bill.totals.subtotalCents).toBe(1600);
-    expect(bill.totals.totalCents).toBeGreaterThan(1600); // tax + tip applied
+    // Nothing is added on top any more — the total IS the subtotal.
+    expect(bill.totals.totalCents).toBe(1600);
   });
 });
 

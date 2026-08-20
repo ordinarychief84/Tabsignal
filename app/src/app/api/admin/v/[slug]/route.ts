@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { MAX_TAX_RATE_BPS } from "@/lib/tax";
 import { getStaffSession } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
 
@@ -45,10 +44,6 @@ const Body = z.object({
     .nullable()
     .optional(),
   requireIdOnFirstDrink: z.boolean().optional(),
-  // Sales-tax rate in basis points (825 = 8.25%). Null clears it back to
-  // the ZIP fallback. An explicit 0 is legitimate (OR/DE/MT/NH) and is
-  // stored as 0, not treated as "unset" — see lib/tax.ts.
-  taxRateBps: z.number().int().min(0).max(MAX_TAX_RATE_BPS).nullable().optional(),
   // Notification routing — comma-separated emails or null to clear.
   alertEmails: z.string().max(500).nullable().optional(),
   // Guest UX copy. Short — these render inline in mobile views, so the
@@ -142,7 +137,6 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
   if (parsed.brandColor !== undefined) data.brandColor = parsed.brandColor;
   if (parsed.logoUrl !== undefined) data.logoUrl = parsed.logoUrl;
   if (parsed.requireIdOnFirstDrink !== undefined) data.requireIdOnFirstDrink = parsed.requireIdOnFirstDrink;
-  if (parsed.taxRateBps !== undefined) data.taxRateBps = parsed.taxRateBps;
   if (parsed.alertEmails !== undefined) data.alertEmails = parsed.alertEmails;
   if (parsed.guestWelcomeMessage !== undefined) data.guestWelcomeMessage = parsed.guestWelcomeMessage;
   if (parsed.guestConfirmationMessage !== undefined) data.guestConfirmationMessage = parsed.guestConfirmationMessage;

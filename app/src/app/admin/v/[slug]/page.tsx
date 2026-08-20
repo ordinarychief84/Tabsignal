@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { readOnboardingState, deriveOnboarding } from "@/lib/onboarding";
-import { hasTaxRate } from "@/lib/tax";
 import { ManagerFloor } from "./manager-floor";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +13,6 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       id: true,
       name: true,
       timezone: true,
-      stripeAccountId: true,
-      stripeChargesEnabled: true,
-      zipCode: true,
-      taxRateBps: true,
       venueType: true,
       brandColor: true,
       onboardingState: true,
@@ -26,7 +21,6 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
     },
   });
   if (!venue) return null;
-  const stripeReady = !!venue.stripeAccountId && venue.stripeChargesEnabled;
 
   // Launch-progress nudge for venues that never hit "Go live". Legacy
   // venues had onboardingCompletedAt backfilled, so this only shows for
@@ -36,8 +30,6 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
     venueType: venue.venueType,
     brandColor: venue.brandColor,
     staffCount: venue._count.staff,
-    stripeChargesEnabled: venue.stripeChargesEnabled,
-    taxRateSet: hasTaxRate(venue),
     onboardingCompletedAt: venue.onboardingCompletedAt,
   });
 
@@ -141,27 +133,6 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
             <span className="rounded-full bg-slate px-4 py-2 text-xs font-medium text-oat">Resume →</span>
           </span>
         </Link>
-      ) : null}
-
-      {!stripeReady ? (
-        <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-coral/40 bg-coral/10 px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-coral">Action needed</p>
-            <p className="mt-1 text-sm font-medium text-slate">
-              Stripe isn&rsquo;t connected. Guest bills can&rsquo;t close yet.
-            </p>
-            <p className="mt-1 text-xs text-slate/65">
-              Tour the dashboard freely. When you&rsquo;re ready (3–5 min, ID + bank
-              details handy), connect from Settings to start taking payments.
-            </p>
-          </div>
-          <Link
-            href={`/admin/v/${params.slug}/settings`}
-            className="shrink-0 rounded-full bg-slate px-4 py-2 text-xs font-medium text-oat hover:bg-slate/90"
-          >
-            Connect Stripe →
-          </Link>
-        </div>
       ) : null}
 
       <header className="mb-8">

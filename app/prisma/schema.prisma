@@ -24,13 +24,6 @@ enum SubscriptionStatus {
   CANCELED
 }
 
-enum PreOrderStatus {
-  PENDING
-  READY
-  PICKED_UP
-  CANCELED
-}
-
 enum TipPoolPeriod {
   SHIFT
   DAY
@@ -112,107 +105,94 @@ model Organization {
 }
 
 model Venue {
-  id                     String           @id @default(cuid())
-  orgId                  String
-  slug                   String           @unique
-  name                   String
-  address                String?
-  zipCode                String?
-  // Sales-tax rate in basis points (825 = 8.25%). Null means "not set" —
-  // lib/tax.ts falls back to the coarse Texas ZIP table, and a venue with
-  // neither cannot go live or take a guest payment. An explicit 0 is a
-  // real answer (OR/DE/MT/NH) and is honored as such, not treated as unset.
-  taxRateBps             Int?
+  id                       String           @id @default(cuid())
+  orgId                    String
+  slug                     String           @unique
+  name                     String
+  address                  String?
+  zipCode                  String?
   // E.164 phone number captured at signup. Used for SMS reservations
   // confirmations and as the manager's emergency contact. Format:
   // "+12125551234" (country dial code + national number, no spaces).
-  phoneNumber            String?
+  phoneNumber              String?
   // ISO 3166-1 alpha-2 country code captured at signup (US, GB, MX, …).
   // Drives the signup phone-input default + tax routing per jurisdiction.
-  country                String?
-  timezone               String           @default("America/Chicago")
-  posType                PosType          @default(NONE)
-  posWebhookUrl          String?
-  googlePlaceId          String?
-  stripeAccountId        String?
-  // Stripe Connect onboarding state — populated by account.updated webhook.
-  // chargesEnabled gates the bill flow; payoutsEnabled affects settlement.
-  stripeChargesEnabled   Boolean          @default(false)
-  stripePayoutsEnabled   Boolean          @default(false)
-  stripeDetailsSubmitted Boolean          @default(false)
+  country                  String?
+  timezone                 String           @default("America/Chicago")
+  posType                  PosType          @default(NONE)
+  posWebhookUrl            String?
+  googlePlaceId            String?
   // Compliance: when true, the first DRINK request on a fresh guest session
   // sets `idCheckRequired` on the request so staff see a coral "ID check"
   // badge before tapping Got it.
-  requireIdOnFirstDrink  Boolean          @default(false)
-  brandColor             String?
-  logoUrl                String?
+  requireIdOnFirstDrink    Boolean          @default(false)
+  brandColor               String?
+  logoUrl                  String?
   // Tier 3a: optional grouping tag for hierarchical filtering in the
   // multi-location operator console (e.g. "Texas locations only").
-  regionTag              String?
+  regionTag                String?
   // Comma-separated extra email recipients for bad-rating alerts and
   // similar venue-level notifications. Empty = use OPERATOR_EMAILS only.
-  alertEmails            String?
+  alertEmails              String?
   // Per-shift kill switches. Manager can flip these from Settings to
   // pause a feature (kitchen slammed, no servers on the floor, etc.)
   // without losing existing data. Default true so new venues "just work".
-  requestsEnabled        Boolean          @default(true)
-  preorderEnabled        Boolean          @default(true)
-  reservationsEnabled    Boolean          @default(true)
+  requestsEnabled          Boolean          @default(true)
+  preorderEnabled          Boolean          @default(true)
+  reservationsEnabled      Boolean          @default(true)
   // Optional guest-facing copy. Manager-editable from Settings; the
   // guest flow falls back to baked-in defaults when these are null.
   // Keep concise — these render inline in the QR landing and feedback
   // screen, so long blocks of text would push the action buttons off
   // a phone viewport.
-  guestWelcomeMessage    String?          @db.Text
-  guestConfirmationMessage String?        @db.Text
-  reviewPrompt           String?          @db.Text
+  guestWelcomeMessage      String?          @db.Text
+  guestConfirmationMessage String?          @db.Text
+  reviewPrompt             String?          @db.Text
   // Onboarding feature toggles. Persists the user's choices from Step 4
   // of the wizard. Null means defaults (everything on). JSON shape:
   //   { qr_ordering: bool, qr_payments: bool, call_waiter: bool,
   //     reviews: bool, pos_integration: bool }
-  enabledFeatures        Json?
+  enabledFeatures          Json?
   // Onboarding redesign (2026-05-20): free-text vertical classifier set
   // in wizard step 1 ("restaurant" | "cafe" | "bar" | ...). Was stored
   // client-only in localStorage previously; promoted to a column so
   // per-vertical analytics + features can query it.
-  venueType              String?
+  venueType                String?
   // Server-persisted wizard state — { currentStep, completedSteps[], solo }.
   // Lets a user resume onboarding on a different device or after
   // clearing browser data. The shape is validated client-side; the
   // column is permissive so we can extend without a migration.
-  onboardingState        Json?
+  onboardingState          Json?
   // Set when the user explicitly clicks "Launch venue" on the final
   // step. Null = wizard not yet finished → dashboard shows a resume
   // banner. Backfilled to createdAt for legacy venues that already had
   // brandColor + a real zipCode before this column existed.
-  onboardingCompletedAt  DateTime?
-  createdAt              DateTime         @default(now())
-  org                    Organization     @relation(fields: [orgId], references: [id])
-  tables                 Table[]
-  staff                  StaffMember[]
-  sessions               GuestSession[]
-  requests               Request[]
-  feedback               FeedbackReport[]
-  menuCategories         MenuCategory[]
-  menuItems              MenuItem[]
-  tipPools               TipPool[]
-  preOrders              PreOrder[]
-  reservations           Reservation[]
-  waitlist               Waitlist[]
-  specials               VenueSpecial[]
-  auditLog               AuditLog[]
+  onboardingCompletedAt    DateTime?
+  createdAt                DateTime         @default(now())
+  org                      Organization     @relation(fields: [orgId], references: [id])
+  tables                   Table[]
+  staff                    StaffMember[]
+  sessions                 GuestSession[]
+  requests                 Request[]
+  feedback                 FeedbackReport[]
+  menuCategories           MenuCategory[]
+  menuItems                MenuItem[]
+  tipPools                 TipPool[]
+  reservations             Reservation[]
+  waitlist                 Waitlist[]
+  specials                 VenueSpecial[]
+  auditLog                 AuditLog[]
   // Spec-verbatim Guest Commerce Module (parallel schema; coexists with
-  // PreOrder/VenueSpecial/legacy BillSplit). See migration
+  // VenueSpecial). See migration
   // 20260512_guest_commerce_v2 for the trade-offs.
-  orders                 Order[]
-  bills                  Bill[]
-  promotions             Promotion[]
-  wishlists              Wishlist[]
-  posSyncLogs            PosSyncLog[]
-  venueBranding          VenueBranding?
-  posIntegration         PosIntegration?
-  gbpConnection          GbpConnection?
-  googleReviews          GoogleReview[]
+  orders                   Order[]
+  promotions               Promotion[]
+  wishlists                Wishlist[]
+  posSyncLogs              PosSyncLog[]
+  venueBranding            VenueBranding?
+  posIntegration           PosIntegration?
+  gbpConnection            GbpConnection?
+  googleReviews            GoogleReview[]
 
   @@index([orgId])
 }
@@ -261,27 +241,27 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id            String        @id @default(cuid())
-  venueId       String
-  categoryId    String?
-  name          String
-  description   String?
-  priceCents    Int
-  isActive      Boolean       @default(true)
-  isFeatured    Boolean       @default(false)
-  sortOrder     Int           @default(0)
-  imageUrl      String?
+  id             String          @id @default(cuid())
+  venueId        String
+  categoryId     String?
+  name           String
+  description    String?
+  priceCents     Int
+  isActive       Boolean         @default(true)
+  isFeatured     Boolean         @default(false)
+  sortOrder      Int             @default(0)
+  imageUrl       String?
   // Drinks/alcohol → trip the same first-drink ID-check flag a DRINK
   // request would. Lets a venue mark a soda as non-alcoholic so a refill
   // doesn't ask for ID.
-  ageRestricted Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  venue         Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  category      MenuCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  orderItems    OrderItem[]
+  ageRestricted  Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  category       MenuCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  orderItems     OrderItem[]
   promotionLinks PromotionItem[]
-  wishlistItems WishlistItem[]
+  wishlistItems  WishlistItem[]
 
   @@index([venueId, isActive])
   @@index([venueId, isFeatured])
@@ -289,40 +269,38 @@ model MenuItem {
 }
 
 model Table {
-  id          String            @id @default(cuid())
-  venueId     String
-  label       String
-  qrToken     String            @unique
-  zone        String?
-  createdAt   DateTime          @default(now())
-  venue       Venue             @relation(fields: [venueId], references: [id])
-  sessions    GuestSession[]
-  requests    Request[]
-  assignments TableAssignment[]
-  preOrders   PreOrder[]
+  id           String            @id @default(cuid())
+  venueId      String
+  label        String
+  qrToken      String            @unique
+  zone         String?
+  createdAt    DateTime          @default(now())
+  venue        Venue             @relation(fields: [venueId], references: [id])
+  sessions     GuestSession[]
+  requests     Request[]
+  assignments  TableAssignment[]
   reservations Reservation[]
   // Guest Commerce Module back-refs.
-  orders      Order[]
-  bills       Bill[]
-  wishlists   Wishlist[]
+  orders       Order[]
+  wishlists    Wishlist[]
 
   @@unique([venueId, label])
   @@index([venueId])
 }
 
 model StaffMember {
-  id            String            @id @default(cuid())
-  venueId       String
-  name          String
-  email         String            @unique
-  role          StaffRole         @default(SERVER)
-  status        StaffStatus       @default(ACTIVE)
-  fcmToken      String?
-  createdAt     DateTime          @default(now())
+  id                 String        @id @default(cuid())
+  venueId            String
+  name               String
+  email              String        @unique
+  role               StaffRole     @default(SERVER)
+  status             StaffStatus   @default(ACTIVE)
+  fcmToken           String?
+  createdAt          DateTime      @default(now())
   // Last successful sign-in via /api/auth/callback. Surfaces on the
   // People page so managers can spot stale accounts that should be
   // suspended.
-  lastSeenAt    DateTime?
+  lastSeenAt         DateTime?
   // Lower bound on JWT iat that's considered valid. "Sign out everywhere"
   // bumps this to NOW(); any cached session JWT issued before this
   // timestamp gets rejected at verifySessionToken. Nullable: rows
@@ -337,29 +315,29 @@ model StaffMember {
   // keeps working unchanged. passwordChangedAt mirrors the
   // sessionsValidAfter pattern — rotating the password invalidates
   // every JWT minted before the change.
-  passwordHash      String?
-  passwordChangedAt DateTime?
+  passwordHash       String?
+  passwordChangedAt  DateTime?
   // Stamped on first successful magic-link sign-in. Password sign-in
   // refuses to mint a session until this is set. Null means the user
   // signed up but never clicked their magic link.
-  emailVerifiedAt   DateTime?
+  emailVerifiedAt    DateTime?
   // Self-referential audit: who invited this row, who suspended it.
   // Both nullable so the original venue OWNER (created by signup)
   // doesn't need a phantom inviter.
-  invitedById   String?
-  invitedBy     StaffMember?      @relation("StaffInvites", fields: [invitedById], references: [id])
-  invitesSent   StaffMember[]     @relation("StaffInvites")
-  suspendedAt   DateTime?
-  suspendedById String?
-  suspendedBy   StaffMember?      @relation("StaffSuspends", fields: [suspendedById], references: [id])
-  suspended     StaffMember[]     @relation("StaffSuspends")
+  invitedById        String?
+  invitedBy          StaffMember?  @relation("StaffInvites", fields: [invitedById], references: [id])
+  invitesSent        StaffMember[] @relation("StaffInvites")
+  suspendedAt        DateTime?
+  suspendedById      String?
+  suspendedBy        StaffMember?  @relation("StaffSuspends", fields: [suspendedById], references: [id])
+  suspended          StaffMember[] @relation("StaffSuspends")
 
-  venue         Venue             @relation(fields: [venueId], references: [id])
-  ackedRequests Request[]         @relation("AcknowledgedBy")
-  assignments   TableAssignment[]
+  venue          Venue                @relation(fields: [venueId], references: [id])
+  ackedRequests  Request[]            @relation("AcknowledgedBy")
+  assignments    TableAssignment[]
   passwordResets PasswordResetToken[]
-  wearDevices   WearDevice[]
-  identities    AuthIdentity[]
+  wearDevices    WearDevice[]
+  identities     AuthIdentity[]
 
   @@index([venueId])
   @@index([venueId, status])
@@ -373,13 +351,13 @@ model StaffMember {
 // email-matched staff row safe; the row records the email at link time
 // for audit.
 model AuthIdentity {
-  id        String      @id @default(cuid())
-  staffId   String
-  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  provider  String      // "google" (Apple slots in later)
-  subject   String      // provider's stable user id (Google `sub`)
-  email     String      // email at link time — audit only, not a lookup key
-  createdAt DateTime    @default(now())
+  id          String      @id @default(cuid())
+  staffId     String
+  staff       StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  provider    String // "google" (Apple slots in later)
+  subject     String // provider's stable user id (Google `sub`)
+  email       String // email at link time — audit only, not a lookup key
+  createdAt   DateTime    @default(now())
   lastLoginAt DateTime?
 
   @@unique([provider, subject])
@@ -409,10 +387,10 @@ model WearDevice {
   // watch doesn't clobber phone push.
   fcmToken      String?
   // Lower bound on accepted JWT iat for this device.
-  tokenIssuedAt DateTime  @default(now())
+  tokenIssuedAt DateTime    @default(now())
   revokedAt     DateTime?
   lastSeenAt    DateTime?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime    @default(now())
 
   @@index([staffId])
 }
@@ -475,86 +453,29 @@ model TableAssignment {
 }
 
 model GuestSession {
-  id                    String           @id @default(cuid())
-  venueId               String
-  tableId               String
-  sessionToken          String           @unique
-  lineItems             Json             @default("[]")
-  tipPercent            Float?
-  paidAt                DateTime?
-  stripePaymentIntentId String?
+  id             String           @id @default(cuid())
+  venueId        String
+  tableId        String
+  sessionToken   String           @unique
+  lineItems      Json             @default("[]")
+  paidAt         DateTime?
   // Tier 3c: optional link to a returning guest's profile. Set when the
   // guest identified via /api/v/[slug]/profile/identify before paying.
-  guestProfileId        String?
-  expiresAt             DateTime
-  createdAt             DateTime         @default(now())
-  venue                 Venue            @relation(fields: [venueId], references: [id])
-  table                 Table            @relation(fields: [tableId], references: [id])
-  requests              Request[]
-  feedback              FeedbackReport[]
-  splits                BillSplit[]
-  preOrders             PreOrder[]
-  guestProfile          GuestProfile?    @relation(fields: [guestProfileId], references: [id])
+  guestProfileId String?
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  venue          Venue            @relation(fields: [venueId], references: [id])
+  table          Table            @relation(fields: [tableId], references: [id])
+  requests       Request[]
+  feedback       FeedbackReport[]
+  guestProfile   GuestProfile?    @relation(fields: [guestProfileId], references: [id])
   // Guest Commerce Module back-refs (V2 schema).
-  orders                Order[]
-  billSplitsV2          BillSplitV2[]
-  bills                 Bill[]
-  wishlist              Wishlist?
+  orders         Order[]
+  wishlist       Wishlist?
 
   @@index([venueId, tableId])
   @@index([expiresAt])
   @@index([guestProfileId])
-}
-
-// Bill split: a single GuestSession can be paid in N parts, each a separate
-// Stripe PaymentIntent. The session is marked paidAt only when all splits
-// have been paid (sum of split.paidCents >= bill total).
-model BillSplit {
-  id                    String       @id @default(cuid())
-  sessionId             String
-  // Optional human label ("Maya", "Tab 1", etc.) so guests at the same
-  // table can tell which split is theirs.
-  label                 String?
-  amountCents           Int
-  tipPercent            Float
-  stripePaymentIntentId String?
-  paidAt                DateTime?
-  createdAt             DateTime     @default(now())
-  session               GuestSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([stripePaymentIntentId])
-}
-
-// Pre-order: guest browses menu via QR before/while seated, pays now,
-// staff sees a "make these" card. Optional table — pre-orders without a
-// table are pickup orders the guest grabs from the bar.
-model PreOrder {
-  id                    String         @id @default(cuid())
-  venueId               String
-  tableId               String?
-  sessionId             String?
-  status                PreOrderStatus @default(PENDING)
-  items                 Json // [{ menuItemId, name, quantity, unitCents }]
-  subtotalCents         Int
-  tipCents              Int            @default(0)
-  totalCents            Int
-  stripePaymentIntentId String?
-  paidAt                DateTime?
-  guestName             String?
-  guestPhone            String?
-  pickupCode            String? // 4-digit short code shown on confirmation
-  notes                 String?
-  readyAt               DateTime?
-  pickedUpAt            DateTime?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  venue                 Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  table                 Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  session               GuestSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-
-  @@index([venueId, status])
-  @@index([sessionId])
 }
 
 // Tip pooling: aggregate tips over a period and distribute across staff
@@ -595,16 +516,16 @@ model TipPoolShare {
 }
 
 model Request {
-  id               String        @id @default(cuid())
+  id               String            @id @default(cuid())
   venueId          String
   tableId          String
   sessionId        String
   type             RequestType
-  status           RequestStatus @default(PENDING)
+  status           RequestStatus     @default(PENDING)
   note             String?
   // For DRINK requests on a fresh session at compliance-flagged venues:
   // staff must acknowledge having checked ID before tapping Got it.
-  idCheckRequired  Boolean       @default(false)
+  idCheckRequired  Boolean           @default(false)
   acknowledgedById String?
   acknowledgedAt   DateTime?
   resolvedAt       DateTime?
@@ -614,11 +535,11 @@ model Request {
   resolutionAction ResolutionAction?
   resolutionNote   String?
   escalatedAt      DateTime?
-  createdAt        DateTime      @default(now())
-  venue            Venue         @relation(fields: [venueId], references: [id])
-  table            Table         @relation(fields: [tableId], references: [id])
-  session          GuestSession  @relation(fields: [sessionId], references: [id])
-  acknowledgedBy   StaffMember?  @relation("AcknowledgedBy", fields: [acknowledgedById], references: [id])
+  createdAt        DateTime          @default(now())
+  venue            Venue             @relation(fields: [venueId], references: [id])
+  table            Table             @relation(fields: [tableId], references: [id])
+  session          GuestSession      @relation(fields: [sessionId], references: [id])
+  acknowledgedBy   StaffMember?      @relation("AcknowledgedBy", fields: [acknowledgedById], references: [id])
 
   @@index([venueId, status])
   @@index([sessionId])
@@ -644,22 +565,22 @@ model LinkTokenUse {
 // dump can't be used to mint replacements. Plaintext token never
 // leaves the email + the user's browser.
 model PasswordResetToken {
-  id          String    @id @default(cuid())
-  staffId     String
-  tokenHash   String    @unique
+  id        String      @id @default(cuid())
+  staffId   String
+  tokenHash String      @unique
   // 1-hour expiry. Cron job cleans up rows past expiresAt + grace
   // period (~24h) for forensics.
-  expiresAt   DateTime
+  expiresAt DateTime
   // Set on first successful POST to /api/auth/reset-password. The
   // unique tokenHash prevents replay attacks via the DB constraint;
   // usedAt is informational + lets us answer "did this user reset
   // recently?" in audit reports.
-  usedAt      DateTime?
+  usedAt    DateTime?
   // Where the request came from. Useful when investigating "I didn't
   // ask for a reset" support tickets.
-  requestIp   String?
-  createdAt   DateTime  @default(now())
-  staff       StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  requestIp String?
+  createdAt DateTime    @default(now())
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId, createdAt])
   @@index([expiresAt])
@@ -696,14 +617,14 @@ model WebhookEvent {
 }
 
 model FeedbackReport {
-  id           String       @id @default(cuid())
-  venueId      String
+  id              String       @id @default(cuid())
+  venueId         String
   // One feedback per session. The route already enforces this via a
   // findFirst+throw, but the unique constraint is the source of truth
   // and closes the concurrent-submit race window.
-  sessionId    String       @unique
-  rating       Int
-  note         String?
+  sessionId       String       @unique
+  rating          Int
+  note            String?
   // Reviews suite R2: employee + shift attribution, stamped at submit
   // time from the session's service history (who actually acknowledged
   // requests at this table) and the venue's timezone. Name denormalized
@@ -713,18 +634,18 @@ model FeedbackReport {
   // "morning" | "afternoon" | "evening" | "late" in the VENUE's tz.
   shiftBucket     String?
   // AI classification (PRD v2.0 F4 — bad-review intercept)
-  aiCategory   String? // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
-  aiSuggestion String?
-  aiServerName String?
-  seenByMgr    Boolean      @default(false)
+  aiCategory      String? // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
+  aiSuggestion    String?
+  aiServerName    String?
+  seenByMgr       Boolean      @default(false)
   // Manager-flagged for follow-up (escalation, refund, legal, etc).
   // Distinct from seenByMgr: a review can be seen AND flagged. Reviews
   // page filters on this column independently.
-  flagged      Boolean      @default(false)
-  flaggedAt    DateTime?
-  createdAt    DateTime     @default(now())
-  venue        Venue        @relation(fields: [venueId], references: [id])
-  session      GuestSession @relation(fields: [sessionId], references: [id])
+  flagged         Boolean      @default(false)
+  flaggedAt       DateTime?
+  createdAt       DateTime     @default(now())
+  venue           Venue        @relation(fields: [venueId], references: [id])
+  session         GuestSession @relation(fields: [sessionId], references: [id])
 
   @@index([venueId, createdAt])
   @@index([venueId, servedByStaffId])
@@ -902,17 +823,17 @@ model GuestProfile {
 // even if they have the same phone. Soft-delete via `deletedAt` so an
 // accidental delete is recoverable.
 model GuestNote {
-  id              String       @id @default(cuid())
-  guestProfileId  String
-  venueId         String
-  authorStaffId   String?
-  authorName      String       // denormalized for display after staff churn
-  body            String       @db.Text
-  pinned          Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  deletedAt       DateTime?
-  guestProfile    GuestProfile @relation(fields: [guestProfileId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  guestProfileId String
+  venueId        String
+  authorStaffId  String?
+  authorName     String // denormalized for display after staff churn
+  body           String       @db.Text
+  pinned         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  guestProfile   GuestProfile @relation(fields: [guestProfileId], references: [id], onDelete: Cascade)
 
   @@index([guestProfileId, venueId])
   @@index([venueId, createdAt])
@@ -963,16 +884,16 @@ model BenchmarkSnapshot {
 // flips). Append-only. Backfill TODO: wire org-level operator routes
 // to also emit here.
 model OperatorAuditLog {
-  id          String   @id @default(cuid())
+  id         String   @id @default(cuid())
   // Who did it — operator email at action time. Lookups by email
   // survive PlatformAdmin row deletion.
-  actorEmail  String
-  action      String   // dot-namespaced, e.g. "operator.impersonate.start"
-  targetType  String?  // "Venue", "Organization", "StaffMember", ...
-  targetId    String?
+  actorEmail String
+  action     String // dot-namespaced, e.g. "operator.impersonate.start"
+  targetType String? // "Venue", "Organization", "StaffMember", ...
+  targetId   String?
   // Free-form structured context: { venueSlug, asStaffEmail, reason, … }.
-  metadata    Json     @default("{}")
-  createdAt   DateTime @default(now())
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
 
   @@index([actorEmail, createdAt])
   @@index([action, createdAt])
@@ -988,25 +909,25 @@ model OperatorAuditLog {
 // Suspending an admin keeps the row for audit history; removing wipes
 // it. Last-admin protection lives in the API route.
 model PlatformAdmin {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  notes         String?
+  id                String          @id @default(cuid())
+  email             String          @unique
+  name              String?
+  notes             String?
   // Password-based sign-in for the TabCall super-admin console.
   // Magic-link auth remains the only path for StaffMember rows;
   // password auth is platform-admin-only and gates /admin/login.
   passwordHash      String?
   passwordChangedAt DateTime?
   // Self-references for invite/suspend audit attribution.
-  addedById     String?
-  addedBy       PlatformAdmin? @relation("AdminAddedBy", fields: [addedById], references: [id])
-  added         PlatformAdmin[] @relation("AdminAddedBy")
-  suspendedAt   DateTime?
-  suspendedById String?
-  suspendedBy   PlatformAdmin? @relation("AdminSuspendedBy", fields: [suspendedById], references: [id])
-  suspended     PlatformAdmin[] @relation("AdminSuspendedBy")
-  lastSeenAt    DateTime?
-  createdAt     DateTime       @default(now())
+  addedById         String?
+  addedBy           PlatformAdmin?  @relation("AdminAddedBy", fields: [addedById], references: [id])
+  added             PlatformAdmin[] @relation("AdminAddedBy")
+  suspendedAt       DateTime?
+  suspendedById     String?
+  suspendedBy       PlatformAdmin?  @relation("AdminSuspendedBy", fields: [suspendedById], references: [id])
+  suspended         PlatformAdmin[] @relation("AdminSuspendedBy")
+  lastSeenAt        DateTime?
+  createdAt         DateTime        @default(now())
 
   @@index([email])
 }
@@ -1015,15 +936,11 @@ model PlatformAdmin {
 // Guest Commerce Module — spec-verbatim parallel schema
 // =====================================================================
 //
-// These models coexist with the deployed flow (PreOrder, GuestSession,
-// VenueSpecial, legacy BillSplit). The deployed `/v/[slug]/t/[tableId]/*`
-// surface continues to use the original schema. The new `/guest/[qrToken]/*`
-// surface uses these models. Either can be the source of truth on a
-// per-venue basis; the admin screens will eventually surface both.
-//
-// Naming compromise: existing `BillSplit` keeps its name; the new
-// item-level split model is `BillSplitV2` so Prisma doesn't collide.
-// Schema migration would consolidate later; not in scope today.
+// Order / OrderItem for the guest ordering flow. The Bill, BillItem and
+// split models that used to sit alongside them were removed with guest
+// payments — they tracked amounts paid, due, taxed and tipped, none of
+// which TabCall handles any more. A tab now lives entirely in
+// GuestSession.lineItems.
 
 enum OrderStatus {
   NEW
@@ -1041,26 +958,6 @@ enum OrderItemStatus {
   READY
   SERVED
   CANCELLED
-}
-
-enum BillStatus {
-  OPEN
-  PARTIAL
-  PAID
-  REFUNDED
-  CANCELLED
-}
-
-enum BillItemStatus {
-  UNPAID
-  PAID
-}
-
-enum BillSplitV2Status {
-  PENDING
-  PAID
-  CANCELLED
-  REFUNDED
 }
 
 enum PromotionType {
@@ -1092,154 +989,59 @@ enum PosIntegrationStatus {
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  venueId         String
-  tableId         String?
-  guestSessionId  String?
-  status          OrderStatus   @default(NEW)
-  subtotalCents   Int
-  taxCents        Int           @default(0)
-  serviceCents    Int           @default(0)
-  tipCents        Int           @default(0)
-  totalCents      Int
-  posReference    String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  venue           Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  table           Table?        @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  guestSession    GuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
-  items           OrderItem[]
-  bill            Bill?
+  id             String        @id @default(cuid())
+  venueId        String
+  tableId        String?
+  guestSessionId String?
+  status         OrderStatus   @default(NEW)
+  subtotalCents  Int
+  taxCents       Int           @default(0)
+  serviceCents   Int           @default(0)
+  tipCents       Int           @default(0)
+  totalCents     Int
+  posReference   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  venue          Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table          Table?        @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
 
   @@index([venueId, status, createdAt])
   @@index([guestSessionId])
 }
 
 model OrderItem {
-  id            String          @id @default(cuid())
-  orderId       String
-  menuItemId    String?
-  nameSnapshot  String
-  priceCents    Int
-  quantity      Int             @default(1)
-  notes         String?
-  status        OrderItemStatus @default(NEW)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem      MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
-  billItem      BillItem?
+  id           String          @id @default(cuid())
+  orderId      String
+  menuItemId   String?
+  nameSnapshot String
+  priceCents   Int
+  quantity     Int             @default(1)
+  notes        String?
+  status       OrderItemStatus @default(NEW)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem     MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
 }
 
-model Bill {
-  id              String     @id @default(cuid())
-  venueId         String
-  tableId         String?
-  orderId         String?    @unique
-  // Phase 2 billing cutover: beacon-surface bills link to their
-  // GuestSession here. Null for native V2-surface bills.
-  guestSessionId  String?
-  // Provenance: 'beacon' (dual-write/canonical from the live surface) |
-  // 'backfill' (historical conversion). Null = native V2. Drives the
-  // read-flip ("prefer Bill when a beacon bill exists") and lets the
-  // backfill verifier scope its comparisons.
-  source          String?
-  status          BillStatus @default(OPEN)
-  subtotalCents   Int
-  taxCents        Int        @default(0)
-  serviceCents    Int        @default(0)
-  tipTotalCents   Int        @default(0)
-  totalCents      Int
-  amountPaidCents Int        @default(0)
-  amountDueCents  Int
-  posReference    String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  venue           Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  table           Table?     @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  order           Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  guestSession    GuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
-  items           BillItem[]
-  splits          BillSplitV2[]
-
-  @@index([venueId, status, createdAt])
-  @@index([guestSessionId])
-}
-
-model BillItem {
-  id              String         @id @default(cuid())
-  billId          String
-  orderItemId     String?        @unique
-  nameSnapshot    String
-  priceCents      Int
-  quantity        Int
-  status          BillItemStatus @default(UNPAID)
-  paidBySplitId   String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  bill            Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
-  orderItem       OrderItem?     @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
-  paidBySplit     BillSplitV2?   @relation("BillItemPaidBy", fields: [paidBySplitId], references: [id], onDelete: SetNull)
-  splitItems      BillSplitItem[]
-
-  @@index([billId, status])
-}
-
-// Item-level bill split — the spec's `bill_splits`. Coexists with the
-// legacy `BillSplit` model (which does even-N session splits). The "V2"
-// suffix is purely to avoid the Prisma model-name collision.
-model BillSplitV2 {
-  id                    String         @id @default(cuid())
-  billId                String
-  guestSessionId        String?
-  status                BillSplitV2Status @default(PENDING)
-  subtotalCents         Int
-  taxCents              Int            @default(0)
-  serviceCents          Int            @default(0)
-  tipCents              Int            @default(0)
-  totalCents            Int
-  paymentReference      String?
-  stripePaymentIntentId String?
-  paidAt                DateTime?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  bill                  Bill           @relation(fields: [billId], references: [id], onDelete: Cascade)
-  guestSession          GuestSession?  @relation(fields: [guestSessionId], references: [id], onDelete: SetNull)
-  splitItems            BillSplitItem[]
-  paidItems             BillItem[]     @relation("BillItemPaidBy")
-
-  @@index([billId, status])
-  @@index([stripePaymentIntentId])
-}
-
-model BillSplitItem {
-  id          String      @id @default(cuid())
-  billSplitId String
-  billItemId  String
-  amountCents Int
-  createdAt   DateTime    @default(now())
-  billSplit   BillSplitV2 @relation(fields: [billSplitId], references: [id], onDelete: Cascade)
-  billItem    BillItem    @relation(fields: [billItemId], references: [id], onDelete: Cascade)
-
-  @@unique([billSplitId, billItemId])
-}
-
 model Promotion {
-  id              String          @id @default(cuid())
-  venueId         String
-  title           String
-  description     String?
-  type            PromotionType
-  bannerImageUrl  String?
-  startsAt        DateTime?
-  endsAt          DateTime?
-  status          PromotionStatus @default(ACTIVE)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  venue           Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  items           PromotionItem[]
+  id             String          @id @default(cuid())
+  venueId        String
+  title          String
+  description    String?
+  type           PromotionType
+  bannerImageUrl String?
+  startsAt       DateTime?
+  endsAt         DateTime?
+  status         PromotionStatus @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  venue          Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  items          PromotionItem[]
 
   @@index([venueId, status, startsAt])
 }
@@ -1257,18 +1059,18 @@ model PromotionItem {
 }
 
 model Wishlist {
-  id             String         @id @default(cuid())
-  venueId        String
-  tableId        String?
-  guestSessionId String         @unique
-  status         WishlistStatus @default(ACTIVE)
+  id                String         @id @default(cuid())
+  venueId           String
+  tableId           String?
+  guestSessionId    String         @unique
+  status            WishlistStatus @default(ACTIVE)
   sharedWithStaffAt DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  table          Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
-  guestSession   GuestSession   @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
-  items          WishlistItem[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  venue             Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  table             Table?         @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  guestSession      GuestSession   @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  items             WishlistItem[]
 
   @@index([venueId, status])
 }
@@ -1287,18 +1089,18 @@ model WishlistItem {
 }
 
 model VenueBranding {
-  id              String   @id @default(cuid())
-  venueId         String   @unique
-  logoUrl         String?
-  primaryColor    String?
-  secondaryColor  String?
-  accentColor     String?
-  fontFamily      String?
-  welcomeMessage  String?
-  bannerImageUrl  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  venue           Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  venueId        String   @unique
+  logoUrl        String?
+  primaryColor   String?
+  secondaryColor String?
+  accentColor    String?
+  fontFamily     String?
+  welcomeMessage String?
+  bannerImageUrl String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  venue          Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
 }
 
 model PosIntegration {

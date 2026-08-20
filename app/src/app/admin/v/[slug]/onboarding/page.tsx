@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { readOnboardingState, deriveOnboarding } from "@/lib/onboarding";
-import { hasTaxRate } from "@/lib/tax";
 import { Launchpad } from "./launchpad";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +27,6 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
       guestWelcomeMessage: true,
       onboardingState: true,
       onboardingCompletedAt: true,
-      stripeChargesEnabled: true,
-      zipCode: true,
-      taxRateBps: true,
-      stripeAccountId: true,
       _count: {
         select: {
           tables: true,
@@ -48,8 +43,6 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
     venueType: venue.venueType,
     brandColor: venue.brandColor,
     staffCount: venue._count.staff,
-    stripeChargesEnabled: venue.stripeChargesEnabled,
-    taxRateSet: hasTaxRate(venue),
     onboardingCompletedAt: venue.onboardingCompletedAt,
   });
 
@@ -71,9 +64,6 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
       welcomeMessage={venue.guestWelcomeMessage}
       tableCount={venue._count.tables}
       staffCount={venue._count.staff}
-      stripeChargesEnabled={venue.stripeChargesEnabled}
-      stripeStarted={!!venue.stripeAccountId}
-      taxRateSet={hasTaxRate(venue)}
       previewPath={
         firstTable
           ? `/v/${venue.slug}/t/${encodeURIComponent(firstTable.label)}?s=${encodeURIComponent(firstTable.qrToken)}`

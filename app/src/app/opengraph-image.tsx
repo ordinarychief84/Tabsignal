@@ -6,7 +6,7 @@ import { ImageResponse } from "next/og";
  * keep in sync. Pages inherit this unless they define their own.
  */
 export const runtime = "edge";
-export const alt = "TabCall — QR ordering, pay-at-table & waiter calls for restaurants";
+export const alt = "TabCall — QR ordering, waiter calls and live staff alerts for restaurants";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -64,7 +64,7 @@ export default function OpenGraphImage() {
               maxWidth: 900,
             }}
           >
-            QR ordering · pay-at-table · waiter calls · live staff alerts — on top of your POS
+            QR ordering · waiter calls · live staff alerts — on top of your POS
           </div>
         </div>
 

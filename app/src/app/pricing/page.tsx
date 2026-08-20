@@ -21,7 +21,6 @@ export const metadata: Metadata = pageMetadata({
     "QR ordering system cost",
     "restaurant QR code system price",
     "free QR menu plan",
-    "pay at table pricing",
   ],
 });
 
@@ -31,7 +30,7 @@ const PRICING_FAQS: FaqEntry[] = [
   {
     question: "Is the Starter plan really free?",
     answer:
-      "Yes. Starter is free forever for up to 5 tables — QR requests, live staff alerts and Stripe pay-at-table included. TabCall earns a 0.5% platform fee on transactions, so we only make money when your tables do.",
+      "Yes. Starter is free forever for up to 5 tables — QR requests, live staff alerts and reviews included. TabCall never touches your guests\u2019 money: they settle with your staff on your own terminal, exactly as they do today.",
   },
   {
     question: "Do I need to replace my POS?",
@@ -51,7 +50,7 @@ const PRICING_FAQS: FaqEntry[] = [
   {
     question: "Are there any transaction fees?",
     answer:
-      "Stripe's processing fee (2.9% + 30¢) is passed through at cost on all plans, plus TabCall's 0.5% platform fee on the free Starter plan. Growth and Pro have no platform fee on payments.",
+      "None. TabCall doesn't process guest payments, so there is nothing to take a cut of — your guests settle with your staff on your own terminal and your existing card rates are untouched. The plan price is the whole cost.",
   },
 ];
 
@@ -87,7 +86,6 @@ const PRICING_TIERS: PricingTier[] = [
       "Live request queue (staff PWA)",
       "Push notifications when backgrounded",
       "Reviews and ratings, 1–5 stars",
-      "Stripe Connect payments (Apple Pay, Google Pay, cards)",
       "Email support",
     ],
   },
@@ -105,11 +103,9 @@ const PRICING_TIERS: PricingTier[] = [
     features: [
       "Full digital menu with photos and modifiers",
       "QR ordering from the table",
-      "Bill splitting (by item or share) and tipping",
-      "Pre-orders from QR before seated",
       "Wishlist guests can share with the server",
       "Reservations and waitlist",
-      "Tip pool",
+      "Tip pool (enter the shift total, split it by weight)",
       "Manager analytics: response time, completion, peak hours",
       "Auto-escalation and request hand-off",
     ],

@@ -10,7 +10,7 @@ import { FEATURES, type FeatureSlug } from "@/lib/features-data";
  * queries, not consumer queries. Three intent clusters:
  *
  *   1. Category head terms — "QR code ordering for restaurants",
- *      "pay at table", "QR code menu". High volume, competitive;
+ *      "QR code menu", "call waiter app". High volume, competitive;
  *      landing + feature pages carry these.
  *   2. Problem terms — "reduce restaurant wait times", "servers can't
  *      keep up", "guests waiting for the check". How-it-works +
@@ -33,14 +33,13 @@ import { FEATURES, type FeatureSlug } from "@/lib/features-data";
 export const SITE_URL = "https://www.tab-call.com";
 export const SITE_NAME = "TabCall";
 
-const DEFAULT_TITLE = "QR Ordering, Pay-at-Table & Waiter Calls for Restaurants | TabCall";
+const DEFAULT_TITLE = "QR Ordering, Waiter Calls & Live Service for Restaurants | TabCall";
 const DEFAULT_DESCRIPTION =
-  "TabCall turns every table into a service point: QR code ordering, pay-at-table, waiter call button, live staff alerts and analytics — on top of your POS, live tonight.";
+  "TabCall turns every table into a service point: QR code ordering, a waiter call button, live staff alerts and analytics — on top of your POS, live tonight.";
 
 /** Site-wide keyword pool. Pages pick from + extend this. */
 export const CORE_KEYWORDS = [
   "QR code ordering for restaurants",
-  "pay at table",
   "QR code payment restaurant",
   "call waiter app",
   "waiter call button",
@@ -57,18 +56,6 @@ export const FEATURE_SEO: Record<
   FeatureSlug,
   { title: string; description: string; keywords: string[] }
 > = {
-  "qr-payments": {
-    title: "QR Code Payment at the Table — Split, Tip & Pay in Seconds",
-    description:
-      "Guests scan, split by item, tip and pay from their phone — average bill close 1m 32s instead of 8 minutes. Apple Pay, Google Pay, Stripe-secured. No app to install.",
-    keywords: [
-      "pay at table",
-      "QR code payment restaurant",
-      "split the bill by item",
-      "contactless payment restaurant",
-      "Apple Pay restaurant table",
-    ],
-  },
   "qr-orders": {
     title: "QR Code Ordering System — Guests Order From the Table",
     description:
@@ -228,7 +215,7 @@ export function organizationLd() {
     url: SITE_URL,
     email: "hello@tab-call.com",
     description:
-      "TabCall is a hospitality platform for restaurants, bars and cafés: QR ordering, pay-at-table, waiter calls, reviews and analytics on top of any POS.",
+      "TabCall is a hospitality platform for restaurants, bars and cafés: QR ordering, waiter calls, reviews and analytics on top of any POS.",
   };
 }
 

@@ -21,7 +21,6 @@ export type RegularScore = {
   visits: number;
   recencyDays: number | null;
   spendCents: number;
-  avgTipPercent: number | null;
 };
 
 export type Dossier = {
@@ -37,7 +36,6 @@ export type Dossier = {
     sessionId: string;
     paidAt: string;
     spendCents: number;
-    tipPercent: number | null;
     rating: number | null;
     feedback: string | null;
   }>;
@@ -53,10 +51,13 @@ export type Dossier = {
   loyaltyPoints: number;
 };
 
-const VISIT_WEIGHT = 0.35;
-const RECENCY_WEIGHT = 0.30;
-const SPEND_WEIGHT = 0.25;
-const TIP_WEIGHT = 0.10;
+// Tip used to carry 0.10 of the score. TabCall collects no tips any more,
+// so the weight is redistributed across the three dimensions that still
+// have data rather than left as a constant 0.5 fudge for everyone — the
+// scale stays 0–100 and the ranking stays meaningful.
+const VISIT_WEIGHT = 0.40;
+const RECENCY_WEIGHT = 0.33;
+const SPEND_WEIGHT = 0.27;
 
 // Tunable: a regular is "active" within ~60 days. After that recency tapers.
 const RECENCY_HALFLIFE_DAYS = 60;
@@ -67,19 +68,15 @@ export function computeScore(args: {
   visits: number;
   recencyDays: number | null;
   spendCents: number;
-  avgTipPercent: number | null;
 }): number {
   const visitN = Math.min(1, args.visits / VISIT_PEAK);
   const recencyN = args.recencyDays === null
     ? 0
     : Math.pow(0.5, args.recencyDays / RECENCY_HALFLIFE_DAYS);
   const spendN = Math.min(1, args.spendCents / SPEND_PEAK_CENTS);
-  // 18-22% is normal; 25%+ is generous. Map to 0..1 with cap at 25%.
-  const tipN = args.avgTipPercent === null ? 0.5 : Math.max(0, Math.min(1, args.avgTipPercent / 25));
   const raw = visitN * VISIT_WEIGHT
             + recencyN * RECENCY_WEIGHT
-            + spendN * SPEND_WEIGHT
-            + tipN * TIP_WEIGHT;
+            + spendN * SPEND_WEIGHT;
   return Math.round(raw * 100);
 }
 
@@ -95,7 +92,6 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
       select: {
         id: true,
         paidAt: true,
-        tipPercent: true,
         lineItems: true,
         feedback: { select: { rating: true, note: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
@@ -111,8 +107,6 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
 
   let spendCents = 0;
   const itemCounts = new Map<string, number>();
-  let tipSum = 0;
-  let tipN = 0;
   for (const s of sessions) {
     const items = tabItems(s.lineItems) as LineItem[];
     for (const it of items) {
@@ -121,10 +115,6 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
       if (name && (it.unitCents ?? 0) > 0) {
         itemCounts.set(name, (itemCounts.get(name) ?? 0) + (it.quantity ?? 1));
       }
-    }
-    if (typeof s.tipPercent === "number") {
-      tipSum += s.tipPercent;
-      tipN += 1;
     }
   }
 
@@ -137,13 +127,7 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
     ? Math.floor((Date.now() - sessions[0].paidAt.getTime()) / 86_400_000)
     : null;
 
-  const avgTipPercent = tipN > 0 ? tipSum / tipN : null;
-  const score = computeScore({
-    visits: sessions.length,
-    recencyDays,
-    spendCents,
-    avgTipPercent,
-  });
+  const score = computeScore({ visits: sessions.length, recencyDays, spendCents });
 
   const points = pointsFromMap(profile.loyaltyPointsByVenueId, venueId);
 
@@ -154,13 +138,12 @@ export async function dossierFor(profileId: string, venueId: string): Promise<Do
       displayName: profile.displayName,
       preferences: profile.preferences,
     },
-    score: { score, visits: sessions.length, recencyDays, spendCents, avgTipPercent },
+    score: { score, visits: sessions.length, recencyDays, spendCents },
     topItems,
     recentVisits: sessions.slice(0, 8).map(s => ({
       sessionId: s.id,
       paidAt: s.paidAt!.toISOString(),
       spendCents: spendForSession(s.lineItems),
-      tipPercent: s.tipPercent ?? null,
       rating: s.feedback[0]?.rating ?? null,
       feedback: s.feedback[0]?.note ?? null,
     })),
@@ -229,23 +212,18 @@ export async function listRegulars(venueId: string, limit = 50): Promise<Array<{
     select: {
       guestProfileId: true,
       paidAt: true,
-      tipPercent: true,
       lineItems: true,
     },
     take: 5000, // Hard cap so a viral venue doesn't OOM the page.
   });
 
-  type Bucket = { visits: number; spend: number; tipSum: number; tipN: number; mostRecent: Date };
+  type Bucket = { visits: number; spend: number; mostRecent: Date };
   const byProfile = new Map<string, Bucket>();
   for (const s of sessions) {
     if (!s.guestProfileId) continue;
-    const existing = byProfile.get(s.guestProfileId) ?? { visits: 0, spend: 0, tipSum: 0, tipN: 0, mostRecent: new Date(0) };
+    const existing = byProfile.get(s.guestProfileId) ?? { visits: 0, spend: 0, mostRecent: new Date(0) };
     existing.visits += 1;
     existing.spend += spendForSession(s.lineItems);
-    if (typeof s.tipPercent === "number") {
-      existing.tipSum += s.tipPercent;
-      existing.tipN += 1;
-    }
     if (s.paidAt && s.paidAt > existing.mostRecent) existing.mostRecent = s.paidAt;
     byProfile.set(s.guestProfileId, existing);
   }
@@ -262,12 +240,10 @@ export async function listRegulars(venueId: string, limit = 50): Promise<Array<{
     const recencyDays = b.mostRecent.getTime() === 0
       ? null
       : Math.floor((Date.now() - b.mostRecent.getTime()) / 86_400_000);
-    const avgTip = b.tipN > 0 ? b.tipSum / b.tipN : null;
     const score = computeScore({
       visits: b.visits,
       recencyDays,
       spendCents: b.spend,
-      avgTipPercent: avgTip,
     });
     return {
       profileId: p.id,

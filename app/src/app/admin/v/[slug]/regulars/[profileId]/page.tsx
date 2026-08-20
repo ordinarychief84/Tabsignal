@@ -65,9 +65,6 @@ export default async function RegularDossierPage({
           : score.recencyDays === 0 ? "Today"
           : `${score.recencyDays}d ago`
         } />
-        <Stat label="Avg tip" value={
-          score.avgTipPercent === null ? "—" : `${score.avgTipPercent.toFixed(0)}%`
-        } />
       </section>
 
       <section className="mb-8 grid gap-6 md:grid-cols-2">
@@ -103,7 +100,7 @@ export default async function RegularDossierPage({
                   <div className="flex items-baseline justify-between">
                     <span>{new Date(v.paidAt).toLocaleDateString()}</span>
                     <span className="font-mono text-[11px] tabular-nums text-slate/55">
-                      {dollars(v.spendCents)}{v.tipPercent !== null ? ` · ${v.tipPercent.toFixed(0)}% tip` : ""}
+                      {dollars(v.spendCents)}
                     </span>
                   </div>
                   {v.rating !== null ? (

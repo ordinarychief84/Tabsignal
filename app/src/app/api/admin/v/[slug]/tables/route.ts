@@ -27,7 +27,7 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
   const tables = await db.table.findMany({
     where: { venueId: gate.venueId },
     orderBy: { label: "asc" },
-    include: { _count: { select: { sessions: true, requests: true, preOrders: true } } },
+    include: { _count: { select: { sessions: true, requests: true } } },
   });
 
   return NextResponse.json({
@@ -39,7 +39,6 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
       createdAt: t.createdAt.toISOString(),
       sessionCount: t._count.sessions,
       requestCount: t._count.requests,
-      preOrderCount: t._count.preOrders,
     })),
   });
 }

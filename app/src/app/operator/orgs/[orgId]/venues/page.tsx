@@ -25,9 +25,6 @@ export default async function OrgVenuesPage({ params }: { params: { orgId: strin
       slug: true,
       name: true,
       regionTag: true,
-      stripeAccountId: true,
-      stripeChargesEnabled: true,
-      stripePayoutsEnabled: true,
       createdAt: true,
     },
   });
@@ -78,8 +75,6 @@ export default async function OrgVenuesPage({ params }: { params: { orgId: strin
                 </h2>
                 <ul className="divide-y divide-slate/5 rounded-2xl border border-slate/10 bg-white">
                   {list.map(v => {
-                    const ready =
-                      v.stripeAccountId && v.stripeChargesEnabled && v.stripePayoutsEnabled;
                     const lp = lastPaidByVenue.get(v.id);
                     return (
                       <li key={v.id} className="flex items-center justify-between gap-4 px-5 py-3">
@@ -88,12 +83,6 @@ export default async function OrgVenuesPage({ params }: { params: { orgId: strin
                           <p className="truncate font-mono text-[11px] text-slate/50">{v.slug}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-3 text-[11px] text-slate/60">
-                          <span className={[
-                            "rounded-full px-2 py-0.5",
-                            ready ? "bg-chartreuse/20 text-slate" : "bg-coral/10 text-coral",
-                          ].join(" ")}>
-                            {ready ? "Stripe ready" : "Stripe pending"}
-                          </span>
                           <span className="hidden tabular-nums sm:inline">
                             {lp ? `paid ${formatRelative(lp)}` : "—"}
                           </span>

@@ -1,7 +1,8 @@
 /**
  * SaaS plans. Stripe Price IDs come from env so the same code targets
  * test / live accounts without a redeploy. Free tier = no recurring
- * charge but the platform still earns the 0.5% transaction fee.
+ * charge. TabCall no longer processes guest payments, so there is no
+ * transaction fee of any kind — only the monthly plan price.
  */
 
 export type PlanId = "free" | "growth" | "pro";
@@ -24,7 +25,7 @@ export const PLANS: PlanDefinition[] = [
     name: "Starter",
     monthlyCents: 0,
     stripePriceId: null,
-    tagline: "QR + requests + Stripe payments. 0.5% per transaction.",
+    tagline: "QR + requests + reviews. Free for up to 5 tables.",
     features: [
       "Realtime request queue",
       "Stripe payments + Connect",
@@ -43,7 +44,6 @@ export const PLANS: PlanDefinition[] = [
       "Menu management",
       "Pre-order via QR",
       "Analytics dashboard (today / 7d / 30d)",
-      "Bill split (multi-card)",
       "Tip pooling",
       "Unlimited staff",
     ],

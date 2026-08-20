@@ -90,6 +90,29 @@ function tablesWithRlsEnabled(): Set<string> {
   return enabled;
 }
 
+/**
+ * Tables removed by a later migration.
+ *
+ * A table an early migration enabled RLS on and a later one dropped is
+ * not a stale reference — it's the history of a removed feature. Matches
+ * the quoted form Prisma always emits, so a bare word in a comment can't
+ * produce a false positive.
+ */
+function droppedTables(): Set<string> {
+  const dropped = new Set<string>();
+  for (const dir of readdirSync(MIGRATIONS_DIR)) {
+    const fullPath = join(MIGRATIONS_DIR, dir);
+    if (!statSync(fullPath).isDirectory()) continue;
+    const sqlPath = join(fullPath, "migration.sql");
+    let sql: string;
+    try { sql = readFileSync(sqlPath, "utf8"); } catch { continue; }
+    for (const m of sql.matchAll(/DROP TABLE(?:\s+IF EXISTS)?\s+"([A-Za-z0-9_]+)"/g)) {
+      dropped.add(m[1]);
+    }
+  }
+  return dropped;
+}
+
 /** Models we explicitly do not require RLS on. Empty for now — the
  *  default policy is "every table". Add entries with a justification
  *  comment if a table is truly internal-only. */
@@ -140,7 +163,13 @@ describe("RLS coverage", () => {
     const knownOrphans = new Set(["EmailTemplate", "PlatformConfig"]);
     const models = new Set(extractModelNames());
     const rlsEnabled = tablesWithRlsEnabled();
-    const orphans = [...rlsEnabled].filter(t => !models.has(t) && !knownOrphans.has(t));
+    // A table that an earlier migration enabled RLS on and a later one
+    // dropped is not a stale reference — that is simply the history of a
+    // removed feature. Only tables that still exist can be orphans.
+    const dropped = droppedTables();
+    const orphans = [...rlsEnabled].filter(
+      t => !models.has(t) && !knownOrphans.has(t) && !dropped.has(t),
+    );
     expect(orphans).toEqual([]);
   });
 });

@@ -3,12 +3,9 @@ import { getStaffSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { EditableField } from "./editable-field";
 import { ToggleField } from "./toggle-field";
-import { ConnectStripeButton } from "./connect-stripe-button";
 import { GbpCard } from "./gbp-card";
 import { LogoUpload } from "./logo-upload";
 import { SessionsCard } from "./sessions-card";
-import { TaxRateField } from "./tax-rate-field";
-import { taxRateForZip } from "@/lib/tax";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · settings" };
@@ -22,8 +19,6 @@ export default async function SettingsPage({ params }: { params: { slug: string 
   });
   if (!venue || venue.id !== session.venueId) return null;
 
-  const stripeAttached = !!venue.stripeAccountId;
-  const stripeReady = stripeAttached && venue.stripeChargesEnabled;
   const reviewsConfigured = !!venue.googlePlaceId;
 
   return (
@@ -42,57 +37,8 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           <EditableField slug={params.slug} field="name" label="Name" initial={venue.name} placeholder="Otto's Lounge" />
           <Row label="Slug" value={venue.slug} mono />
           <EditableField slug={params.slug} field="address" label="Address" initial={venue.address ?? ""} placeholder="123 Main St" help="Optional. Used to derive city for benchmarks." />
-          <EditableField slug={params.slug} field="zipCode" label="ZIP code" initial={venue.zipCode ?? ""} placeholder="77006" pattern="^\d{5}(-\d{4})?$" help="Five digits or ZIP+4. Used for benchmarks, and as a sales-tax fallback." />
+          <EditableField slug={params.slug} field="zipCode" label="ZIP code" initial={venue.zipCode ?? ""} placeholder="77006" pattern="^\d{5}(-\d{4})?$" help="Five digits or ZIP+4. Used to group your venue for benchmarks." />
           <EditableField slug={params.slug} field="timezone" label="Timezone" initial={venue.timezone} placeholder="America/Chicago" help="IANA name. Affects how analytics buckets the day." />
-          <TaxRateField
-            slug={params.slug}
-            initialBps={venue.taxRateBps}
-            fallbackNote={
-              venue.taxRateBps === null && taxRateForZip(venue.zipCode ?? "") !== null
-                ? `${((taxRateForZip(venue.zipCode ?? "") ?? 0) * 100).toFixed(2)}% from ZIP ${venue.zipCode}`
-                : null
-            }
-          />
-        </Card>
-
-        <Card title="Payments · Stripe Connect">
-          <p className="text-sm text-slate/65">
-            Charges settle directly to your Stripe account. TabCall keeps a 0.5% platform fee.
-          </p>
-          <div
-            className={[
-              "mt-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] text-umber",
-              stripeReady ? "border-chartreuse bg-chartreuse/15" : "border-coral bg-coral/15",
-            ].join(" ")}
-          >
-            <span className={["h-1.5 w-1.5 rounded-full", stripeReady ? "bg-chartreuse" : "bg-coral"].join(" ")} />
-            {stripeReady
-              ? "Charges enabled"
-              : stripeAttached
-              ? "Account attached, onboarding incomplete"
-              : "Not connected"}
-          </div>
-
-          {stripeAttached ? (
-            <div className="mt-4 space-y-1.5 text-[12px]">
-              <Flag label="Details submitted" on={venue.stripeDetailsSubmitted} />
-              <Flag label="Charges enabled" on={venue.stripeChargesEnabled} />
-              <Flag label="Payouts enabled" on={venue.stripePayoutsEnabled} />
-            </div>
-          ) : null}
-
-          {stripeAttached ? (
-            <p className="mt-3 font-mono text-[11px] text-slate/45">
-              {venue.stripeAccountId}
-            </p>
-          ) : null}
-
-          {/* Self-serve Stripe Connect Express onboarding. Hidden once
-              charges are enabled — the venue is fully provisioned and
-              this button would only confuse a working manager. */}
-          {!stripeReady ? (
-            <ConnectStripeButton slug={params.slug} attached={stripeAttached} />
-          ) : null}
         </Card>
 
         <Card title="POS bridge">
@@ -251,23 +197,6 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
     <div className="flex items-center justify-between border-b border-slate/5 py-1.5 text-sm last:border-0">
       <span className="text-slate/55">{label}</span>
       <span className={mono ? "font-mono text-[12px] text-slate" : "text-slate"}>{value}</span>
-    </div>
-  );
-}
-
-function Flag({ label, on }: { label: string; on: boolean }) {
-  return (
-    <div className="flex items-center justify-between text-[12px]">
-      <span className="text-slate/55">{label}</span>
-      <span
-        className={[
-          "inline-flex items-center gap-1.5 font-medium",
-          on ? "text-umber" : "text-coral",
-        ].join(" ")}
-      >
-        <span className={["h-1.5 w-1.5 rounded-full", on ? "bg-chartreuse" : "bg-coral"].join(" ")} />
-        {on ? "Yes" : "No"}
-      </span>
     </div>
   );
 }

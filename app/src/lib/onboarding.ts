@@ -13,8 +13,10 @@
  *   1  Brand      — venueType picked (brand color optional polish)
  *   2  Tables     — QR tents printed (manual check-off; we can't sense paper)
  *   3  Team       — ≥1 teammate invited, or explicitly solo
- *   4  Payments   — Stripe charges enabled, or explicitly deferred
- *   5  Launch     — explicit "Go live" → onboardingCompletedAt stamped
+ *   4  Launch     — explicit "Go live" → onboardingCompletedAt stamped
+ *
+ * There is no payments step: TabCall doesn't take money from guests, so
+ * there is nothing for a venue to connect before going live.
  */
 
 export type OnboardingStateShape = {
@@ -27,8 +29,7 @@ export const ONBOARDING_STEPS = [
   { step: 1, id: "brand",    title: "Make it yours" },
   { step: 2, id: "tables",   title: "Print your table QRs" },
   { step: 3, id: "team",     title: "Invite your team" },
-  { step: 4, id: "payments", title: "Get paid" },
-  { step: 5, id: "launch",   title: "Go live" },
+  { step: 4, id: "launch",   title: "Go live" },
 ] as const;
 
 export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number]["id"];
@@ -45,7 +46,7 @@ export function readOnboardingState(raw: unknown): OnboardingStateShape {
       : 1;
   const completedSteps = Array.isArray(o.completedSteps)
     ? o.completedSteps.filter(
-        (s): s is number => typeof s === "number" && Number.isInteger(s) && s >= 1 && s <= 5,
+        (s): s is number => typeof s === "number" && Number.isInteger(s) && s >= 1 && s <= 4,
       )
     : [];
   const solo = o.solo === true;
@@ -58,11 +59,6 @@ export type OnboardingInputs = {
   brandColor: string | null;
   /** ACTIVE + INVITED staff count, including the owner. */
   staffCount: number;
-  stripeChargesEnabled: boolean;
-  /** True when lib/tax can resolve a rate for this venue (explicit
-   *  taxRateBps, or a Texas ZIP). Without it the payment routes refuse,
-   *  so the "Get paid" step is not actually done. */
-  taxRateSet: boolean;
   onboardingCompletedAt: Date | null;
 };
 
@@ -99,16 +95,6 @@ export function deriveOnboarding(input: OnboardingInputs): OnboardingProgress {
     team: {
       done: checked.has(3) || state.solo || input.staffCount > 1,
       derived: !checked.has(3) && !state.solo && input.staffCount > 1,
-    },
-    // Taking money needs BOTH a charge-enabled Connect account and a
-    // known sales-tax rate — the payment routes refuse without either, so
-    // showing this step as done on Stripe alone would be a lie the venue
-    // only discovers when a guest can't pay. Manually checking the step
-    // still means "we're deferring payments", which is a valid
-    // signals-only setup.
-    payments: {
-      done: checked.has(4) || (input.stripeChargesEnabled && input.taxRateSet),
-      derived: !checked.has(4) && input.stripeChargesEnabled && input.taxRateSet,
     },
     launch: { done: complete, derived: false },
   };

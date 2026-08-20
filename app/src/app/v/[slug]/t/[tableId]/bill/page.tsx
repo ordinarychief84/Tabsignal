@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
-import { totalsFor } from "@/lib/bill";
+import { dollars, totalsFor } from "@/lib/bill";
 import { tabItems } from "@/domain/billing/tab";
-import { BillScreen } from "./bill-screen";
+import { GuestBackLink } from "@/components/guest/back-link";
 
 const DEFAULT_TIP_PERCENT = 20;
 
@@ -101,35 +101,70 @@ export default async function BillPage({ params, searchParams }: PageProps) {
   }
 
   const items = tabItems(session.lineItems);
-  // Honor a previously-chosen tip rather than always resetting to 20%.
-  const tipPercent =
-    typeof session.tipPercent === "number" && session.tipPercent >= 0
-      ? session.tipPercent
-      : DEFAULT_TIP_PERCENT;
-  const totals = totalsFor(items, venue, tipPercent);
+  const totals = totalsFor(items);
+  const tokenSegment = `?s=${encodeURIComponent(session.sessionToken)}`;
 
   return (
     <main className="min-h-screen bg-oat text-slate">
       <div className="mx-auto flex max-w-md flex-col px-6 py-8">
         <header className="mb-7">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
+          <GuestBackLink
+            href={`/v/${venue.slug}/t/${encodeURIComponent(session.table.label)}${tokenSegment}`}
+            label={`Back to ${session.table.label}`}
+          />
+          <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">{session.table.label}</h1>
-          <p className="mt-1 text-sm text-slate/60">Your bill</p>
+          <p className="mt-1 text-sm text-slate/60">Your tab so far</p>
         </header>
 
-        <BillScreen
-          slug={venue.slug}
-          venueTax={{ zipCode: venue.zipCode, taxRateBps: venue.taxRateBps }}
-          data={{
-            sessionId: session.id,
-            sessionToken: session.sessionToken,
-            venueName: venue.name,
-            tableLabel: session.table.label,
-            items,
-            defaultTipPercent: tipPercent,
-            totals,
-          }}
-        />
+        {/* Read-only. TabCall doesn't take payment — this is a running
+            record so a guest can see what they've had before settling with
+            staff, which is where tax and tipping now happen. */}
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate/15 bg-white/50 px-6 py-12 text-center">
+            <p className="text-sm font-medium text-slate">Nothing on your tab yet</p>
+            <p className="mx-auto mt-1.5 max-w-xs text-sm text-slate/50">
+              Anything your server adds will show up here.
+            </p>
+          </div>
+        ) : (
+          <>
+            <ul className="divide-y divide-slate/5 overflow-hidden rounded-2xl border border-slate/10 bg-white">
+              {items.map((it, i) => (
+                <li key={i} className="flex items-baseline justify-between gap-4 px-5 py-3.5">
+                  <span className="min-w-0 text-sm text-slate">
+                    {it.quantity > 1 ? <span className="text-slate/45">{it.quantity}× </span> : null}
+                    {it.name}
+                  </span>
+                  <span className="shrink-0 font-mono text-sm text-slate">
+                    {dollars(it.quantity * it.unitCents)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-4 flex items-baseline justify-between rounded-2xl bg-white px-5 py-4">
+              <span className="text-sm font-medium text-slate">Total</span>
+              <span className="font-mono text-lg font-semibold text-slate">
+                {dollars(totals.totalCents)}
+              </span>
+            </div>
+
+            <p className="mt-3 px-1 text-[12px] leading-relaxed text-slate/50">
+              Settle with your server when you&rsquo;re ready — they&rsquo;ll add any tax and tip on the
+              venue&rsquo;s own card machine.
+            </p>
+          </>
+        )}
+
+        <div className="mt-8 text-center">
+          <a
+            href={`/v/${venue.slug}/t/${encodeURIComponent(session.table.label)}/feedback${tokenSegment}`}
+            className="text-[13px] text-slate/55 underline-offset-4 hover:text-slate hover:underline"
+          >
+            ⭐ Rate your service
+          </a>
+        </div>
       </div>
     </main>
   );

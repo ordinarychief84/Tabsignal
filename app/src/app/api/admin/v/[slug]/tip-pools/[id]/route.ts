@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
-import { tabItems, tabTotals } from "@/domain/billing/tab";
 
 async function gatePool(slug: string, poolId: string) {
   const gate = await gateAdminRoute(slug, "growth", "tip_pools.manage");
   if (!gate.ok) return gate;
-  const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { id: true, zipCode: true, taxRateBps: true } });
+  const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { id: true } });
   if (!venue) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
   const pool = await db.tipPool.findUnique({ where: { id: poolId } });
   if (!pool || pool.venueId !== venue.id) {
@@ -23,9 +22,17 @@ const ShareSchema = z.object({
 
 const PatchBody = z.object({
   // Either "shares" (assign weights) or "close" (close the pool and
-  // compute payouts) or both. Can be called multiple times before close.
+  // distribute) or both. Can be called multiple times before close.
   shares: z.array(ShareSchema).optional(),
   close: z.boolean().optional(),
+  // Total tips to distribute, in cents.
+  //
+  // This used to be summed from TabCall-collected tips. TabCall no longer
+  // takes payment from guests, so there are no tips of ours to sum — the
+  // venue takes them on its own terminal or in cash. The manager now
+  // enters the figure they actually took, which is the only number that
+  // was ever going to be right after the change.
+  totalTipsCents: z.number().int().min(0).max(10_000_000).optional(),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string; id: string } }) {
@@ -65,22 +72,16 @@ export async function PATCH(req: Request, ctx: { params: { slug: string; id: str
   }
 
   if (parsed.close) {
-    // Sum tip cents from sessions paid since pool start. We compute via
-    // tabTotals() rather than reading Stripe so the math survives even if
-    // the Stripe charge id is missing.
-    const sessions = await db.guestSession.findMany({
-      where: {
-        venueId: gate.venue.id,
-        paidAt: { gte: gate.pool.startedAt },
-      },
-      select: { lineItems: true, tipPercent: true },
-    });
-    let totalTipsCents = 0;
-    for (const s of sessions) {
-      const items = tabItems(s.lineItems);
-      const t = tabTotals(items, gate.venue, typeof s.tipPercent === "number" ? s.tipPercent : 0);
-      totalTipsCents += t.tipCents;
+    if (parsed.totalTipsCents === undefined) {
+      return NextResponse.json(
+        {
+          error: "TOTAL_TIPS_REQUIRED",
+          detail: "Enter the total tips to distribute — TabCall doesn't collect them.",
+        },
+        { status: 400 },
+      );
     }
+    const totalTipsCents = parsed.totalTipsCents;
 
     // Distribute proportionally by weight.
     const shares = await db.tipPoolShare.findMany({ where: { poolId: gate.pool.id } });

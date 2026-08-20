@@ -50,7 +50,7 @@ export default async function OperatorConsole() {
       db.organization.findMany({
         orderBy: { createdAt: "desc" },
         include: {
-          venues: { select: { id: true, slug: true, name: true, posType: true, stripeAccountId: true } },
+          venues: { select: { id: true, slug: true, name: true, posType: true } },
           _count: { select: { members: true } },
         },
         take: 100,

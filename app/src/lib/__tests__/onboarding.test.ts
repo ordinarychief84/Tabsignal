@@ -7,8 +7,6 @@ function baseInputs(overrides: Partial<OnboardingInputs> = {}): OnboardingInputs
     venueType: null,
     brandColor: null,
     staffCount: 1, // just the owner
-    stripeChargesEnabled: false,
-    taxRateSet: false,
     onboardingCompletedAt: null,
     ...overrides,
   };
@@ -53,7 +51,8 @@ describe("deriveOnboarding", () => {
     const brand = p.steps.find(s => s.id === "brand")!;
     expect(brand.done).toBe(true);
     expect(brand.derived).toBe(true);
-    expect(p.percent).toBe(25);
+    // 1 of 3 pre-launch steps — the payments step went with guest payments.
+    expect(p.percent).toBe(33);
     expect(p.nextStep).toBe(2);
   });
 
@@ -67,31 +66,13 @@ describe("deriveOnboarding", () => {
     expect(solo.steps.find(s => s.id === "team")!.done).toBe(true);
   });
 
-  test("stripe + a known tax rate counts as payments done", () => {
-    const p = deriveOnboarding(baseInputs({ stripeChargesEnabled: true, taxRateSet: true }));
-    expect(p.steps.find(s => s.id === "payments")!.done).toBe(true);
-  });
-
-  test("stripe alone is NOT payments done — the charge routes refuse without a tax rate", () => {
-    const p = deriveOnboarding(baseInputs({ stripeChargesEnabled: true, taxRateSet: false }));
-    expect(p.steps.find(s => s.id === "payments")!.done).toBe(false);
-  });
-
-  test("checking step 4 by hand still means 'deferring payments'", () => {
-    // A signals-only venue never connects Stripe; it must still reach 100%.
-    const p = deriveOnboarding(
-      baseInputs({ state: { currentStep: 5, completedSteps: [4], solo: false } }),
-    );
-    expect(p.steps.find(s => s.id === "payments")!.done).toBe(true);
-  });
-
   test("explicit check-offs count even when nothing is derivable", () => {
     const p = deriveOnboarding(
-      baseInputs({ state: { currentStep: 5, completedSteps: [1, 2, 3, 4], solo: false } }),
+      baseInputs({ state: { currentStep: 5, completedSteps: [1, 2, 3], solo: false } }),
     );
     expect(p.percent).toBe(100);
     expect(p.complete).toBe(false); // launch not yet pressed
-    expect(p.nextStep).toBe(5);
+    expect(p.nextStep).toBe(4);
   });
 
   test("completedAt stamp marks the flow complete at 100%", () => {
