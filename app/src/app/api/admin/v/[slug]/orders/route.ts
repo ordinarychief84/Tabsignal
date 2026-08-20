@@ -51,7 +51,6 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
     include: {
       items: { orderBy: { createdAt: "asc" } },
       table: { select: { id: true, label: true } },
-      bill: { select: { id: true, status: true } },
     },
     orderBy: [{ createdAt: "desc" }],
     take: 200,
@@ -71,8 +70,6 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
       itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
       createdAt: o.createdAt.toISOString(),
       updatedAt: o.updatedAt.toISOString(),
-      billId: o.bill?.id ?? null,
-      billStatus: o.bill?.status ?? null,
       items: o.items.map(i => ({
         id: i.id,
         nameSnapshot: i.nameSnapshot,

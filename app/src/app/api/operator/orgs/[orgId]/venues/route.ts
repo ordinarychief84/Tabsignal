@@ -18,10 +18,6 @@ export async function GET(_req: Request, ctx: { params: { orgId: string } }) {
       slug: true,
       name: true,
       regionTag: true,
-      stripeAccountId: true,
-      stripeChargesEnabled: true,
-      stripePayoutsEnabled: true,
-      stripeDetailsSubmitted: true,
       createdAt: true,
     },
   });
@@ -43,10 +39,6 @@ export async function GET(_req: Request, ctx: { params: { orgId: string } }) {
       slug: v.slug,
       name: v.name,
       regionTag: v.regionTag,
-      stripeReady: v.stripeAccountId
-        ? v.stripeChargesEnabled && v.stripePayoutsEnabled
-        : false,
-      stripeAccountId: v.stripeAccountId,
       lastPaidAt: lastPaidByVenue.get(v.id)?.toISOString() ?? null,
       createdAt: v.createdAt.toISOString(),
     })),

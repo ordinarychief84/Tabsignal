@@ -9,7 +9,6 @@ type TableRow = {
   zone: string | null;
   sessionCount: number;
   requestCount: number;
-  preOrderCount: number;
 };
 
 export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow[] }) {
@@ -32,7 +31,7 @@ export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       setTables(curr => [...curr, {
         id: body.id, label: body.label, zone: zone,
-        sessionCount: 0, requestCount: 0, preOrderCount: 0,
+        sessionCount: 0, requestCount: 0,
       }].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })));
       setAdding(false);
     } catch (e) {
@@ -56,7 +55,7 @@ export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow
       const created: Array<{ id: string; label: string }> = body.created ?? [];
       setTables(curr => [
         ...curr,
-        ...created.map(c => ({ id: c.id, label: c.label, zone, sessionCount: 0, requestCount: 0, preOrderCount: 0 })),
+        ...created.map(c => ({ id: c.id, label: c.label, zone, sessionCount: 0, requestCount: 0 })),
       ].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })));
       setBulkOpen(false);
     } catch (e) {
@@ -174,7 +173,7 @@ function Row({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(t.label);
-  const hasHistory = t.sessionCount > 0 || t.requestCount > 0 || t.preOrderCount > 0;
+  const hasHistory = t.sessionCount > 0 || t.requestCount > 0;
 
   if (editing) {
     return (

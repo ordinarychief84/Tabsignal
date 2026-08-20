@@ -88,7 +88,7 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
 
   const sessions = await db.guestSession.findMany({
     where: { venueId, paidAt: { gte: start, lt: end } },
-    select: { lineItems: true, tipPercent: true },
+    select: { lineItems: true },
   });
   const ratings = await db.feedbackReport.findMany({
     where: { venueId, createdAt: { gte: start, lt: end } },

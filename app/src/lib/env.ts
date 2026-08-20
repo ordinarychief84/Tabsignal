@@ -75,12 +75,6 @@ const Optional = z.object({
   // in dev (the cron only runs in prod via Vercel Cron).
   BENCHMARK_CRON_SECRET: optionalString,
 
-  // Phase 2 billing cutover stage (restructure plan). Absent = "off".
-  //   off       — legacy JSON tab only (today's behavior)
-  //   dualwrite — mutations also mirror into Bill/BillItem; JSON canonical
-  //   canonical — new sessions write the V2 model as source of truth
-  // Every flip is one redeploy; see domain/billing/mirror.ts.
-  BILLING_V2: z.preprocess(emptyAsAbsent, z.enum(["off", "dualwrite", "canonical"]).optional()),
 
   // Google OAuth sign-in (lib/auth/oauth-google). Both absent = feature
   // invisible ("Continue with Google" hidden, /api/auth/google/start

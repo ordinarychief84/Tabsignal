@@ -10,8 +10,6 @@ type Venue = {
   address: string | null;
   zipCode: string | null;
   timezone: string;
-  stripeAttached: boolean;
-  stripeReady: boolean;
   requestsEnabled: boolean;
   preorderEnabled: boolean;
   reservationsEnabled: boolean;
@@ -36,7 +34,6 @@ export function VenuesPanel() {
   // filters
   const [q, setQ] = useState("");
   const [plan, setPlan] = useState<string>("");
-  const [hasStripe, setHasStripe] = useState<string>("");
 
   async function load() {
     setLoading(true);
@@ -45,7 +42,6 @@ export function VenuesPanel() {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (plan) params.set("plan", plan);
-      if (hasStripe) params.set("hasStripe", hasStripe);
       const res = await fetch(`/api/operator/venues?${params}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
@@ -138,12 +134,6 @@ export function VenuesPanel() {
             <option value="">All plans</option>
             {PLANS.map(p => <option key={p} value={p}>{PLAN_LABEL[p]}</option>)}
           </select>
-          <select value={hasStripe} onChange={e => setHasStripe(e.target.value)}
-            className="rounded-xl border border-slate/15 bg-white px-4 py-2.5 text-sm">
-            <option value="">Any Stripe</option>
-            <option value="true">Stripe attached</option>
-            <option value="false">No Stripe</option>
-          </select>
           <button type="submit" className="rounded-xl bg-slate px-5 py-2.5 text-sm text-oat hover:bg-slate/90">
             Filter
           </button>
@@ -171,9 +161,6 @@ export function VenuesPanel() {
                       {v.name}
                     </Link>
                     <Pill tone="umber">{PLAN_LABEL[v.org.plan] ?? v.org.plan}</Pill>
-                    {v.stripeReady ? <Pill tone="chartreuse">STRIPE LIVE</Pill>
-                      : v.stripeAttached ? <Pill tone="coral">STRIPE INCOMPLETE</Pill>
-                      : <Pill tone="slate">NO STRIPE</Pill>}
                   </div>
                   <p className="mt-1 truncate font-mono text-[11px] text-slate/55">
                     /{v.slug} · {v.org.name} · created {rel(v.createdAt)}

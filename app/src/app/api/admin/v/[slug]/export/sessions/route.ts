@@ -28,9 +28,7 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
     select: {
       id: true,
       paidAt: true,
-      tipPercent: true,
       lineItems: true,
-      stripePaymentIntentId: true,
       table: { select: { label: true } },
     },
     take: 10_000,

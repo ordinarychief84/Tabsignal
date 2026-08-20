@@ -37,7 +37,6 @@ export default async function OrdersPage({ params }: { params: { slug: string } 
     include: {
       items: { orderBy: { createdAt: "asc" } },
       table: { select: { label: true } },
-      bill: { select: { id: true, status: true } },
     },
     orderBy: [{ createdAt: "desc" }],
     take: 200,
@@ -51,8 +50,6 @@ export default async function OrdersPage({ params }: { params: { slug: string } 
     totalCents: o.totalCents,
     itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
     createdAt: o.createdAt.toISOString(),
-    billId: o.bill?.id ?? null,
-    billStatus: o.bill?.status ?? null,
     items: o.items.map(i => ({
       id: i.id,
       nameSnapshot: i.nameSnapshot,

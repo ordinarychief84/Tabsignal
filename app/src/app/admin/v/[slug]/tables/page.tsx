@@ -17,7 +17,7 @@ export default async function TablesPage({ params }: { params: { slug: string } 
   const tables = await db.table.findMany({
     where: { venueId: venue.id },
     orderBy: { label: "asc" },
-    include: { _count: { select: { sessions: true, requests: true, preOrders: true } } },
+    include: { _count: { select: { sessions: true, requests: true } } },
   });
 
   return (
@@ -45,7 +45,6 @@ export default async function TablesPage({ params }: { params: { slug: string } 
           zone: t.zone,
           sessionCount: t._count.sessions,
           requestCount: t._count.requests,
-          preOrderCount: t._count.preOrders,
         }))}
       />
     </>

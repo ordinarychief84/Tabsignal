@@ -27,8 +27,6 @@ export default async function OnboardingPage({ params }: { params: { slug: strin
       guestWelcomeMessage: true,
       onboardingState: true,
       onboardingCompletedAt: true,
-      stripeChargesEnabled: true,
-      stripeAccountId: true,
       _count: {
         select: {
           tables: true,

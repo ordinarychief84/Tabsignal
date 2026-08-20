@@ -1,5 +1,5 @@
 /**
- * GET /api/operator/venues?q=&orgId=&plan=&hasStripe=&suspended=&limit=&before=
+ * GET /api/operator/venues?q=&orgId=&plan=&suspended=&limit=&before=
  *
  * Cross-org venue list with rich filters for the founder's
  * /operator/venues page. Operator-only.
@@ -17,7 +17,6 @@ const Q = z.object({
   q: z.string().max(100).optional(),
   orgId: z.string().max(64).optional(),
   plan: z.enum(["STARTER", "FLAT", "FOUNDING"]).optional(),
-  hasStripe: z.enum(["true", "false"]).optional(),
   suspended: z.enum(["true", "false"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
 });
@@ -46,8 +45,6 @@ export async function GET(req: Request) {
   }
   if (q.orgId) where.orgId = q.orgId;
   if (q.plan) where.org = { plan: q.plan };
-  if (q.hasStripe === "true") where.stripeAccountId = { not: null };
-  if (q.hasStripe === "false") where.stripeAccountId = null;
   if (q.suspended === "true") {
     where.requestsEnabled = false;
     where.preorderEnabled = false;
@@ -76,8 +73,6 @@ export async function GET(req: Request) {
       address: v.address,
       zipCode: v.zipCode,
       timezone: v.timezone,
-      stripeAttached: !!v.stripeAccountId,
-      stripeReady: v.stripeChargesEnabled,
       requestsEnabled: v.requestsEnabled,
       preorderEnabled: v.preorderEnabled,
       reservationsEnabled: v.reservationsEnabled,

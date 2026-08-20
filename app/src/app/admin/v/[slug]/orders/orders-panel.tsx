@@ -24,8 +24,6 @@ export type AdminOrder = {
   totalCents: number;
   itemCount: number;
   createdAt: string;
-  billId: string | null;
-  billStatus: string | null;
   items: OrderItem[];
 };
 
@@ -201,11 +199,6 @@ function OrderRow({
           <span className={["rounded-full px-2 py-0.5 text-[11px] uppercase tracking-wider", badge.cls].join(" ")}>
             {badge.label}
           </span>
-          {order.billStatus ? (
-            <span className="rounded-full bg-slate/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate/50">
-              Bill {order.billStatus}
-            </span>
-          ) : null}
         </div>
         <div className="text-right">
           <p className="font-mono text-sm tabular-nums text-slate">{dollars(order.totalCents)}</p>

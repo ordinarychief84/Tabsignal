@@ -61,11 +61,9 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   await db.$transaction([
     db.linkTokenUse.deleteMany({ where: { staffId: { in: staffIds } } }),
     db.compAction.deleteMany({ where: { sessionId: { in: sessionIds } } }),
-    db.billSplit.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     db.feedbackReport.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.request.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.guestSession.deleteMany({ where: { venueId: { in: venueIds } } }),
-    db.preOrder.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.reservation.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.waitlist.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.menuItem.deleteMany({ where: { venueId: { in: venueIds } } }),

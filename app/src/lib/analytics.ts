@@ -54,7 +54,7 @@ export async function venueAnalytics(
   const [paidSessions, ratingsRaw, ackedByStaff, badRatingsOpen] = await Promise.all([
     db.guestSession.findMany({
       where: { venueId, paidAt: { gte: start, lte: end } },
-      select: { lineItems: true, tipPercent: true, paidAt: true },
+      select: { lineItems: true, paidAt: true },
     }),
     db.feedbackReport.findMany({
       where: { venueId, createdAt: { gte: start, lte: end } },
@@ -75,7 +75,7 @@ export async function venueAnalytics(
   ]);
 
   // Revenue = sum of (subtotal + tax + tip) computed from each session's
-  // saved tipPercent. Prefer this over reading Stripe charges so the
+  // line items. Prefer this over external sources so the
   // analytics survive even if Stripe data is unavailable.
   let revenueCents = 0;
   let tipsCents = 0;
