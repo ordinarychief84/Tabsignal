@@ -79,6 +79,16 @@ export function StaffQueue({
     itemCount: number;
     items: { name: string; priceCents: number; quantity: number }[];
   } | null>(null);
+  // Orders a guest sent from the table. Shown as a dismissible stack
+  // rather than folded into the request queue: a request is something to
+  // respond to, an order is something to run — different jobs, and mixing
+  // them would make the queue counts lie.
+  const [orderToasts, setOrderToasts] = useState<{
+    id: string;
+    tableLabel: string | null;
+    itemCount: number;
+    items: { nameSnapshot: string; quantity: number; notes: string | null }[];
+  }[]>([]);
   const aborter = useRef<AbortController | null>(null);
   const assignedSet = new Set(assignedTableIds);
 
@@ -169,6 +179,22 @@ export function StaffQueue({
       refresh();
     }
 
+    function onOrderPlaced(payload: {
+      order?: {
+        id: string;
+        tableLabel: string | null;
+        itemCount: number;
+        items: { nameSnapshot: string; quantity: number; notes: string | null }[];
+      };
+    } | null) {
+      const o = payload?.order;
+      if (!o?.id) return;
+      setOrderToasts(curr => (curr.some(t => t.id === o.id) ? curr : [o, ...curr].slice(0, 4)));
+      try {
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([12, 50, 12]);
+      } catch { /* iOS Safari */ }
+    }
+
     function onWishlistShared(payload: {
       wishlistId?: string;
       tableLabel?: string | null;
@@ -220,6 +246,8 @@ export function StaffQueue({
     socket.on("request_escalated", onEscalated);
     socket.on("request_handed_off_to_you", onHandedOffToYou);
     socket.on("regular_arrived_for_you", onRegularArrivedForYou);
+    socket.on("order_placed", onOrderPlaced);
+    socket.on("order_placed_for_you", onOrderPlaced);
     socket.on("wishlist_shared", onWishlistShared);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -233,6 +261,8 @@ export function StaffQueue({
       socket.off("request_escalated", onEscalated);
       socket.off("request_handed_off_to_you", onHandedOffToYou);
       socket.off("regular_arrived_for_you", onRegularArrivedForYou);
+      socket.off("order_placed", onOrderPlaced);
+      socket.off("order_placed_for_you", onOrderPlaced);
       socket.off("wishlist_shared", onWishlistShared);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -379,6 +409,45 @@ export function StaffQueue({
 
   return (
     <>
+      {orderToasts.length > 0 ? (
+        <ul className="mb-3 space-y-2">
+          {orderToasts.map(o => (
+            <li
+              key={o.id}
+              className="rounded-2xl border border-chartreuse bg-chartreuse/25 px-4 py-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-slate/70">
+                    Order in
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate">
+                    {o.tableLabel ?? "A table"} · {o.itemCount}{" "}
+                    {o.itemCount === 1 ? "item" : "items"}
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {o.items.map((it, i) => (
+                      <li key={i} className="text-[12px] text-slate/75">
+                        {it.quantity > 1 ? `${it.quantity}× ` : ""}
+                        {it.nameSnapshot}
+                        {it.notes ? <span className="text-slate/55"> — {it.notes}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOrderToasts(curr => curr.filter(t => t.id !== o.id))}
+                  className="shrink-0 rounded-lg border border-slate/20 px-3 py-1.5 text-[11px] font-medium text-slate hover:bg-slate/5"
+                >
+                  Got it
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {wishlistToast ? (
         <div className="mb-3 rounded-2xl border border-coral/40 bg-coral/15 px-4 py-3">
           <div className="flex items-start justify-between gap-3">

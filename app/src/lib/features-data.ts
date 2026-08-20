@@ -172,7 +172,7 @@ export const FEATURES: FeatureCard[] = [
       "Collect more reviews and feedback from happy guests to grow your reputation.",
     tone: "butter",
     highlights: [
-      "Every guest is asked to rate after paying",
+      "Every guest is asked to rate at the end of their visit",
       "4 and 5 stars get nudged to your Google profile",
       "1 to 3 stars route to the manager with an AI-classified category",
       "Categories: service speed, drink quality, staff attitude, wait time, food, noise",
