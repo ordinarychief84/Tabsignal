@@ -17,15 +17,25 @@ import { configureSocketAuth, getSocket, joinRoom, resetSocket } from "@/lib/soc
  * as "flare gun, not form submit".
  */
 
+/**
+ * Each signal owns a colour. This is information, not decoration: the
+ * whole screen — chip, beacon glow, progress ring, status card — retunes
+ * to the armed signal, so a guest can tell what they're about to send
+ * from across the table without reading a word. The venue's own --brand
+ * still owns the page's ambient glow, so branding survives the shift.
+ */
 const REQUEST_TYPES = [
-  { id: "DRINK",  label: "Another round", icon: "🍸", verb: "Calling the bar" },
-  { id: "REFILL", label: "Refill",        icon: "🥤", verb: "Water inbound" },
-  { id: "HELP",   label: "Question",      icon: "✋", verb: "Flagging staff" },
-  { id: "BILL",   label: "The bill",      icon: "🧾", verb: "Closing out" },
+  { id: "DRINK",  label: "Another round", icon: "🍸", verb: "Calling the bar", accent: "#F5B23C" },
+  { id: "REFILL", label: "Refill",        icon: "🥤", verb: "Water inbound",   accent: "#49C5E8" },
+  { id: "HELP",   label: "Question",      icon: "✋", verb: "Flagging staff",  accent: "#B18CFF" },
+  { id: "BILL",   label: "The bill",      icon: "🧾", verb: "Closing out",     accent: "#57D49B" },
 ] as const;
 
 type RequestType = (typeof REQUEST_TYPES)[number]["id"];
 type Phase = "pick" | "sent" | "ack";
+
+/** Free-text note to the server. Capped to match the API's own limit. */
+const NOTE_MAX = 120;
 
 type PrevTab = { itemCount: number; lastRequestMinAgo: number | null };
 
@@ -53,6 +63,11 @@ export function GuestRequestPanel({
   confirmationMessage?: string | null;
 }) {
   const [selected, setSelected] = useState<RequestType>("DRINK");
+  const [note, setNote] = useState("");
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [sentNote, setSentNote] = useState<string | null>(null);
+  const [rippleKey, setRippleKey] = useState(0);
+  const [servedOnce, setServedOnce] = useState(false);
   const [phase, setPhase] = useState<Phase>("pick");
   const [holdProgress, setHoldProgress] = useState(0);
   const [holdHint, setHoldHint] = useState(false);
@@ -121,6 +136,9 @@ export function GuestRequestPanel({
       if (lastRequestId.current && req.id !== lastRequestId.current) return;
       setAckedBy(req.acknowledgedBy?.name ?? null);
       setPhase("ack");
+      // Someone has now actually served this table, which is the moment a
+      // review request stops being premature. Sticky for the session.
+      setServedOnce(true);
       vibrate([12, 60, 12]);
     }
     socket.on("request_acknowledged", onAck);
@@ -144,11 +162,20 @@ export function GuestRequestPanel({
     setSubmitting(true);
     setErrorMsg(null);
     setRateLimited(false);
+    const trimmedNote = note.trim().slice(0, NOTE_MAX);
     try {
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, sessionToken, type }),
+        body: JSON.stringify({
+          sessionId,
+          sessionToken,
+          type,
+          // Trimmed and length-capped here as well as server-side: the
+          // API rejects >120 with a flat INVALID_BODY, which would read
+          // to the guest as "the app broke" rather than "too long".
+          note: trimmedNote || undefined,
+        }),
       });
       if (res.status === 429) {
         setRateLimited(true);
@@ -163,10 +190,14 @@ export function GuestRequestPanel({
       const body = await res.json();
       lastRequestId.current = body?.id ?? null;
       setSentType(type);
+      setSentNote(trimmedNote || null);
+      setNote("");
+      setNoteOpen(false);
       setSentAt(Date.now());
       setElapsedSec(0);
       setAckedBy(null);
       setPhase("sent");
+      setRippleKey(k => k + 1);
       vibrate([15, 40, 25]);
       if (type === "BILL") {
         // Give the beacon a beat to land, then take them to their tab.
@@ -179,7 +210,7 @@ export function GuestRequestPanel({
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, sessionId, sessionToken, slug, tableLabel]);
+  }, [submitting, sessionId, sessionToken, slug, tableLabel, note]);
 
   /* --------------------------- hold gesture ---------------------------
      The fire itself rides a setTimeout — authoritative even when rAF is
@@ -275,27 +306,42 @@ export function GuestRequestPanel({
 
   const selectedMeta = REQUEST_TYPES.find(r => r.id === selected)!;
   const sentMeta = sentType ? REQUEST_TYPES.find(r => r.id === sentType)! : null;
+  const reviewHref = `/v/${slug}/t/${encodeURIComponent(tableLabel)}/feedback?s=${encodeURIComponent(sessionToken)}`;
+  const noteLeft = NOTE_MAX - note.length;
 
   /* ============================ SENT / ACK ============================ */
   if (phase === "sent" || phase === "ack") {
     const acked = phase === "ack";
+    const sentAccent = sentMeta?.accent ?? "var(--brand)";
     return (
       <section className="flex flex-1 flex-col items-center justify-center px-6 py-6" aria-live="polite">
-        <div className="guest-card w-full max-w-sm rounded-3xl px-7 py-8">
-          {/* Beacon echo */}
+        <div
+          className="guest-card w-full max-w-sm rounded-3xl px-7 py-8"
+          style={{ borderColor: `color-mix(in srgb, ${sentAccent} 30%, transparent)` }}
+        >
+          {/* Beacon echo — three rings peel off on send, then a single
+              bloom when staff acknowledge. */}
           <div className="relative mx-auto flex h-24 w-24 items-center justify-center">
+            {[0, 1, 2].map(i => (
+              <span
+                key={`${rippleKey}-${i}`}
+                aria-hidden
+                className="beacon-ripple absolute inset-0 rounded-full"
+                style={{
+                  border: `2px solid color-mix(in srgb, ${sentAccent} 60%, transparent)`,
+                  animationDelay: `${i * 0.22}s`,
+                }}
+              />
+            ))}
             <span
               aria-hidden
-              className={[
-                "absolute inset-0 rounded-full",
-                acked ? "ack-bloom" : "",
-              ].join(" ")}
-              style={{ background: "color-mix(in srgb, var(--brand) 18%, transparent)" }}
+              className={["absolute inset-0 rounded-full", acked ? "ack-bloom" : ""].join(" ")}
+              style={{ background: `color-mix(in srgb, ${sentAccent} 18%, transparent)` }}
             />
             <span
               aria-hidden
               className="relative flex h-16 w-16 items-center justify-center rounded-full text-3xl"
-              style={{ background: "color-mix(in srgb, var(--brand) 30%, rgba(255,255,255,0.06))" }}
+              style={{ background: `color-mix(in srgb, ${sentAccent} 30%, rgba(255,255,255,0.06))` }}
             >
               {acked ? "✓" : sentMeta?.icon}
             </span>
@@ -305,12 +351,14 @@ export function GuestRequestPanel({
           <ol className="mt-7 space-y-0">
             <TimelineNode
               done
+              accent={sentAccent}
               label={confirmationMessage ?? `Signal sent — ${sentMeta?.verb.toLowerCase() ?? "on its way"}`}
               sub={`${tableLabel} · ${sentMeta?.label ?? ""}`}
             />
-            <TimelineConnector active={acked} />
+            <TimelineConnector active={acked} accent={sentAccent} />
             <TimelineNode
               done={acked}
+              accent={sentAccent}
               label={
                 acked
                   ? ackedBy
@@ -327,6 +375,13 @@ export function GuestRequestPanel({
             />
           </ol>
 
+          {sentNote ? (
+            <p className="mt-5 rounded-2xl bg-white/[0.05] px-4 py-3 text-[13px] leading-relaxed text-white/70">
+              <span aria-hidden className="mr-1.5">💬</span>
+              &ldquo;{sentNote}&rdquo;
+            </p>
+          ) : null}
+
           {sentType === "BILL" ? (
             <p className="mt-6 text-center text-[12px] text-white/50">
               Taking you to your tab…
@@ -336,11 +391,22 @@ export function GuestRequestPanel({
               <button
                 type="button"
                 onClick={resetToPick}
-                className="rounded-full px-5 py-2.5 text-sm font-medium text-[#0b0a12]"
-                style={{ background: "var(--brand)" }}
+                className="rounded-full px-5 py-2.5 text-sm font-medium text-[#0b0a12] transition-transform active:scale-95"
+                style={{ background: sentAccent }}
               >
                 Send another signal
               </button>
+              {/* Only once someone has actually shown up — asking for a
+                  rating while the guest is still waiting is how you earn
+                  a one-star for the wait itself. */}
+              {acked ? (
+                <Link
+                  href={reviewHref}
+                  className="guest-card rounded-full px-5 py-2 text-[13px] font-medium text-white/90 transition-colors hover:bg-white/10"
+                >
+                  ⭐ Rate your service
+                </Link>
+              ) : null}
               <Link
                 href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill?s=${encodeURIComponent(sessionToken)}`}
                 className="text-[13px] text-white/50 underline-offset-4 hover:text-white/85 hover:underline"
@@ -410,41 +476,126 @@ export function GuestRequestPanel({
               key={rt.id}
               role="radio"
               aria-checked={active}
+              aria-label={rt.label}
               type="button"
               onClick={() => { setSelected(rt.id); vibrate(6); }}
               className={[
                 "flex flex-col items-center gap-1.5 rounded-2xl px-1 py-3.5 transition-all duration-200",
                 active
-                  ? "guest-card scale-[1.03] border-white/25"
-                  : "border border-transparent opacity-55 hover:opacity-80",
+                  ? "guest-card scale-[1.06] chip-pop"
+                  : "border border-transparent opacity-50 hover:opacity-85 hover:scale-[1.02]",
               ].join(" ")}
-              style={active ? { boxShadow: "0 0 24px color-mix(in srgb, var(--brand) 22%, transparent)" } : undefined}
+              style={
+                active
+                  ? {
+                      borderColor: `color-mix(in srgb, ${rt.accent} 55%, transparent)`,
+                      background: `color-mix(in srgb, ${rt.accent} 13%, rgba(255,255,255,0.045))`,
+                      boxShadow: `0 0 26px color-mix(in srgb, ${rt.accent} 30%, transparent)`,
+                    }
+                  : undefined
+              }
             >
               <span aria-hidden className="text-2xl leading-none">{rt.icon}</span>
-              <span className="text-[11px] font-medium leading-tight text-white/85">{rt.label}</span>
+              <span
+                className="text-[11px] font-medium leading-tight"
+                style={{ color: active ? rt.accent : "rgba(255,255,255,0.85)" }}
+              >
+                {rt.label}
+              </span>
             </button>
           );
         })}
       </div>
 
+      {/* Message the server — rides along with the signal rather than
+          being its own send, so staff get one queue item with context
+          attached instead of a bare "Question" they have to walk over to
+          decode. The API has always accepted `note`; only the guest had
+          no way to write one. */}
+      <div className="mt-3">
+        {noteOpen ? (
+          <div
+            className="guest-card rounded-2xl p-3"
+            style={{ borderColor: `color-mix(in srgb, ${selectedMeta.accent} 35%, transparent)` }}
+          >
+            <label htmlFor="signal-note" className="sr-only">
+              Add a message for your server
+            </label>
+            <textarea
+              id="signal-note"
+              autoFocus
+              value={note}
+              onChange={e => setNote(e.target.value.slice(0, NOTE_MAX))}
+              maxLength={NOTE_MAX}
+              rows={2}
+              placeholder={notePlaceholder(selected)}
+              className="w-full resize-none bg-transparent text-[15px] leading-snug text-white placeholder-white/35 outline-none"
+            />
+            <div className="mt-1.5 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => { setNote(""); setNoteOpen(false); }}
+                className="text-[12px] text-white/45 underline-offset-4 hover:text-white/80 hover:underline"
+              >
+                Cancel
+              </button>
+              <span
+                className={[
+                  "font-mono text-[11px] tabular-nums",
+                  noteLeft <= 20 ? "text-white/70" : "text-white/30",
+                ].join(" ")}
+              >
+                {noteLeft}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setNoteOpen(true)}
+            aria-label="Add a message for your server"
+            className="guest-card flex w-full items-center gap-2.5 rounded-2xl px-4 py-3 text-left transition-colors hover:bg-white/[0.08]"
+          >
+            <span aria-hidden className="text-base">💬</span>
+            <span className="text-[13px] text-white/55">
+              Add a message for your server
+              <span className="text-white/30"> · optional</span>
+            </span>
+          </button>
+        )}
+        {note.trim() ? (
+          <p className="mt-1.5 px-1 text-[11px] text-white/40">
+            Sends with your {selectedMeta.label.toLowerCase()} signal.
+          </p>
+        ) : null}
+      </div>
+
       {/* The beacon */}
       <div className="relative mx-auto mt-8 mb-2 flex flex-col items-center">
         <div className="relative flex h-52 w-52 items-center justify-center">
-          {/* breathing brand glow */}
+          {/* breathing glow, tuned to the armed signal and brightening as
+              the hold charges — the screen visibly "powers up" under the
+              thumb rather than just filling a bar. */}
           <span
             aria-hidden
             className="beacon-breathe absolute inset-4 rounded-full"
-            style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--brand) 34%, transparent) 0%, transparent 70%)" }}
+            style={{
+              background: `radial-gradient(circle, color-mix(in srgb, ${selectedMeta.accent} ${34 + holdProgress * 46}%, transparent) 0%, transparent 70%)`,
+              transform: `scale(${1 + holdProgress * 0.12})`,
+            }}
           />
           {/* progress ring */}
           <svg aria-hidden viewBox="0 0 200 200" className="absolute inset-0 h-full w-full -rotate-90">
             <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
             <circle
               cx="100" cy="100" r="88" fill="none"
-              stroke="var(--brand)" strokeWidth="5" strokeLinecap="round"
+              stroke={selectedMeta.accent} strokeWidth="5" strokeLinecap="round"
               strokeDasharray={2 * Math.PI * 88}
               strokeDashoffset={(1 - holdProgress) * 2 * Math.PI * 88}
-              style={{ transition: holdProgress === 0 ? "stroke-dashoffset 0.25s ease-out" : "none" }}
+              style={{
+                transition: holdProgress === 0 ? "stroke-dashoffset 0.25s ease-out" : "none",
+                filter: holdProgress > 0 ? `drop-shadow(0 0 6px ${selectedMeta.accent})` : undefined,
+              }}
             />
           </svg>
           <button
@@ -465,7 +616,7 @@ export function GuestRequestPanel({
             style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
           >
             <span aria-hidden className="text-4xl">{selectedMeta.icon}</span>
-            <span className="mt-2 text-[13px] font-semibold tracking-wide text-white">
+            <span className="mt-2 text-[13px] font-semibold tracking-wide" style={{ color: selectedMeta.accent }}>
               {submitting ? "Sending…" : kbArmed ? "Press again to send" : holdProgress > 0 ? "Keep holding…" : "HOLD TO SEND"}
             </span>
             <span className="mt-0.5 text-[11px] text-white/45">{selectedMeta.label}</span>
@@ -488,13 +639,15 @@ export function GuestRequestPanel({
         </p>
       ) : null}
 
-      <div className="mb-2 mt-4 text-center">
+      <div className="mb-2 mt-4 flex items-center justify-center gap-4">
         <Link
           href={`/v/${slug}/t/${encodeURIComponent(tableLabel)}/bill?s=${encodeURIComponent(sessionToken)}`}
           className="text-[13px] text-white/45 underline-offset-4 transition-colors hover:text-white/85 hover:underline"
         >
           View running tab →
         </Link>
+        <span aria-hidden className="text-white/15">·</span>
+        <ReviewLink href={reviewHref} emphasised={servedOnce} />
       </div>
     </section>
   );
@@ -502,11 +655,47 @@ export function GuestRequestPanel({
 
 /* ---------------------------- subcomponents ---------------------------- */
 
-function TimelineNode({ done, pending = false, label, sub }: {
+/**
+ * Placeholder copy per signal. A generic "type a message" prompt gets
+ * generic messages; naming the thing the guest is most likely to want
+ * gets staff something they can act on without a second trip.
+ */
+function notePlaceholder(type: RequestType): string {
+  switch (type) {
+    case "DRINK":  return "Same again, but make it a double…";
+    case "REFILL": return "Still water for the table, no ice…";
+    case "HELP":   return "Which of these is gluten free?";
+    case "BILL":   return "Splitting three ways, card each…";
+  }
+}
+
+/**
+ * Review entry point. Sits quietly in the footer until staff have
+ * actually acknowledged something this session, then brightens — the
+ * same link either way, so a guest who wants to review early still can.
+ */
+function ReviewLink({ href, emphasised }: { href: string; emphasised: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={[
+        "text-[13px] underline-offset-4 transition-colors hover:underline",
+        emphasised ? "font-medium text-white/85 hover:text-white" : "text-white/45 hover:text-white/85",
+      ].join(" ")}
+    >
+      <span aria-hidden className="mr-1">⭐</span>
+      Rate your service
+    </Link>
+  );
+}
+
+
+function TimelineNode({ done, pending = false, label, sub, accent }: {
   done: boolean;
   pending?: boolean;
   label: string;
   sub?: string;
+  accent: string;
 }) {
   return (
     <li className="flex items-start gap-3.5">
@@ -516,7 +705,7 @@ function TimelineNode({ done, pending = false, label, sub }: {
           "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
           done ? "node-pop text-[#0b0a12]" : "border border-white/20 text-white/30",
         ].join(" ")}
-        style={done ? { background: "var(--brand)" } : undefined}
+        style={done ? { background: accent } : undefined}
       >
         {done ? "✓" : ""}
         {!done && pending ? <PendingDot /> : null}
@@ -540,11 +729,11 @@ function PendingDot() {
   );
 }
 
-function TimelineConnector({ active }: { active: boolean }) {
+function TimelineConnector({ active, accent }: { active: boolean; accent: string }) {
   return (
     <li aria-hidden className="ml-[11px] h-7 w-0.5 rounded-full" style={{
       background: active
-        ? "linear-gradient(to bottom, var(--brand), color-mix(in srgb, var(--brand) 40%, transparent))"
+        ? `linear-gradient(to bottom, ${accent}, color-mix(in srgb, ${accent} 40%, transparent))`
         : "rgba(255,255,255,0.12)",
     }} />
   );

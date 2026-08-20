@@ -153,6 +153,17 @@ button {
   animation: node-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/* Signal chip settling into the armed state — a small overshoot so
+   choosing a signal feels like snapping a dial into place. */
+@keyframes chip-pop {
+  0%   { transform: scale(1); }
+  55%  { transform: scale(1.11); }
+  100% { transform: scale(1.06); }
+}
+.chip-pop {
+  animation: chip-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 /* Shake hint when a hold is released too early. */
 @keyframes hold-hint {
   0%, 100% { transform: translateX(0); }
@@ -167,7 +178,8 @@ button {
   .beacon-ripple,
   .beacon-breathe,
   .ack-bloom,
-  .hold-hint {
+  .hold-hint,
+  .chip-pop {
     animation: none;
   }
   .node-pop {
