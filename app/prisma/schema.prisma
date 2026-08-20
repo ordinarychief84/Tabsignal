@@ -118,6 +118,11 @@ model Venue {
   name                   String
   address                String?
   zipCode                String?
+  // Sales-tax rate in basis points (825 = 8.25%). Null means "not set" —
+  // lib/tax.ts falls back to the coarse Texas ZIP table, and a venue with
+  // neither cannot go live or take a guest payment. An explicit 0 is a
+  // real answer (OR/DE/MT/NH) and is honored as such, not treated as unset.
+  taxRateBps             Int?
   // E.164 phone number captured at signup. Used for SMS reservations
   // confirmations and as the manager's emergency contact. Format:
   // "+12125551234" (country dial code + national number, no spaces).

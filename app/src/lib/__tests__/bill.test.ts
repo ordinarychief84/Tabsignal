@@ -5,13 +5,15 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { dollars, parseLineItems, totalsFor, type LineItem } from "../bill";
+import { dollars, parseLineItems, totalsFor, totalsForCharge, type LineItem } from "../bill";
 
-const HOUSTON_ZIP = "77006"; // matches taxRateForZip Texas branch
+// The tax slice of a Venue row that totalsFor/totalsForCharge consume.
+const HOUSTON = { zipCode: "77006", taxRateBps: null }; // Texas ZIP fallback → 8.25%
+const NO_TAX_INFO = { zipCode: "90210", taxRateBps: null }; // outside TX, nothing set
 
 describe("totalsFor", () => {
   test("zero items → all zero", () => {
-    const t = totalsFor([], HOUSTON_ZIP, 20);
+    const t = totalsFor([], HOUSTON, 20);
     expect(t).toEqual({
       subtotalCents: 0,
       taxCents: 0,
@@ -22,7 +24,7 @@ describe("totalsFor", () => {
 
   test("single $10 item, 20% tip, Houston tax", () => {
     const items: LineItem[] = [{ name: "Old Fashioned", quantity: 1, unitCents: 1000 }];
-    const t = totalsFor(items, HOUSTON_ZIP, 20);
+    const t = totalsFor(items, HOUSTON, 20);
     expect(t.subtotalCents).toBe(1000);
     // Texas state sales tax is 8.25% per the lib/tax.ts table; if the rate
     // ever changes, update this expectation deliberately rather than the
@@ -37,25 +39,56 @@ describe("totalsFor", () => {
       { name: "Beer", quantity: 4, unitCents: 700 },     // 2800
       { name: "Wing basket", quantity: 1, unitCents: 1450 }, // 1450
     ];
-    const t = totalsFor(items, HOUSTON_ZIP, 0);
+    const t = totalsFor(items, HOUSTON, 0);
     expect(t.subtotalCents).toBe(4250);
     expect(t.tipCents).toBe(0);
   });
 
   test("tip clamped to [0, 50]", () => {
     const items: LineItem[] = [{ name: "X", quantity: 1, unitCents: 1000 }];
-    const negTip = totalsFor(items, HOUSTON_ZIP, -25);
+    const negTip = totalsFor(items, HOUSTON, -25);
     expect(negTip.tipCents).toBe(0);
-    const huge = totalsFor(items, HOUSTON_ZIP, 999);
+    const huge = totalsFor(items, HOUSTON, 999);
     expect(huge.tipCents).toBe(500); // clamped at 50%
   });
 
-  test("zero tax for non-Texas zip (current behaviour)", () => {
-    // taxRateForZip returns 0 for unknown zips; surfacing that here so a
-    // future refactor that adds CA tax (etc.) breaks this test loudly.
+  test("unknown rate displays as 0% tax (display path only)", () => {
+    // totalsFor backs dashboards and exports, so an unresolvable rate must
+    // not throw. The CHARGE path refuses instead — see totalsForCharge.
     const items: LineItem[] = [{ name: "X", quantity: 1, unitCents: 1000 }];
-    const t = totalsFor(items, "90210", 18);
+    const t = totalsFor(items, NO_TAX_INFO, 18);
     expect(t.taxCents).toBe(0);
+  });
+
+  test("explicit venue rate overrides the ZIP fallback", () => {
+    const items: LineItem[] = [{ name: "X", quantity: 1, unitCents: 1000 }];
+    // A Houston venue that actually files 6.25% must not be forced to 8.25%.
+    const t = totalsFor(items, { zipCode: "77006", taxRateBps: 625 }, 0);
+    expect(t.taxCents).toBe(63); // round(1000 * 0.0625)
+  });
+
+  test("explicit zero rate is honored, not treated as unset", () => {
+    const items: LineItem[] = [{ name: "X", quantity: 1, unitCents: 1000 }];
+    // Portland OR: genuinely no sales tax. Must resolve, not fall through.
+    const t = totalsForCharge(items, { zipCode: "97205", taxRateBps: 0 }, 0);
+    expect(t.ok).toBe(true);
+    if (t.ok) expect(t.totals.taxCents).toBe(0);
+  });
+});
+
+describe("totalsForCharge", () => {
+  test("refuses when the venue has no resolvable tax rate", () => {
+    const items: LineItem[] = [{ name: "X", quantity: 1, unitCents: 1000 }];
+    const t = totalsForCharge(items, NO_TAX_INFO, 20);
+    expect(t.ok).toBe(false);
+    if (!t.ok) expect(t.error).toBe("TAX_RATE_UNSET");
+  });
+
+  test("matches totalsFor when a rate resolves", () => {
+    const items: LineItem[] = [{ name: "Old Fashioned", quantity: 1, unitCents: 1000 }];
+    const charge = totalsForCharge(items, HOUSTON, 20);
+    expect(charge.ok).toBe(true);
+    if (charge.ok) expect(charge.totals).toEqual(totalsFor(items, HOUSTON, 20));
   });
 
   test("negative line item (comp) reduces subtotal", () => {
@@ -63,7 +96,7 @@ describe("totalsFor", () => {
       { name: "Drink", quantity: 1, unitCents: 1500 },
       { name: "Comp", quantity: 1, unitCents: -500 },
     ];
-    const t = totalsFor(items, HOUSTON_ZIP, 20);
+    const t = totalsFor(items, HOUSTON, 20);
     expect(t.subtotalCents).toBe(1000);
     // Tip is computed off the post-comp subtotal — comp reduces tip too.
     expect(t.tipCents).toBe(200);

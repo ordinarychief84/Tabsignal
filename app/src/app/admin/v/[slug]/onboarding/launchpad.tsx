@@ -41,6 +41,8 @@ type Props = {
   staffCount: number;
   stripeChargesEnabled: boolean;
   stripeStarted: boolean;
+  /** Sales-tax rate resolvable for this venue — payments are refused without it. */
+  taxRateSet: boolean;
   previewPath: string | null;
 };
 
@@ -65,9 +67,10 @@ export function Launchpad(props: Props) {
         brandColor,
         staffCount,
         stripeChargesEnabled: props.stripeChargesEnabled,
+        taxRateSet: props.taxRateSet,
         onboardingCompletedAt: completedAt ? new Date() : null,
       }),
-    [state, venueType, brandColor, staffCount, props.stripeChargesEnabled, completedAt],
+    [state, venueType, brandColor, staffCount, props.stripeChargesEnabled, props.taxRateSet, completedAt],
   );
 
   async function patchVenue(body: Record<string, unknown>): Promise<boolean> {
@@ -325,11 +328,13 @@ export function Launchpad(props: Props) {
           open={openStep === 4}
           onToggle={() => setOpenStep(openStep === 4 ? 0 : 4)}
           summary={
-            props.stripeChargesEnabled
+            props.stripeChargesEnabled && props.taxRateSet
               ? "Stripe connected — payments on"
-              : props.stripeStarted
-                ? "Stripe started, not finished"
-                : "Optional — guests can pay from their phone"
+              : props.stripeChargesEnabled
+                ? "Stripe connected — add your sales-tax rate"
+                : props.stripeStarted
+                  ? "Stripe started, not finished"
+                  : "Optional — guests can pay from their phone"
           }
         >
           <p className="text-sm text-slate/60">
@@ -337,6 +342,16 @@ export function Launchpad(props: Props) {
             without waiting for the card machine. Takes 3–5 minutes with ID + bank
             details handy. Requests and QR calls work fine without it.
           </p>
+          {props.stripeChargesEnabled && !props.taxRateSet && (
+            <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Add your sales-tax rate in{" "}
+              <a className="underline" href={`/admin/v/${props.slug}/settings`}>
+                venue settings
+              </a>{" "}
+              before guests can pay — we won&rsquo;t charge a bill until we know
+              what tax to collect.
+            </p>
+          )}
           <StepActions>
             <Link
               href={`/admin/v/${props.slug}/settings`}

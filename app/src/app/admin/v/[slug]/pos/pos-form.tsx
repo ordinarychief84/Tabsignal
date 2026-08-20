@@ -23,11 +23,16 @@ type Props = {
   hasCredentials: boolean;
 };
 
-const PROVIDERS: { value: Provider; label: string; hint: string }[] = [
-  { value: "NONE", label: "No POS", hint: "Run orders and bills inside TabCall only." },
-  { value: "TOAST", label: "Toast", hint: "Sync menu + push orders to Toast." },
-  { value: "SQUARE", label: "Square", hint: "Sync menu + push orders to Square." },
-  { value: "CLOVER", label: "Clover", hint: "Sync menu + push orders to Clover." },
+// `available: false` means the adapter in lib/pos/registry.ts is still a
+// stub. Offering these as selectable would promise a menu/order sync that
+// silently never happens — and would collect live POS credentials we
+// can't use. They stay visible (owners want to know it's coming) but
+// unselectable until a real adapter ships.
+const PROVIDERS: { value: Provider; label: string; hint: string; available: boolean }[] = [
+  { value: "NONE", label: "No POS", hint: "Run orders and bills inside TabCall only.", available: true },
+  { value: "TOAST", label: "Toast", hint: "Coming soon — not connected yet.", available: false },
+  { value: "SQUARE", label: "Square", hint: "Coming soon — not connected yet.", available: false },
+  { value: "CLOVER", label: "Clover", hint: "Coming soon — not connected yet.", available: false },
 ];
 
 const STATUSES: { value: Status; label: string }[] = [
@@ -102,10 +107,12 @@ export function PosForm({ slug, initialProvider, initialStatus, hasCredentials }
               <label
                 key={p.value}
                 className={[
-                  "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
-                  active
-                    ? "border-slate bg-slate/5"
-                    : "border-slate/10 bg-white hover:border-slate/20",
+                  "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
+                  !p.available
+                    ? "cursor-not-allowed border-slate/10 bg-slate/[0.03] opacity-60"
+                    : active
+                      ? "cursor-pointer border-slate bg-slate/5"
+                      : "cursor-pointer border-slate/10 bg-white hover:border-slate/20",
                 ].join(" ")}
               >
                 <input
@@ -113,11 +120,19 @@ export function PosForm({ slug, initialProvider, initialStatus, hasCredentials }
                   name="provider"
                   value={p.value}
                   checked={active}
+                  disabled={!p.available}
                   onChange={() => setProvider(p.value)}
                   className="mt-1"
                 />
                 <span className="flex-1">
-                  <span className="block text-sm font-medium text-slate">{p.label}</span>
+                  <span className="block text-sm font-medium text-slate">
+                    {p.label}
+                    {!p.available && (
+                      <span className="ml-2 rounded bg-slate/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate/60">
+                        Soon
+                      </span>
+                    )}
+                  </span>
                   <span className="mt-0.5 block text-xs text-slate/55">{p.hint}</span>
                 </span>
               </label>

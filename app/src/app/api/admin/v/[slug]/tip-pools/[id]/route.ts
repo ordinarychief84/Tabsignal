@@ -7,7 +7,7 @@ import { tabItems, tabTotals } from "@/domain/billing/tab";
 async function gatePool(slug: string, poolId: string) {
   const gate = await gateAdminRoute(slug, "growth", "tip_pools.manage");
   if (!gate.ok) return gate;
-  const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { id: true, zipCode: true } });
+  const venue = await db.venue.findUnique({ where: { id: gate.venueId }, select: { id: true, zipCode: true, taxRateBps: true } });
   if (!venue) return { ok: false as const, status: 404, body: { error: "NOT_FOUND" } };
   const pool = await db.tipPool.findUnique({ where: { id: poolId } });
   if (!pool || pool.venueId !== venue.id) {
@@ -78,7 +78,7 @@ export async function PATCH(req: Request, ctx: { params: { slug: string; id: str
     let totalTipsCents = 0;
     for (const s of sessions) {
       const items = tabItems(s.lineItems);
-      const t = tabTotals(items, gate.venue.zipCode ?? "", typeof s.tipPercent === "number" ? s.tipPercent : 0);
+      const t = tabTotals(items, gate.venue, typeof s.tipPercent === "number" ? s.tipPercent : 0);
       totalTipsCents += t.tipCents;
     }
 

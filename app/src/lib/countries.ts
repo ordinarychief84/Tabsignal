@@ -71,6 +71,39 @@ const COUNTRY_BY_ISO: ReadonlyMap<string, Country> = new Map(
   COUNTRIES.map(c => [c.iso, c]),
 );
 
+/**
+ * Markets where TabCall can currently take money.
+ *
+ * This is deliberately narrower than COUNTRIES. The full list drives the
+ * phone input, which has to keep rendering correctly for every venue
+ * that already exists. Payments are a different question: the money path
+ * hardcodes USD (domain/billing/payment.ts, splits.ts, and the pre-order
+ * route) and adds sales tax on top of the subtotal, which is the US
+ * model. A Singapore venue needs SGD and GST-inclusive display; a
+ * Nigerian venue needs NGN and VAT. Serving them means per-venue
+ * currency and an inclusive-tax mode, not a config value — so until that
+ * exists, we say so instead of quietly charging the wrong thing.
+ *
+ * Venues outside this list keep working for requests, QR signals, and
+ * everything else. They just can't take a payment.
+ */
+export const PAYMENT_COUNTRIES: ReadonlySet<string> = new Set(["US"]);
+
+/**
+ * True when a venue in this country may take guest payments. A null
+ * country means a venue created before the column existed — all of those
+ * are US, so we don't strand them.
+ */
+export function canTakePaymentsInCountry(iso: string | null | undefined): boolean {
+  if (!iso) return true;
+  return PAYMENT_COUNTRIES.has(iso.toUpperCase());
+}
+
+/** The countries offered at signup — the markets we can actually serve end to end. */
+export const SIGNUP_COUNTRIES: ReadonlyArray<Country> = COUNTRIES.filter(c =>
+  PAYMENT_COUNTRIES.has(c.iso),
+);
+
 export function countryByIso(iso: string | null | undefined): Country | null {
   if (!iso) return null;
   return COUNTRY_BY_ISO.get(iso.toUpperCase()) ?? null;
@@ -93,7 +126,12 @@ export function detectCountryFromHeaders(
     return typeof v === "string" ? v : null;
   };
   const iso = (get("x-vercel-ip-country") ?? get("cf-ipcountry") ?? "").toUpperCase();
-  return countryByIso(iso) ?? countryByIso("US")!;
+  // Only prefill a country we actually offer — otherwise a visitor in an
+  // unsupported market lands on a preselected option that isn't in the
+  // dropdown, and the form silently disagrees with itself.
+  const detected = countryByIso(iso);
+  if (detected && PAYMENT_COUNTRIES.has(detected.iso)) return detected;
+  return countryByIso("US")!;
 }
 
 /**

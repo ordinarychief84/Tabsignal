@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { readOnboardingState, deriveOnboarding } from "@/lib/onboarding";
+import { hasTaxRate } from "@/lib/tax";
 import { ManagerFloor } from "./manager-floor";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
       timezone: true,
       stripeAccountId: true,
       stripeChargesEnabled: true,
+      zipCode: true,
+      taxRateBps: true,
       venueType: true,
       brandColor: true,
       onboardingState: true,
@@ -34,6 +37,7 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
     brandColor: venue.brandColor,
     staffCount: venue._count.staff,
     stripeChargesEnabled: venue.stripeChargesEnabled,
+    taxRateSet: hasTaxRate(venue),
     onboardingCompletedAt: venue.onboardingCompletedAt,
   });
 

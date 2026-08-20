@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { LineItem as LineItemSchema, parseLineItems, totalsFor, type LineItem } from "@/lib/bill";
+import { LineItem as LineItemSchema, parseLineItems, totalsFor, type LineItem, type VenueTax } from "@/lib/bill";
 import { mirrorTabToBill } from "@/domain/billing/mirror";
 
 /**
@@ -25,9 +25,15 @@ export function tabItems(lineItemsJson: unknown): LineItem[] {
   return parseLineItems(lineItemsJson);
 }
 
-/** Standard bill math for a tab (subtotal, tax by venue zip, tip, total). */
-export function tabTotals(items: LineItem[], venueZip: string, tipPercent: number) {
-  return totalsFor(items, venueZip, tipPercent);
+/**
+ * Standard bill math for a tab (subtotal, tax, tip, total).
+ *
+ * Display/reporting only — a venue with no resolvable tax rate computes
+ * at 0%. Charge paths go through `totalsForCharge` instead so an unset
+ * rate refuses rather than under-taxes. See lib/tax.ts.
+ */
+export function tabTotals(items: LineItem[], venue: VenueTax, tipPercent: number) {
+  return totalsFor(items, venue, tipPercent);
 }
 
 /* ------------------------------ guest bill ------------------------------ */
@@ -53,7 +59,7 @@ export type GuestBillResult =
 export function guestBillFor(session: {
   id: string;
   lineItems: unknown;
-  venue: { name: string; zipCode: string | null };
+  venue: { name: string; zipCode: string | null; taxRateBps: number | null };
   table: { label: string };
 }): GuestBill {
   const items = tabItems(session.lineItems);
@@ -63,7 +69,7 @@ export function guestBillFor(session: {
     tableLabel: session.table.label,
     items,
     defaultTipPercent: DEFAULT_TIP_PERCENT,
-    totals: tabTotals(items, session.venue.zipCode ?? "", DEFAULT_TIP_PERCENT),
+    totals: tabTotals(items, session.venue, DEFAULT_TIP_PERCENT),
   };
 }
 

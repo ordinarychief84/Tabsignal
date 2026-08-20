@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { COUNTRIES, toE164, type Country } from "@/lib/countries";
+import { SIGNUP_COUNTRIES, toE164, type Country } from "@/lib/countries";
 
 type Status = "idle" | "submitting" | "sent" | "error";
 
@@ -316,13 +316,13 @@ export function SignupForm({
             id="signup-country"
             value={country.iso}
             onChange={e => {
-              const next = COUNTRIES.find(c => c.iso === e.target.value);
+              const next = SIGNUP_COUNTRIES.find(c => c.iso === e.target.value);
               if (next) setCountry(next);
             }}
             className="rounded-xl border border-slate/15 bg-white px-2 py-3 text-[14px] text-slate outline-none transition-shadow focus:border-slate/40 focus:ring-4 focus:ring-slate/[0.08]"
             aria-label="Country dial code"
           >
-            {COUNTRIES.map(c => (
+            {SIGNUP_COUNTRIES.map(c => (
               <option key={c.iso} value={c.iso}>
                 {c.flag} {c.iso} +{c.dialCode}
               </option>

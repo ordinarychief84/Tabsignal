@@ -3,6 +3,7 @@ import type { BillSplit, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import { dollars } from "@/lib/bill";
+import { canTakePaymentsInCountry } from "@/lib/countries";
 import { awardPoints, pointsForCents } from "@/lib/loyalty";
 import { events } from "@/lib/realtime";
 import { tabItems, tabTotals } from "@/domain/billing/tab";
@@ -58,7 +59,7 @@ export async function resetEvenSplits(
   session: {
     id: string;
     lineItems: unknown;
-    venue: { zipCode: string | null };
+    venue: { zipCode: string | null; taxRateBps: number | null };
     splits: { paidAt: Date | null }[];
   },
   count: number,
@@ -67,7 +68,7 @@ export async function resetEvenSplits(
   const anyPaid = session.splits.some(s => s.paidAt);
   if (anyPaid) return { ok: false, error: "SPLITS_ALREADY_PAID" };
 
-  const totals = tabTotals(tabItems(session.lineItems), session.venue.zipCode ?? "", 0);
+  const totals = tabTotals(tabItems(session.lineItems), session.venue, 0);
   const subtotalPlusTax = totals.subtotalCents + totals.taxCents;
   if (subtotalPlusTax <= 0) return { ok: false, error: "EMPTY_TAB" };
 
@@ -97,18 +98,37 @@ export async function resetEvenSplits(
 
 export type SplitIntentResult =
   | { ok: true; clientSecret: string | null; paymentIntentId: string; tipPercent: number }
-  | { ok: false; error: "EMPTY_SPLIT" };
+  | { ok: false; error: "EMPTY_SPLIT" | "VENUE_NOT_READY" | "COUNTRY_UNSUPPORTED" };
 
 /**
  * PaymentIntent for one split. Tip layers on TOP of the split's
  * subtotal+tax share, clamped 0–50%. Stripe errors propagate for the
  * route's stripeErrorResponse mapping.
+ *
+ * Same Connect precondition as the full-tab path: no charge-enabled
+ * connected account means no intent, because the money would otherwise
+ * settle into the platform balance. (Tax is already baked into
+ * split.amountCents by resetEvenSplits, which computes it through the
+ * venue's resolved rate.)
  */
 export async function createSplitPaymentIntent(
-  session: { id: string; venueId: string; tableId: string; venue: { stripeAccountId: string | null } },
+  session: {
+    id: string;
+    venueId: string;
+    tableId: string;
+    venue: { country: string | null; stripeAccountId: string | null; stripeChargesEnabled: boolean };
+  },
   split: { id: string; amountCents: number; tipPercent: number },
   tipPercentOverride: number | undefined,
 ): Promise<SplitIntentResult> {
+  if (!canTakePaymentsInCountry(session.venue.country)) {
+    return { ok: false, error: "COUNTRY_UNSUPPORTED" };
+  }
+
+  if (!session.venue.stripeAccountId || !session.venue.stripeChargesEnabled) {
+    return { ok: false, error: "VENUE_NOT_READY" };
+  }
+
   const tipPercent = tipPercentOverride ?? split.tipPercent;
   const tipCents = Math.round(split.amountCents * (Math.max(0, Math.min(50, tipPercent)) / 100));
   const totalCents = split.amountCents + tipCents;
@@ -130,12 +150,9 @@ export async function createSplitPaymentIntent(
         tip_cents: String(tipCents),
         tip_percent: String(tipPercent),
       },
-      ...(session.venue.stripeAccountId
-        ? {
-            application_fee_amount: platformFeeCents,
-            transfer_data: { destination: session.venue.stripeAccountId },
-          }
-        : {}),
+      // Unconditional — guarded at the top of this function.
+      application_fee_amount: platformFeeCents,
+      transfer_data: { destination: session.venue.stripeAccountId },
     },
     { idempotencyKey },
   );
@@ -173,7 +190,7 @@ export async function applySplitPaidFromIntent(
   const session = await tx.guestSession.findUnique({
     where: { id: sessionId },
     include: {
-      venue: { select: { id: true, name: true, zipCode: true } },
+      venue: { select: { id: true, name: true, zipCode: true, taxRateBps: true } },
       table: { select: { label: true } },
     },
   });
@@ -196,7 +213,7 @@ export async function applySplitPaidFromIntent(
     }
   }
 
-  const totals = tabTotals(tabItems(session.lineItems), session.venue.zipCode ?? "", 0);
+  const totals = tabTotals(tabItems(session.lineItems), session.venue, 0);
   void events.paymentConfirmed(session.venueId, session.id, {
     sessionId: session.id,
     tableLabel: session.table.label,
