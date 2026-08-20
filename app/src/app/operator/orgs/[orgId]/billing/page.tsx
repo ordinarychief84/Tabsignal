@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
@@ -36,18 +35,13 @@ export default async function OrgBillingPage({ params }: { params: { orgId: stri
 
   return (
     <>
-      <header className="mb-6">
-        <Link href={`/operator/orgs/${params.orgId}`} className="text-[12px] text-umber hover:underline">
-          ← back to org
-        </Link>
-        <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-umber">Plan</p>
-        <h1 className="mt-2 text-3xl font-medium tracking-tight">Flip {org.name}&rsquo;s plan</h1>
-        <p className="mt-2 max-w-md text-sm text-slate/60">
-          Promote or demote this org&rsquo;s subscription tier after a setup call.
-          This records intent in our DB only. Pair with a Stripe Subscription on
-          their Customer record so the next cycle actually charges.
-        </p>
-      </header>
+      {/* The section header above already names the org and offers the
+          way back, so this only has to say what the page does. */}
+      <p className="mb-6 max-w-lg text-sm leading-relaxed text-slate/60">
+        Promote or demote this org&rsquo;s subscription tier after a setup call.
+        This records intent in our DB only. Pair with a Stripe Subscription on
+        their Customer record so the next cycle actually charges.
+      </p>
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2">
         <Stat label="Current plan" value={currentPlanId} />

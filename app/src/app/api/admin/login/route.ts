@@ -5,6 +5,7 @@ import {
   adminSessionCookieOptions,
   loginWithPassword,
 } from "@/lib/auth/admin-auth";
+import { SESSION_COOKIE } from "@/lib/auth/session";
 import { rateLimitAsync } from "@/lib/rate-limit";
 
 /**
@@ -15,6 +16,16 @@ import { rateLimitAsync } from "@/lib/rate-limit";
  *
  * Response shape is identical for unknown-email, wrong-password, and
  * no-password-set so attackers can't probe which platform admins exist.
+ *
+ * On success this also CLEARS the staff session cookie. The two cookies
+ * are separate, and `getStaffSession()` reads the staff one first — so a
+ * browser still holding a venue staff session would keep presenting that
+ * identity even after a super admin signed in here. The visible symptom
+ * was a sign-in that appeared to work and then landed on the staff live
+ * queue: /operator resolved the staff session, found that email wasn't an
+ * operator, and redirected to /staff. Signing in as the platform admin
+ * means "I am the platform admin in this browser" — the other identity
+ * goes, the same way any account switch works.
  */
 
 const Body = z.object({
@@ -56,5 +67,6 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ ok: true, email: result.email });
   res.cookies.set(ADMIN_SESSION_COOKIE, result.token, adminSessionCookieOptions());
+  res.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   return res;
 }

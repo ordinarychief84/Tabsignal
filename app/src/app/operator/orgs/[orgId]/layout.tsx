@@ -2,9 +2,23 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffSession } from "@/lib/auth/session";
 import { checkOrgAccess, listAccessibleOrgs } from "@/lib/operator-rbac";
+import { OrgSectionNav } from "./section-nav";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Section chrome for one organization inside the operator console.
+ *
+ * This used to render its own full-height sidebar — TabCall brand,
+ * "operator" badge and all — which then rendered INSIDE the operator
+ * AdminShell's sidebar. Two brands, two navs, and the actual content
+ * squeezed into what was left. The shared SaaS shell landed for the
+ * admin and venue consoles but this sub-layout was missed.
+ *
+ * A section is not an app: the parent shell keeps the identity and the
+ * top-level nav, and this contributes a section header plus a row of
+ * section tabs, the way the org pages read in every other console.
+ */
 export default async function OperatorOrgLayout({
   children,
   params,
@@ -18,94 +32,46 @@ export default async function OperatorOrgLayout({
   const access = await checkOrgAccess(session, params.orgId);
   if (!access.ok) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-oat px-6 text-center">
-        <div className="max-w-sm">
-          <p className="text-3xl">·</p>
-          <h1 className="mt-3 text-2xl font-medium text-slate">No access to this org.</h1>
-          <p className="mt-3 text-sm text-slate/60">
-            You&rsquo;re signed in as <span className="font-mono text-[12px]">{session.email}</span> but
-            don&rsquo;t have a membership row for this organization.
-          </p>
-          <Link
-            href="/operator"
-            className="mt-6 inline-block rounded-lg border border-slate/20 px-4 py-2 text-sm text-slate hover:bg-slate hover:text-oat"
-          >
-            ← back to operator console
-          </Link>
-        </div>
-      </main>
+      <div className="mx-auto max-w-sm py-16 text-center">
+        <h1 className="text-2xl font-medium text-slate">No access to this org.</h1>
+        <p className="mt-3 text-sm text-slate/60">
+          You&rsquo;re signed in as <span className="font-mono text-[12px]">{session.email}</span> but
+          don&rsquo;t have a membership row for this organization.
+        </p>
+        <Link
+          href="/operator/orgs"
+          className="mt-6 inline-block rounded-lg border border-slate/20 px-4 py-2 text-sm text-slate hover:bg-slate hover:text-oat"
+        >
+          ← back to organizations
+        </Link>
+      </div>
     );
   }
 
   const orgs = await listAccessibleOrgs(session);
-  const showSwitcher = orgs.length > 1;
+  const current = orgs.find(o => o.id === params.orgId);
 
   return (
-    <div className="flex min-h-screen flex-col bg-oat text-slate md:flex-row">
-      <aside className="border-b border-slate/10 bg-white md:w-64 md:border-b-0 md:border-r">
-        <div className="px-6 py-5">
-          <Link href="/operator" className="inline-flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
-              <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
-              </svg>
-            </span>
-            <span className="text-lg font-medium tracking-tight text-slate">TabCall</span>
-            <span className="ml-2 rounded-full bg-sea/40 px-2 py-0.5 text-[10px] font-medium text-slate">
-              operator
-            </span>
-          </Link>
-          <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-umber">Org</p>
-          <p className="mt-1 truncate text-sm font-medium">
-            {orgs.find(o => o.id === params.orgId)?.name ?? params.orgId}
-          </p>
-          {showSwitcher ? (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-[11px] text-umber">switch org</summary>
-              <ul className="mt-1 space-y-0.5">
-                {orgs.filter(o => o.id !== params.orgId).map(o => (
-                  <li key={o.id}>
-                    <Link
-                      href={`/operator/orgs/${o.id}`}
-                      className="block truncate rounded px-2 py-1 text-[11px] text-slate/70 hover:bg-slate/5 hover:text-slate"
-                    >
-                      {o.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Organization</p>
+          <h1 className="mt-1 truncate text-2xl font-medium tracking-tight text-slate">
+            {current?.name ?? params.orgId}
+          </h1>
         </div>
-        <nav className="px-3 py-2">
-          <ul className="space-y-0.5">
-            <NavLink href={`/operator/orgs/${params.orgId}`} label="Overview" />
-            <NavLink href={`/operator/orgs/${params.orgId}/venues`} label="Venues" />
-            <NavLink href={`/operator/orgs/${params.orgId}/billing`} label="Plan" />
-            <NavLink href={`/operator/orgs/${params.orgId}/members`} label="Members" />
-            <NavLink href={`/operator/orgs/${params.orgId}/broadcast`} label="Broadcast" />
-          </ul>
-        </nav>
-        <div className="px-6 py-6">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-umber">Role</p>
-          <p className="mt-1 font-mono text-[11px] text-slate/60">{access.role}</p>
-        </div>
-      </aside>
-      <main className="flex-1 px-6 py-8 md:px-10 md:py-10">{children}</main>
+        <p className="font-mono text-[11px] uppercase tracking-wider text-slate/45">
+          your role · {access.role}
+        </p>
+      </div>
+
+      <OrgSectionNav
+        orgId={params.orgId}
+        // Only worth offering when there's somewhere else to go.
+        others={orgs.filter(o => o.id !== params.orgId).map(o => ({ id: o.id, name: o.name }))}
+      />
+
+      <div className="mt-8">{children}</div>
     </div>
-  );
-}
-
-function NavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <li>
-      <Link
-        href={href}
-        className="block rounded-lg px-3 py-2 text-sm text-slate/70 hover:bg-slate/5 hover:text-slate"
-      >
-        {label}
-      </Link>
-    </li>
   );
 }
