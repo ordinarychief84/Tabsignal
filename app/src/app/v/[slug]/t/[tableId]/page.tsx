@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { resolveGuestSession } from "@/domain/sessions/resolve";
 import { tabItems } from "@/domain/billing/tab";
 import { getVenueBranding, resolveBrandingWithFallback } from "@/lib/branding";
+import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { GuestRequestPanel } from "./request-panel";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,13 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
           guestConfirmationMessage: true,
           brandColor: true,
           logoUrl: true,
+          // Regulars ("welcome back") is Pro-only. We resolve the plan here
+          // so the panel doesn't fire a pair-profile POST on every scan at
+          // venues that can't use it — that request 404s and still costs a
+          // three-join query on the hottest path in the product.
+          org: {
+            select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true },
+          },
         },
       },
       requests: {
@@ -54,6 +62,10 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
       },
     },
   });
+  const regularsEnabled = session?.venue.org
+    ? meetsAtLeast(planFromOrg(session.venue.org), "pro")
+    : false;
+
   // Live BANNER promotions for this venue — same filter as the guest API.
   const now = new Date();
   const banners = await db.promotion.findMany({
@@ -140,6 +152,7 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
       <GuestRequestPanel
         sessionId={resolved.sessionId}
         sessionToken={resolved.sessionToken}
+        regularsEnabled={regularsEnabled}
         slug={params.slug}
         tableLabel={resolved.tableLabel}
         confirmationMessage={confirmationMessage}

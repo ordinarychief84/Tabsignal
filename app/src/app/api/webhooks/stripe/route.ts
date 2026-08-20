@@ -299,6 +299,94 @@ async function processEvent(event: Stripe.Event, tx: Tx) {
       return;
     }
 
+    case "charge.dispute.created":
+    case "charge.dispute.closed": {
+      // A guest disputed a charge. Previously unhandled, which meant a
+      // chargeback left the tab showing a clean "paid" and nobody at the
+      // venue ever found out until Stripe took the money back.
+      //
+      // We deliberately do NOT reverse paidAt: the disputed funds are held,
+      // not refunded, and a dispute can still be won. What matters is that
+      // the venue is told, in real time, while they can still pull the
+      // receipt and respond inside Stripe's evidence window.
+      const dispute = event.data.object as Stripe.Dispute;
+      const intentId = typeof dispute.payment_intent === "string"
+        ? dispute.payment_intent
+        : dispute.payment_intent?.id;
+      if (!intentId) return;
+
+      const closed = event.type === "charge.dispute.closed";
+      const payload = {
+        disputeId: dispute.id,
+        chargeId: typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id ?? null,
+        amountCents: dispute.amount,
+        reason: dispute.reason,
+        status: dispute.status,
+        closed,
+        // Stripe gives this as epoch seconds; null on a closed dispute.
+        evidenceDueBy: dispute.evidence_details?.due_by
+          ? new Date(dispute.evidence_details.due_by * 1000).toISOString()
+          : null,
+        at: new Date().toISOString(),
+      };
+
+      // Same three-way match as charge.refunded: session, then split,
+      // then pre-order. Whichever hits, we notify that venue.
+      const sessionMatch = await tx.guestSession.findFirst({
+        where: { stripePaymentIntentId: intentId },
+        select: { id: true, venueId: true, table: { select: { label: true } } },
+      });
+      if (sessionMatch) {
+        void emit({
+          kind: "venue",
+          id: sessionMatch.venueId,
+          event: "payment_disputed",
+          payload: { ...payload, sessionId: sessionMatch.id, tableLabel: sessionMatch.table.label },
+        });
+        console.warn("[stripe:dispute]", { ...payload, sessionId: sessionMatch.id });
+        return;
+      }
+
+      const splitMatch = await tx.billSplit.findFirst({
+        where: { stripePaymentIntentId: intentId },
+        select: {
+          id: true,
+          sessionId: true,
+          session: { select: { venueId: true, table: { select: { label: true } } } },
+        },
+      });
+      if (splitMatch) {
+        void emit({
+          kind: "venue",
+          id: splitMatch.session.venueId,
+          event: "payment_disputed",
+          payload: {
+            ...payload,
+            sessionId: splitMatch.sessionId,
+            splitId: splitMatch.id,
+            tableLabel: splitMatch.session.table.label,
+          },
+        });
+        console.warn("[stripe:dispute]", { ...payload, splitId: splitMatch.id });
+        return;
+      }
+
+      const preMatch = await tx.preOrder.findFirst({
+        where: { stripePaymentIntentId: intentId },
+        select: { id: true, venueId: true },
+      });
+      if (preMatch) {
+        void emit({
+          kind: "venue",
+          id: preMatch.venueId,
+          event: "preorder_disputed",
+          payload: { ...payload, preOrderId: preMatch.id },
+        });
+        console.warn("[stripe:dispute]", { ...payload, preOrderId: preMatch.id });
+      }
+      return;
+    }
+
     case "account.updated": {
       // Stripe Connect onboarding state. Persist the onboarding flags so
       // the manager dashboard / settings page can show real status, and

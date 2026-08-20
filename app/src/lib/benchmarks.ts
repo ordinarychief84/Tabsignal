@@ -82,7 +82,7 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
 
   const venue = await db.venue.findUnique({
     where: { id: venueId },
-    select: { zipCode: true },
+    select: { zipCode: true, taxRateBps: true },
   });
 
   const sessions = await db.guestSession.findMany({
@@ -99,7 +99,7 @@ export async function venueMetricsForDate(venueId: string, date: Date): Promise<
   for (const s of sessions) {
     const t = totalsFor(
       tabItems(s.lineItems),
-      venue?.zipCode ?? "",
+      venue ?? { zipCode: null, taxRateBps: null },
       typeof s.tipPercent === "number" ? s.tipPercent : 0,
     );
     revenueCents += t.totalCents;

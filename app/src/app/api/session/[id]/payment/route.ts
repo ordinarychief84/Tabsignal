@@ -30,7 +30,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     include: {
       venue: {
         select: {
+          country: true,
           zipCode: true,
+          taxRateBps: true,
           stripeAccountId: true,
           stripeChargesEnabled: true,
         },
@@ -45,11 +47,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   if (session.expiresAt.getTime() <= Date.now()) {
     return NextResponse.json({ error: "SESSION_EXPIRED" }, { status: 410 });
   }
-  // If the venue has a Connect account but it's not yet authorized to take
-  // charges, refuse rather than minting a doomed PaymentIntent.
-  if (session.venue.stripeAccountId && !session.venue.stripeChargesEnabled) {
+  // Refuse unless the venue can actually receive the money. A venue with
+  // NO connected account used to fall straight through here, and Stripe
+  // would settle the guest's payment into the PLATFORM balance.
+  if (!session.venue.stripeAccountId || !session.venue.stripeChargesEnabled) {
     return NextResponse.json(
-      { error: "VENUE_NOT_READY", detail: "This venue's Stripe account isn't onboarded yet." },
+      { error: "VENUE_NOT_READY", detail: "This venue isn't set up to take payments yet." },
       { status: 503 }
     );
   }
@@ -63,7 +66,13 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   } catch (err) {
     return stripeErrorResponse(err, "[session/payment]");
   }
-  if (!result.ok) return NextResponse.json({ error: "EMPTY_TAB" }, { status: 400 });
+  if (!result.ok) {
+    // TAX_RATE_UNSET / VENUE_NOT_READY are setup faults, not guest faults —
+    // 503 so the bill screen shows "can't take payment yet" rather than a
+    // generic failure the guest would retry forever.
+    const status = result.error === "EMPTY_TAB" ? 400 : 503;
+    return NextResponse.json({ error: result.error }, { status });
+  }
 
   await db.guestSession.update({
     where: { id: session.id },

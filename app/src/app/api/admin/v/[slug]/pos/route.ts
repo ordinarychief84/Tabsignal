@@ -24,6 +24,13 @@ import type { PosIntegrationStatus } from "@prisma/client";
 export const runtime = "nodejs";
 
 const PROVIDERS = ["NONE", "TOAST", "SQUARE", "CLOVER"] as const;
+
+// Providers whose adapter in lib/pos/registry.ts is still a stub. Selecting
+// one would show the venue a "connected" POS that silently drops every menu
+// sync and order push, and would have us storing live vendor credentials we
+// cannot use. Refuse here, not just in the form — the form is not the only
+// caller, and this is the boundary that actually protects the data.
+const UNAVAILABLE_PROVIDERS = new Set<string>(["TOAST", "SQUARE", "CLOVER"]);
 const STATUSES: PosIntegrationStatus[] = ["PENDING", "CONNECTED", "DISCONNECTED", "ERROR"];
 
 const PatchBody = z.object({
@@ -105,6 +112,16 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
 
   if (parsed.provider === undefined && parsed.status === undefined && parsed.credentials === undefined) {
     return NextResponse.json({ error: "NOTHING_TO_UPDATE" }, { status: 400 });
+  }
+
+  if (parsed.provider !== undefined && UNAVAILABLE_PROVIDERS.has(parsed.provider)) {
+    return NextResponse.json(
+      {
+        error: "PROVIDER_UNAVAILABLE",
+        detail: `${parsed.provider} isn't available yet. We'll email you when the integration ships.`,
+      },
+      { status: 400 },
+    );
   }
 
   // Encrypt before persistence — the plaintext object never lands in

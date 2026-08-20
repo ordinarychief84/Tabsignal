@@ -46,13 +46,13 @@ export async function mirrorTabToBill(client: MirrorClient, sessionId: string): 
         venueId: true,
         tableId: true,
         lineItems: true,
-        venue: { select: { zipCode: true } },
+        venue: { select: { zipCode: true, taxRateBps: true } },
       },
     });
     if (!session) return;
 
     const items = tabItems(session.lineItems);
-    const totals = tabTotals(items, session.venue.zipCode ?? "", 0); // tip mirrors at payment time (PR 2.3)
+    const totals = tabTotals(items, session.venue, 0); // tip mirrors at payment time (PR 2.3)
     const totalCents = totals.subtotalCents + totals.taxCents;
 
     const existing = await client.bill.findFirst({

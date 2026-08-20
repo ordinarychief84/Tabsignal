@@ -8,7 +8,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { dollars, totalsFor, type LineItem } from "@/lib/bill";
+import { dollars, totalsFor, type LineItem, type VenueTax } from "@/lib/bill";
 
 type BillData = {
   sessionId: string;
@@ -37,7 +37,7 @@ function getStripe() {
 
 type Stage = "review" | "pay";
 
-export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: string; slug: string }) {
+export function BillScreen({ data, venueTax, slug }: { data: BillData; venueTax: VenueTax; slug: string }) {
   const [tipPercent, setTipPercent] = useState<number>(data.defaultTipPercent);
   const [customTip, setCustomTip] = useState<string>("");
   const [stage, setStage] = useState<Stage>("review");
@@ -46,8 +46,8 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
   const [error, setError] = useState<string | null>(null);
 
   const totals = useMemo(
-    () => totalsFor(data.items, zipCode, tipPercent),
-    [data.items, zipCode, tipPercent]
+    () => totalsFor(data.items, venueTax, tipPercent),
+    [data.items, venueTax, tipPercent]
   );
 
   function pickPreset(n: number) {
@@ -72,12 +72,13 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
       });
       const body = await res.json();
       if (!res.ok) {
-        // Venue's Stripe Connect onboarding isn't done — Stripe would
-        // reject the PaymentIntent. Surface a friendly "ask staff" panel
-        // instead of the raw API error code.
-        if (res.status === 503 && body?.error === "VENUE_NOT_READY") {
-          throw new Error("VENUE_NOT_READY");
-        }
+        // Every 503 here is a venue-setup fault, not something the guest
+        // did or can fix: Stripe onboarding incomplete, no sales-tax rate,
+        // or a country whose currency/tax model we don't support yet. They
+        // all mean the same thing to the person holding the phone — settle
+        // with staff — so they share one panel rather than leaking an
+        // internal error code onto the guest's screen.
+        if (res.status === 503) throw new Error("PAY_IN_PERSON");
         throw new Error(body?.error ?? `HTTP ${res.status}`);
       }
       if (!body.clientSecret) throw new Error("Stripe did not return a client secret");
@@ -90,7 +91,7 @@ export function BillScreen({ data, zipCode, slug }: { data: BillData; zipCode: s
     }
   }
 
-  if (error === "VENUE_NOT_READY") {
+  if (error === "PAY_IN_PERSON") {
     return (
       <ErrorPanel
         title="Pay your tab in person tonight"

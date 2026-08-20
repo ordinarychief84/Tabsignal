@@ -24,7 +24,10 @@ export async function GET(req: Request, ctx: { params: { id: string } }) {
 
   const session = await db.guestSession.findUnique({
     where: { id: ctx.params.id },
-    include: { venue: { select: { zipCode: true, name: true } }, table: { select: { label: true } } },
+    include: {
+      venue: { select: { zipCode: true, taxRateBps: true, name: true } },
+      table: { select: { label: true } },
+    },
   });
   if (!session) return NextResponse.json({ error: "SESSION_NOT_FOUND" }, { status: 404 });
   if (!tokensEqual(session.sessionToken, sessionToken)) {

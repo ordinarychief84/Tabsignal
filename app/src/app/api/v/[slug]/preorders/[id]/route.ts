@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { rateLimitAsync } from "@/lib/rate-limit";
 
 // Public guest read of a single pre-order (status check). Identifying via
 // the pickup code keeps the endpoint usable from the confirmation screen
@@ -8,6 +9,21 @@ export async function GET(req: Request, ctx: { params: { slug: string; id: strin
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   if (!code) return NextResponse.json({ error: "PICKUP_CODE_REQUIRED" }, { status: 400 });
+
+  // The pickup code is the only credential here, so the endpoint must not
+  // be a free guessing oracle. Keyed on pre-order id: a guest refreshing
+  // their own confirmation screen stays well inside this.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const gate = await rateLimitAsync(`preorder:read:${ctx.params.id}:${ip}`, {
+    windowMs: 60_000,
+    max: 20,
+  });
+  if (!gate.ok) {
+    return NextResponse.json(
+      { error: "RATE_LIMITED" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(gate.retryAfterMs / 1000)) } },
+    );
+  }
 
   const venue = await db.venue.findUnique({
     where: { slug: ctx.params.slug },

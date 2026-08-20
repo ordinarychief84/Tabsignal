@@ -76,15 +76,14 @@ export function SetupForm() {
       </FormSection>
 
       <FormSection title="Optional" hint="Skip for now. You can wire these later from Settings.">
+        {/* Toast / Square / Clover adapters are still stubs (lib/pos/registry.ts),
+            so we don't offer them at signup — picking one would set an
+            expectation nothing fulfils. They return to this list, and to
+            Settings → POS, when the integrations ship. */}
         <SelectField
           label="POS system"
           name="posType"
-          options={[
-            { value: "NONE", label: "None / other" },
-            { value: "TOAST", label: "Toast" },
-            { value: "SQUARE", label: "Square" },
-            { value: "CLOVER", label: "Clover" },
-          ]}
+          options={[{ value: "NONE", label: "None / other" }]}
         />
         <Field label="Google Place ID" name="googlePlaceId" placeholder="For routing 5★ to your Google review page" />
       </FormSection>

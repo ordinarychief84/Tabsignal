@@ -72,7 +72,7 @@ export default async function SplitPage({ params, searchParams }: PageProps) {
   }
 
   const items = tabItems(session.lineItems);
-  const totals = totalsFor(items, venue.zipCode ?? "", 0);
+  const totals = totalsFor(items, venue, 0);
   const subtotalPlusTax = totals.subtotalCents + totals.taxCents;
 
   return (
