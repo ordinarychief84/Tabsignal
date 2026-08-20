@@ -111,29 +111,33 @@ beforeEach(() => {
 
   mock.module("@/lib/rate-limit", () => ({
     rateLimitAsync: async () => ({ ok: state.rateLimitOk, retryAfterMs: 15_000 }),
-    // Same completeness rule as the fcm mock below — rate-limit.test.ts
-    // imports the sync variant too.
+    // Mirror the full export surface: rate-limit.test.ts imports the sync
+    // variant, and a partial mock would break it when file order puts this
+    // file first.
     rateLimit: () => ({ ok: state.rateLimitOk, retryAfterMs: 15_000 }),
   }));
+  // Realtime IS mocked, and completely.
+  //
+  // mock.module swaps a module process-wide and bun's file order varies,
+  // so sibling suites that stub `events` with only the helpers they care
+  // about will otherwise leak in and leave `events.orderPlaced` undefined
+  // here. Every helper is listed so this file neither breaks others nor
+  // depends on which of them ran first.
   mock.module("@/lib/realtime", () => ({
     emit: async () => undefined,
     events: {
-      orderPlaced: async () => undefined,
-      orderStatusChanged: async () => undefined,
       newRequest: async () => undefined,
       requestAcknowledged: async () => undefined,
       requestResolved: async () => undefined,
+      orderPlaced: async () => undefined,
+      orderStatusChanged: async () => undefined,
       regularArrived: async () => undefined,
     },
   }));
-  // Mirror the module's FULL export surface. bun's mock.module replaces the
-  // real module process-wide, and file order varies between machines — a
-  // partial mock here made fcm.test.ts fail on Linux CI with
-  // "Export named '_resetFcmForTest' not found" while passing locally.
-  mock.module("@/lib/fcm", () => ({
-    sendPushToStaff: async () => ({ sent: 0, invalidTokens: [] }),
-    _resetFcmForTest: () => {},
-  }));
+  // @/lib/fcm is deliberately NOT mocked. Stubbing it made fcm.test.ts
+  // assert against the stub instead of the real implementation, and it
+  // needs no stub: the push path exits before sendPushToStaff because the
+  // mocked staffMember.findMany returns no tokens.
 });
 
 afterEach(() => { mock.restore(); });
