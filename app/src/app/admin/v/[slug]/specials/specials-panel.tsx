@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmButton } from "@/components/admin/confirm-button";
 
 type Special = {
   id: string;
@@ -111,9 +112,8 @@ export function SpecialsPanel({ slug, initial }: { slug: string; initial: Specia
               key={s.id}
               special={s}
               onUpdate={patch => update(s.id, patch)}
-              onDelete={() => {
-                if (confirm(`Delete "${s.title}"?`)) remove(s.id);
-              }}
+              onDelete={() => remove(s.id)}
+              deleteTitle={`Delete "${s.title}"?`}
             />
           ))}
         </ul>
@@ -135,10 +135,13 @@ function SpecialRow({
   special,
   onUpdate,
   onDelete,
+  deleteTitle,
 }: {
   special: Special;
   onUpdate: (patch: Partial<SpecialForm>) => void;
   onDelete: () => void;
+  /** Names the special in the confirmation, so it's clear which one goes. */
+  deleteTitle: string;
 }) {
   const [editing, setEditing] = useState(false);
 
@@ -193,12 +196,14 @@ function SpecialRow({
           >
             Edit
           </button>
-          <button
-            onClick={onDelete}
+          <ConfirmButton
+            onConfirm={onDelete}
+            title={deleteTitle}
+            body="It disappears from the guest screens straight away."
             className="rounded-full border border-coral/30 px-3 py-1 text-xs text-coral hover:bg-coral/5"
           >
             Delete
-          </button>
+          </ConfirmButton>
         </div>
       </div>
     </li>

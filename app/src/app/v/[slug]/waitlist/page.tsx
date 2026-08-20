@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { SITE_URL } from "@/lib/seo";
 import { WaitlistForm } from "./waitlist-form";
+import { GuestBackLink } from "@/components/guest/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export default async function GuestWaitlistPage({ params }: { params: { slug: st
   return (
     <main className="min-h-screen bg-oat px-6 py-10 text-slate">
       <div className="mx-auto max-w-md">
+        <GuestBackLink href={`/v/${params.slug}`} label="Back" />
+        <div className="mt-4" />
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Join the waitlist</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">{venue.name}</h1>
         <p className="mt-2 text-sm text-slate/60">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmButton } from "@/components/admin/confirm-button";
 
 type Role = "OWNER" | "ADMIN" | "VIEWER";
 type Member = { id: string; email: string; role: string; createdAt: string };
@@ -127,14 +128,15 @@ export function MembersPanel({
                   </p>
                 </div>
                 {canManage ? (
-                  <button
-                    onClick={() => {
-                      if (confirm(`Remove ${m.email} from this org?`)) remove(m.id);
-                    }}
+                  <ConfirmButton
+                    onConfirm={() => remove(m.id)}
+                    title={`Remove ${m.email}?`}
+                    body="They lose access to every venue in this organisation immediately. You can invite them again afterwards."
+                    confirmLabel="Remove"
                     className="rounded-full border border-coral/30 px-3 py-1 text-xs text-coral hover:bg-coral/5"
                   >
                     Remove
-                  </button>
+                  </ConfirmButton>
                 ) : null}
               </li>
             ))}

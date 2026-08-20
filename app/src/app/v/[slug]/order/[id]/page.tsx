@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { dollars, parseLineItems } from "@/lib/bill";
+import { GuestBackLink } from "@/components/guest/back-link";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,8 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pa
     <main className="min-h-screen bg-oat text-slate">
       <div className="mx-auto max-w-md px-6 py-10">
         <header className="mb-6">
+          <GuestBackLink href={`/v/${params.slug}/order`} label="Back to ordering" />
+          <div className="mt-4" />
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">Pickup code</h1>
         </header>

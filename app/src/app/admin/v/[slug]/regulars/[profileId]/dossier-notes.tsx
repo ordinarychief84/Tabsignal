@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ConfirmButton } from "@/components/admin/confirm-button";
 
 type Note = {
   id: string;
@@ -129,12 +130,14 @@ export function DossierNotes({
                   >
                     {n.pinned ? "Unpin" : "Pin"}
                   </button>
-                  <button
-                    onClick={() => remove(n.id)}
+                  <ConfirmButton
+                    onConfirm={() => remove(n.id)}
+                    title="Delete this note?"
+                    body="Staff notes about a regular aren't recoverable once removed."
                     className="rounded-full border border-coral/30 px-2 py-0.5 text-[11px] text-coral hover:bg-coral/5"
                   >
                     Delete
-                  </button>
+                  </ConfirmButton>
                 </div>
               </div>
             </li>

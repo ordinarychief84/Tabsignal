@@ -360,6 +360,23 @@ export function StaffQueue({
 
   const showFilter = assignedTableIds.length > 0;
 
+  // Filter-aware empty copy — see the note at the render site below.
+  // `items` (not the filtered set) decides "Floor is quiet": that phrasing
+  // is a claim about the venue, so it must only appear when the venue
+  // really has nothing open.
+  const emptyMessage =
+    showFilter && filter === "yours"
+      ? "Nothing on your tables right now."
+      : items.length === 0
+        ? "Floor is quiet."
+        : tab === "pending"
+          ? "Nothing pending — everything open has been picked up."
+          : tab === "active"
+            ? "Nothing in progress right now."
+            : tab === "delayed"
+              ? "Nothing is running late. Good shift."
+              : "Nothing completed yet this shift.";
+
   return (
     <>
       {wishlistToast ? (
@@ -465,11 +482,13 @@ export function StaffQueue({
         })}
       </div>
 
+      {/* The empty state has to describe the FILTER, not the venue. Saying
+          "Floor is quiet" while the Active tab shows a live request sends a
+          server away from a table that is waiting on them — so the venue-wide
+          phrasing is reserved for when every tab really is empty. */}
       {visibleItems.length === 0 ? (
         <div className="rounded-2xl border border-umber-soft/30 bg-white px-6 py-10 text-center">
-          <p className="text-sm text-slate/60">
-            {showFilter && filter === "yours" ? "Nothing on your tables right now." : "Floor is quiet."}
-          </p>
+          <p className="text-sm text-slate/60">{emptyMessage}</p>
           <p className="mt-1 text-[11px] tracking-wide text-slate/40">
             New requests appear here within 1 second.
           </p>

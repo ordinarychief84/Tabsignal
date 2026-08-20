@@ -27,6 +27,7 @@ function venueNav(slug: string, paid: boolean, pro: boolean): NavGroup[] {
         { href: base, label: "Dashboard", exact: true },
         { href: `${base}/requests`, label: "Live requests" },
         { href: `${base}/orders`, label: "Orders" },
+        { href: `${base}/preorders`, label: "Pre-orders", locked: growthLock },
         { href: `${base}/bills`, label: "Bills" },
         { href: `${base}/analytics`, label: "Analytics", locked: growthLock },
       ],
@@ -158,7 +159,10 @@ export default async function AdminVenueLayout({
       context={{ label: venue.name, sublabel: planLabel }}
       navTop={navTop}
       groups={venueNav(params.slug, isPaidPlan, isProPlan)}
-      account={{ email: session.email, changePasswordHref: "/admin/account/password" }}
+      // /admin/account/password requires a PlatformAdmin session; both
+      // venue managers and operators hold STAFF sessions, so that link
+      // bounced every one of them to a super-admin login they cannot pass.
+      account={{ email: session.email, changePasswordHref: "/staff/account/password" }}
     >
       {impersonating ? <StopImpersonationBanner operatorEmail={session.email} /> : null}
       {children}

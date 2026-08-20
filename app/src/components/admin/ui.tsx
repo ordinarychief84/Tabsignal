@@ -11,20 +11,40 @@ import type { ReactNode } from "react";
 
 export function PageHeader({
   eyebrow,
+  backHref,
   title,
   subtitle,
   actions,
 }: {
   eyebrow?: string;
+  /**
+   * Turns the eyebrow into the page's way back out.
+   *
+   * Every drill-down already prints the name of the section it came from
+   * ("PROMOTIONS" above "New promotion") — it just wasn't a link, so the
+   * only exit was the sidebar or the browser's own back button. Passing
+   * `backHref` makes that existing label do the job it already looks
+   * like it's doing.
+   */
+  backHref?: string;
   title: string;
   subtitle?: string;
   actions?: ReactNode;
 }) {
+  const eyebrowClass = "text-[11px] font-semibold uppercase tracking-[0.18em] text-umber";
   return (
     <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow ? (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-umber">{eyebrow}</p>
+        {eyebrow && backHref ? (
+          <Link
+            href={backHref}
+            className={`${eyebrowClass} inline-flex items-center gap-1.5 rounded transition-colors hover:text-slate focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chartreuse-deep`}
+          >
+            <span aria-hidden>&larr;</span>
+            {eyebrow}
+          </Link>
+        ) : eyebrow ? (
+          <p className={eyebrowClass}>{eyebrow}</p>
         ) : null}
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate md:text-[28px]">{title}</h1>
         {subtitle ? <p className="mt-1.5 max-w-2xl text-sm text-slate/60">{subtitle}</p> : null}
@@ -218,5 +238,56 @@ export function ButtonLink({
     <Link href={href} className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium ${cls}`}>
       {children}
     </Link>
+  );
+}
+
+/* -------------------------------- skeletons ---------------------------- */
+
+/**
+ * Loading placeholders.
+ *
+ * Every admin page is `force-dynamic`, so navigation waits on a server
+ * render — measured at 0.46–0.86s warm and local, and materially worse in
+ * production once a Vercel function hop and a Supabase round trip are in
+ * the path. Without a `loading.tsx` Next.js holds the *previous* page on
+ * screen, frozen, for that whole time: no spinner, no dimming, nothing.
+ * Every sidebar click reads as a broken button.
+ *
+ * These are deliberately shaped like the content they stand in for —
+ * a header block, then rows — so the page doesn't visibly reflow when the
+ * real thing lands.
+ */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div aria-hidden className={`animate-pulse rounded bg-slate/10 ${className}`} />;
+}
+
+/** Header + N rows. The default shape of almost every admin page. */
+export function PageSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div role="status" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading…</span>
+      <div className="mb-8">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="mt-2.5 h-7 w-56" />
+        <Skeleton className="mt-2.5 h-4 w-80 max-w-full" />
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-slate/10 bg-white">
+        {Array.from({ length: rows }, (_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between gap-4 border-b border-slate/5 px-5 py-4 last:border-b-0"
+            // Stagger the pulse so it reads as one surface breathing rather
+            // than a row of independently flashing bars.
+            style={{ animationDelay: `${i * 90}ms` }}
+          >
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-4 w-40 max-w-full" />
+              <Skeleton className="mt-2 h-3 w-24" />
+            </div>
+            <Skeleton className="h-8 w-20 shrink-0 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

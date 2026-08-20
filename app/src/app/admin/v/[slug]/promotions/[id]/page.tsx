@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { PromotionForm } from "../promotion-form";
+import { PageHeader } from "@/components/admin/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · edit promotion" };
@@ -24,10 +25,11 @@ export default async function EditPromotionPage({
 
   return (
     <>
-      <header className="mb-6">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Promotions</p>
-        <h1 className="mt-2 text-3xl font-medium tracking-tight">Edit promotion</h1>
-      </header>
+      <PageHeader
+        eyebrow="Promotions"
+        backHref={`/admin/v/${params.slug}/promotions`}
+        title="Edit promotion"
+      />
       <PromotionForm
         slug={params.slug}
         mode="edit"
