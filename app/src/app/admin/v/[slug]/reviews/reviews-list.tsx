@@ -43,12 +43,15 @@ export function ReviewsList({
   slug,
   days,
   flaggedOnly,
+  showAll = false,
   initial,
   initialCursor,
 }: {
   slug: string;
   days: number;
   flaggedOnly: boolean;
+  /** Paging must keep whichever view the page opened in. */
+  showAll?: boolean;
   initial: Review[];
   initialCursor: string | null;
 }) {
@@ -126,7 +129,7 @@ export function ReviewsList({
         days: String(days),
         cursor,
         take: "50",
-        ...(flaggedOnly ? { flagged: "true" } : {}),
+        ...(flaggedOnly ? { flagged: "true" } : showAll ? { all: "true" } : {}),
       });
       const res = await fetch(`/api/admin/v/${slug}/reviews?${qs.toString()}`);
       const body = await res.json();

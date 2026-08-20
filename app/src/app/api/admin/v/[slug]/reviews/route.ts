@@ -33,6 +33,8 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
   // Optional filter: only flagged reviews. `?flagged=true` narrows the
   // list to manager-flagged rows regardless of rating or date window.
   const onlyFlagged = url.searchParams.get("flagged") === "true";
+  // Every rating, not just the ≤3 triage set. See the page for why.
+  const onlyAll = url.searchParams.get("all") === "true";
 
   // Keyset pagination on (createdAt desc, id desc) — fetch take+1 to know
   // whether there's another page without an extra count() query.
@@ -42,7 +44,7 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
       // Flagged filter overrides the rating gate — a 4★ review can be
       // flagged (e.g. for misuse / spam) and should still appear under
       // the Flagged filter.
-      ...(onlyFlagged ? { flagged: true } : { rating: { lte: 3 } }),
+      ...(onlyFlagged ? { flagged: true } : onlyAll ? {} : { rating: { lte: 3 } }),
       createdAt: { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],

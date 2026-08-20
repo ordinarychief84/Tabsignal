@@ -6,6 +6,7 @@ import { dollars } from "@/lib/bill";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { SITE_URL } from "@/lib/seo";
 import { WishlistHeart } from "./wishlist-heart";
+import { OrderCartProvider, AddToOrder } from "./order-cart";
 import { GuestBackLink } from "@/components/guest/back-link";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +17,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const venue = await db.venue.findUnique({ where: { slug: params.slug }, select: { name: true } });
   if (!venue) return {};
   return {
-    title: `${venue.name} Menu — Browse, Order & Pay by QR`,
-    description: `See the live menu at ${venue.name}. Browse dishes and drinks, order from your table and pay by QR code — no app needed. Powered by TabCall.`,
+    title: `${venue.name} Menu — Browse & Order by QR`,
+    description: `See the live menu at ${venue.name}. Browse dishes and drinks and order straight from your table — no app needed. Powered by TabCall.`,
     alternates: { canonical: `${SITE_URL}/v/${params.slug}/menu` },
   };
 }
@@ -122,7 +123,7 @@ export default async function PublicMenuPage({
   const guest = await loadGuestContext(venue.id, searchParams.sid, searchParams.s);
   const savedItemIds = guest?.savedMenuItemIds ?? new Set<string>();
 
-  return (
+  const body = (
     <main className="min-h-screen bg-oat text-slate">
       <div className="mx-auto max-w-md px-6 py-10">
         <header className="mb-8">
@@ -208,7 +209,7 @@ export default async function PublicMenuPage({
                       </div>
                       {it.description ? <p className="mt-1 text-[11px] text-slate/60">{it.description}</p> : null}
                     </div>
-                    <div className="ml-3 flex items-center gap-1">
+                    <div className="ml-3 flex shrink-0 items-center gap-2">
                       <span className="font-mono text-xs">{dollars(it.priceCents)}</span>
                       {guest ? (
                         <WishlistHeart
@@ -219,6 +220,7 @@ export default async function PublicMenuPage({
                           savedInit={savedItemIds.has(it.id)}
                         />
                       ) : null}
+                      <AddToOrder id={it.id} name={it.name} priceCents={it.priceCents} />
                     </div>
                   </li>
                 ))}
@@ -253,7 +255,7 @@ export default async function PublicMenuPage({
                     </div>
                     {it.description ? <p className="mt-1 text-[11px] text-slate/60">{it.description}</p> : null}
                   </div>
-                  <div className="ml-3 flex items-center gap-1">
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
                     <span className="font-mono text-xs">{dollars(it.priceCents)}</span>
                     {guest ? (
                       <WishlistHeart
@@ -264,6 +266,7 @@ export default async function PublicMenuPage({
                         savedInit={savedItemIds.has(it.id)}
                       />
                     ) : null}
+                    <AddToOrder id={it.id} name={it.name} priceCents={it.priceCents} />
                   </div>
                 </li>
               ))}
@@ -276,6 +279,21 @@ export default async function PublicMenuPage({
         </footer>
       </div>
     </main>
+  );
+
+  // Ordering only exists for a guest who arrived from a table QR — a
+  // public browser has no tab to send an order to, so they get the menu
+  // exactly as before.
+  if (!guest) return body;
+  return (
+    <OrderCartProvider
+      slug={params.slug}
+      sessionId={guest.sessionId}
+      sessionToken={guest.sessionToken}
+      tableLabel={guest.tableLabel}
+    >
+      {body}
+    </OrderCartProvider>
   );
 }
 

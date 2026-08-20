@@ -79,14 +79,27 @@ export const events = {
   requestResolved: (venueId: string, request: unknown) =>
     emit({ kind: "venue", id: venueId, event: "request_resolved", payload: { request } }),
 
-  paymentConfirmed: (venueId: string, sessionId: string, summary: unknown) =>
+  /**
+   * A guest sent an order from their table. Fans out to the venue room so
+   * the floor sees it, and to the staff covering that table so whoever
+   * owns the section is told directly rather than having to watch a list.
+   */
+  orderPlaced: (venueId: string, order: unknown, assignedStaffIds: string[] = []) =>
     Promise.all([
-      emit({ kind: "venue", id: venueId, event: "payment_confirmed", payload: summary }),
-      emit({ kind: "guest", id: sessionId, event: "payment_confirmed", payload: summary }),
+      emit({ kind: "venue", id: venueId, event: "order_placed", payload: { order } }),
+      ...assignedStaffIds.map(sid =>
+        emit({ kind: "staff", id: sid, event: "order_placed_for_you", payload: { order } })
+      ),
     ]).then(() => undefined),
 
-  preOrderPaid: (venueId: string, order: unknown) =>
-    emit({ kind: "venue", id: venueId, event: "preorder_paid", payload: { order } }),
+  /** Staff moved an order along; the guest's screen follows it. */
+  orderStatusChanged: (venueId: string, sessionId: string | null, order: unknown) =>
+    Promise.all([
+      emit({ kind: "venue", id: venueId, event: "order_status", payload: { order } }),
+      ...(sessionId
+        ? [emit({ kind: "guest", id: sessionId, event: "order_status", payload: { order } })]
+        : []),
+    ]).then(() => undefined),
 
   // Tier 3e: a paired regular has just sat down. Fans out to every
   // staff PWA at the venue + the per-staff rooms for assigned tables.
