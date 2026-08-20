@@ -29,6 +29,17 @@ beforeAll(() => {
   env.NEXTAUTH_SECRET = "test-secret-must-be-at-least-32-characters-long-for-zod";
   env.GOOGLE_CLIENT_ID = "test-client-id.apps.googleusercontent.com";
   env.GOOGLE_CLIENT_SECRET = "test-client-secret";
+  // lib/env parses the REQUIRED block at module load, and this file pulls
+  // it in transitively via lib/pos/crypto. Without these the file only
+  // passed when some earlier suite happened to populate them first —
+  // which made it fail outright on Linux CI whenever file order shifted.
+  // Defaults, not overrides: a real value in the environment still wins.
+  env.DATABASE_URL ??= "postgresql://test@localhost:5432/test";
+  env.DIRECT_URL ??= "postgresql://test@localhost:5432/test";
+  env.APP_URL ??= "https://tab-call.test";
+  env.FASTIFY_INTERNAL_URL ??= "https://realtime.tab-call.test";
+  env.INTERNAL_API_SECRET ??= "test-internal-secret-at-least-16";
+  env.NEXT_PUBLIC_SOCKET_URL ??= "https://realtime.tab-call.test";
 });
 afterAll(() => {
   const env = process.env as Record<string, string>;
