@@ -1,7 +1,11 @@
-import "server-only";
-
 /**
  * The four-face rating, and what it means.
+ *
+ * Deliberately NOT server-only: the guest's feedback screen is a client
+ * component and needs the same choices, vocabularies and mapping the API
+ * validates against. One definition, both sides — a second copy for the
+ * client is how the two drift and a tag starts getting silently dropped.
+ * Nothing here touches the database or reads a secret.
  *
  * The guest taps a face; the database keeps the 1-5 integer it always
  * kept. That matters because averages, the reviews page, employee

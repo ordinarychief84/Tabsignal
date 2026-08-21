@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * DEPRECATED — the guest ordering cart.
+ *
+ * Superseded by My Picks plus a "ready to order" signal: a shortlist the
+ * guest talks through with their server, rather than an order TabCall
+ * submits. Left in place because the browse-only /v/[slug]/menu page still
+ * imports it and the Order tables still hold real rows; it is not part of
+ * the table-scanned guest journey.
+ */
+
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 /**

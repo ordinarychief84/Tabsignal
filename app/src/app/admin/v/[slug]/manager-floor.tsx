@@ -6,7 +6,7 @@ import { getSocket, joinRoom } from "@/lib/socket";
 type Item = {
   id: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   createdAt: string;
@@ -33,9 +33,13 @@ type RegularArrival = {
 
 const REQUEST_LABEL: Record<Item["type"], string> = {
   DRINK: "Drink",
-  BILL: "Bill",
+  // "Check", not "Bill" — the guest is signalling they want to close out,
+  // and the POS settles it.
+  BILL: "Check",
   HELP: "Help",
   REFILL: "Refill",
+  ORDER: "Ready to order",
+  CELEBRATION: "Celebrating",
 };
 
 export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string }) {

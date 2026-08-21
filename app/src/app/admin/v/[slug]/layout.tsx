@@ -41,6 +41,11 @@ function venueNav(slug: string, paid: boolean, pro: boolean): NavGroup[] {
     {
       heading: "Guests",
       items: [
+        // Guestbook is the venue's own contact list — guests who left a
+        // number here. Unlocked at every tier: it's the relationship the
+        // product is now built around, not an upsell.
+        { href: `${base}/guests`, label: "Guestbook" },
+        { href: `${base}/campaigns`, label: "Campaigns" },
         { href: `${base}/reservations`, label: "Reservations", locked: proLock },
         { href: `${base}/regulars`, label: "Regulars", locked: proLock },
         { href: `${base}/reviews`, label: "Reviews" },
@@ -57,6 +62,7 @@ function venueNav(slug: string, paid: boolean, pro: boolean): NavGroup[] {
     {
       heading: "Setup",
       items: [
+        { href: `${base}/guest-experience`, label: "Guest experience" },
         { href: `${base}/tables`, label: "Tables" },
         { href: `${base}/qr-tents`, label: "QR tents" },
         { href: `${base}/pos`, label: "POS" },

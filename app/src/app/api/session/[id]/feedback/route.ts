@@ -10,6 +10,8 @@ import { venueAlertRecipients } from "@/lib/email/recipients";
 import { signCompToken } from "@/lib/auth/comp-token";
 import { attributionForSession, shiftBucketFor } from "@/domain/reviews/attribution";
 import { googleReviewUrl } from "@/domain/reviews/links";
+import { sanitizeTags, sentimentFor } from "@/lib/feedback";
+import { events } from "@/lib/realtime";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -27,6 +29,15 @@ const Body = z.object({
   rating: z.number().int().min(1).max(5),
   note: z.string().max(400).optional(),
   sessionToken: z.string().min(1),
+  // Chips from a fixed server-side vocabulary. Anything outside it is
+  // dropped rather than rejected — a stale client shouldn't cost the guest
+  // the rating they already gave.
+  tags: z.array(z.string().max(40)).max(12).optional(),
+  // The guest explicitly asked for a manager. A low rating on its own does
+  // NOT mean this: "I'd rather just leave" is a valid answer, and turning
+  // every bad score into a manager visit is how you make people stop
+  // rating honestly.
+  managerRecovery: z.boolean().optional(),
 });
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
@@ -86,6 +97,13 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     shiftBucket,
   };
 
+  const tags = sanitizeTags(parsed.rating, parsed.tags);
+  const sentiment = sentimentFor(parsed.rating);
+  // Recovery is only ever what the guest asked for, and only on a
+  // negative rating — a happy guest who somehow sent the flag doesn't
+  // summon a manager to their table.
+  const wantsRecovery = Boolean(parsed.managerRecovery) && sentiment === "NEGATIVE";
+
   // Happy path: 4–5 stars → no AI/email.
   if (parsed.rating >= 4) {
     await db.feedbackReport.create({
@@ -94,10 +112,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         sessionId: session.id,
         rating: parsed.rating,
         note: parsed.note ?? null,
+        sentiment,
         ...attribution,
+        ...(tags.length ? { tags: { create: tags.map(tag => ({ tag })) } } : {}),
       },
     });
-    return NextResponse.json({ ok: true, reviewUrl });
+    return NextResponse.json({ ok: true, reviewUrl, sentiment });
   }
 
   // Bad-review intercept: 1–3 stars → classify + persist + email.
@@ -114,18 +134,42 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     };
   }
 
-  await db.feedbackReport.create({
+  const report = await db.feedbackReport.create({
     data: {
       venueId: session.venueId,
       sessionId: session.id,
       rating: parsed.rating,
       note: parsed.note ?? null,
+      sentiment,
+      managerRecoveryRequested: wantsRecovery,
       aiCategory: classification.category,
       aiSuggestion: classification.suggestion,
       aiServerName: classification.serverName,
       ...attribution,
+      ...(tags.length ? { tags: { create: tags.map(tag => ({ tag })) } } : {}),
     },
+    select: { id: true },
   });
+
+  // Service recovery: the guest is still in the building and has asked to
+  // speak to someone. This goes out on the realtime channel so it lands on
+  // whatever the venue actually watches — manager dashboard, service
+  // display, host tablet — rather than waiting on an email nobody reads
+  // mid-service.
+  //
+  // No phone number and no guest identity in the payload. It reaches the
+  // floor, and the floor has no business holding either.
+  if (wantsRecovery) {
+    void events.serviceRecovery(session.venueId, {
+      feedbackId: report.id,
+      tableLabel: session.table.label,
+      rating: parsed.rating,
+      category: classification.category,
+      tags,
+      serverName: attribution.servedByName,
+      createdAt: new Date().toISOString(),
+    });
+  }
 
   // Email owners + managers. Routing precedence: Venue.alertEmails (if
   // set) → all StaffMembers → OPERATOR_EMAILS. The resolver dedupes +
@@ -177,5 +221,5 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   }
 
   // Honest link on the low-rating path too — same URL as 5★.
-  return NextResponse.json({ ok: true, reviewUrl });
+  return NextResponse.json({ ok: true, reviewUrl, sentiment, recoveryRequested: wantsRecovery });
 }

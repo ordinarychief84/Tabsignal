@@ -8,7 +8,18 @@ import { sendPushToStaff } from "@/lib/fcm";
 import { tabItems } from "@/domain/billing/tab";
 
 /**
- * Guest ordering from the table.
+ * DEPRECATED — guest ordering from the table.
+ *
+ * TabCall is not an ordering platform. The POS takes the order, holds the
+ * bill and settles the payment; this product's job is the service
+ * relationship around that. Guests now shortlist items in My Picks and
+ * raise a "ready to order" signal, which brings the server over to take it
+ * properly.
+ *
+ * Kept, not deleted: the Order/OrderItem tables hold real rows, the admin
+ * Orders page still reads them, and a future assisted-ordering integration
+ * with a POS that actually supports it would start here. It is no longer
+ * reachable from the guest UI.
  *
  * This is the piece that went missing when guest payments were removed:
  * the only way to order used to be the prepaid pre-order checkout, so

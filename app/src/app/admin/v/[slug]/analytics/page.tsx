@@ -8,6 +8,7 @@ import { venuePlanForVenueId } from "@/lib/plan-gate";
 import { meetsAtLeast } from "@/lib/plans";
 import { UpgradeRequired } from "../upgrade-required";
 import { METRICS, buildSegment, segmentKey, venueMetricsForDate, type MetricName } from "@/lib/benchmarks";
+import { guestExperienceMetrics, guestRelationshipMetrics, type Rate } from "@/lib/guest-analytics";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · analytics" };
@@ -61,6 +62,14 @@ export default async function AnalyticsPage({
   const isPro = meetsAtLeast(plan, "pro");
   const benchmarks = isPro ? await loadBenchmarks(venue.id, venue.address) : null;
 
+  // Guest experience + relationship, over the same window as the rest of
+  // the page.
+  const since = new Date(data.rangeStart);
+  const [experience, relationship] = await Promise.all([
+    guestExperienceMetrics(venue.id, since),
+    guestRelationshipMetrics(venue.id, since),
+  ]);
+
   return (
     <>
       <header className="mb-6 flex items-baseline justify-between gap-4">
@@ -68,7 +77,7 @@ export default async function AnalyticsPage({
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Insights</p>
           <h1 className="mt-2 text-3xl font-medium tracking-tight">Analytics</h1>
           <p className="mt-2 text-sm text-slate/60">
-            What&rsquo;s working, based on payment + rating data through {new Date(data.rangeEnd).toLocaleString()}.
+            What&rsquo;s working, through {new Date(data.rangeEnd).toLocaleString()}.
           </p>
         </div>
         <a
@@ -79,6 +88,44 @@ export default async function AnalyticsPage({
           ↓ Export sessions CSV
         </a>
       </header>
+
+      <section className="mb-8">
+        <h2 className="mb-3 text-[11px] uppercase tracking-[0.16em] text-umber">
+          Guest experience
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Metric label="Scans" value={String(experience.scans)} />
+          <Metric
+            label="Median response"
+            value={experience.medianResponseSeconds === null ? "—" : formatWait(experience.medianResponseSeconds)}
+            hint="From routed to acknowledged"
+          />
+          <Metric label="Service requests" value={String(experience.serviceRequests)} hint={experience.requestsPerScan === null ? undefined : `${experience.requestsPerScan} per scan`} />
+          <Metric label="Recovery requests" value={String(experience.recoveryRequests)} hint="Guests who asked for a manager" />
+          <RateMetric label="My Picks used" rate={experience.picksUsage} />
+          <RateMetric label="Left feedback" rate={experience.feedbackRate} />
+          <Metric
+            label="Average rating"
+            value={experience.averageRating === null ? "—" : `${experience.averageRating}/5`}
+          />
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-3 text-[11px] uppercase tracking-[0.16em] text-umber">
+          Guest relationship
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <RateMetric label="Left a phone number" rate={relationship.phoneCaptureRate} />
+          <RateMetric label="Opted in to marketing" rate={relationship.marketingOptInRate} hint="Of guests who left a number" />
+          <Metric label="Returning guests" value={String(relationship.returningGuests)} hint="More than one recorded visit" />
+          <Metric label="Contacts" value={String(relationship.contacts)} />
+        </div>
+        <p className="mt-3 text-[12px] leading-relaxed text-slate/50">
+          Counts of what happened at this venue. TabCall doesn&rsquo;t process
+          payments, so nothing here claims a revenue effect.
+        </p>
+      </section>
 
       <nav className="mb-8 flex gap-2">
         {RANGES.map(r => (
@@ -300,4 +347,40 @@ function BenchmarkRow({ row }: { row: BenchmarkRowData }) {
       </div>
     </li>
   );
+}
+
+/** A plain count or value. */
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-2xl border border-slate/10 bg-white p-4">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-umber">{label}</p>
+      <p className="mt-1 font-mono text-2xl tabular-nums text-slate">{value}</p>
+      {hint ? <p className="mt-1 text-[11px] leading-snug text-slate/50">{hint}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * A rate, shown WITH its numerator and denominator. "40%" from two out of
+ * five is a different fact from two hundred out of five hundred, and an
+ * owner deciding what to change needs to be able to tell them apart.
+ */
+function RateMetric({ label, rate, hint }: { label: string; rate: Rate; hint?: string }) {
+  return (
+    <div className="rounded-2xl border border-slate/10 bg-white p-4">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-umber">{label}</p>
+      <p className="mt-1 font-mono text-2xl tabular-nums text-slate">
+        {rate.pct === null ? "—" : `${rate.pct}%`}
+      </p>
+      <p className="mt-1 font-mono text-[11px] tabular-nums text-slate/50">
+        {rate.count} of {rate.of}
+      </p>
+      {hint ? <p className="mt-1 text-[11px] leading-snug text-slate/50">{hint}</p> : null}
+    </div>
+  );
+}
+
+function formatWait(seconds: number): string {
+  if (seconds < 90) return `${seconds}s`;
+  return `${Math.round(seconds / 60)}m`;
 }

@@ -1,362 +1,405 @@
 "use client";
 
 import { useState } from "react";
+import {
+  RATING_CHOICES,
+  POSITIVE_TAGS,
+  NEGATIVE_TAGS,
+  SERVER_TAG,
+  isPositive,
+} from "@/lib/feedback";
 
-type Phase = "rating" | "note" | "google" | "thanks" | "submitting";
+/**
+ * Post-visit feedback.
+ *
+ * Four faces, then a branch. A guest who had a good time is asked what
+ * stood out; a guest who didn't is asked what went wrong and — only then —
+ * whether they'd like a manager. Both paths are short, and every step
+ * after the rating is skippable, because a rating you actually get is
+ * worth more than a form you don't.
+ *
+ * The manager question is asked, never assumed. A two-star rating does not
+ * summon someone to the table on its own: plenty of people would rather
+ * finish their evening and leave, and overriding that is how you teach
+ * guests to stop rating honestly.
+ *
+ * Phone capture comes last, after the feedback is already saved, so
+ * declining it costs nothing and the rating is never held hostage to it.
+ */
+
+type Phase = "rating" | "tags" | "recovery" | "contact" | "thanks";
 
 export function FeedbackScreen({
-  slug,
+  venueName,
+  venueSlug,
   sessionId,
   sessionToken,
-  showIdentify = false,
+  serverName,
+  consentText,
+  phoneCaptureEnabled,
+  marketingConsentEnabled,
+  serviceRecoveryEnabled,
 }: {
-  slug: string;
+  venueName: string;
+  venueSlug: string;
   sessionId: string;
   sessionToken: string;
-  showIdentify?: boolean;
+  serverName: string | null;
+  consentText: string;
+  phoneCaptureEnabled: boolean;
+  marketingConsentEnabled: boolean;
+  serviceRecoveryEnabled: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>("rating");
   const [rating, setRating] = useState<number | null>(null);
-  const [hover, setHover] = useState<number | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [reviewUrl, setReviewUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function pickRating(n: number) {
-    setRating(n);
-    if (n >= 4) submit(n, null);
-    else setPhase("note");
+  const positive = rating !== null && isPositive(rating);
+  const vocabulary = positive ? POSITIVE_TAGS : NEGATIVE_TAGS;
+
+  function toggleTag(id: string) {
+    setTags(curr => (curr.includes(id) ? curr.filter(t => t !== id) : [...curr, id]));
   }
 
-  async function submit(stars: number, noteText: string | null) {
-    setPhase("submitting");
+  async function submit(managerRecovery: boolean) {
+    if (rating === null || busy) return;
+    setBusy(true);
     setError(null);
     try {
       const res = await fetch(`/api/session/${sessionId}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating: stars, note: noteText ?? undefined, sessionToken }),
+        body: JSON.stringify({
+          rating,
+          sessionToken,
+          note: note.trim() || undefined,
+          tags,
+          managerRecovery,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
-      // Honest review links: the API returns the SAME Google link for
-      // every rating (no gating). Tone differs by rating — the link
-      // affordance doesn't.
-      setReviewUrl(data.reviewUrl ?? null);
-      setPhase(stars >= 4 ? "google" : "thanks");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 409) {
+        throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
+      }
+      if (body?.reviewUrl) setReviewUrl(body.reviewUrl);
+      setPhase(phoneCaptureEnabled ? "contact" : "thanks");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
-      setPhase(stars >= 4 ? "rating" : "note");
+      setError(e instanceof Error ? e.message : "Couldn't send that");
+      setBusy(false);
     }
   }
 
-  if (phase === "submitting") {
+  /* ------------------------------ rating ----------------------------- */
+
+  if (phase === "rating") {
     return (
-      <Centered>
-        <p className="text-sm text-slate/60">Sending…</p>
-      </Centered>
+      <Shell>
+        <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+          How was your experience tonight?
+        </h1>
+        <ul className="mt-8 space-y-2.5">
+          {RATING_CHOICES.map(choice => (
+            <li key={choice.value}>
+              <button
+                type="button"
+                onClick={() => {
+                  setRating(choice.value);
+                  setTags([]);
+                  setPhase("tags");
+                }}
+                className="flex min-h-[64px] w-full items-center gap-4 rounded-2xl bg-white px-5 text-left ring-1 ring-umber-soft/30 transition-transform active:scale-[0.99]"
+              >
+                <span aria-hidden className="text-[30px]">{choice.face}</span>
+                <span className="text-[17px] font-medium">{choice.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Shell>
     );
   }
 
-  if (phase === "google" && reviewUrl) {
+  /* ------------------------------- tags ------------------------------ */
+
+  if (phase === "tags") {
     return (
-      <>
-        <Centered>
-          <p className="text-3xl">★</p>
-          <h2 className="mt-3 text-2xl font-medium">Thanks!</h2>
-          <p className="mt-2 max-w-xs text-sm text-slate/60">
-            Glad you enjoyed it. Mind sharing on Google? Takes 30 seconds.
+      <Shell>
+        <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+          {positive ? "Glad to hear it!" : "We're sorry we missed the mark."}
+        </h1>
+        <p className="mt-2 text-[15px] text-slate/65">
+          {positive ? "What stood out?" : "What could we have done better?"}
+        </p>
+
+        <ul className="mt-5 flex flex-wrap gap-2">
+          {vocabulary.map(tag => {
+            const selected = tags.includes(tag.id);
+            const label =
+              tag.id === SERVER_TAG && serverName ? `${serverName} was amazing` : tag.label;
+            return (
+              <li key={tag.id}>
+                <button
+                  type="button"
+                  onClick={() => toggleTag(tag.id)}
+                  aria-pressed={selected}
+                  className={[
+                    "min-h-[44px] rounded-full border px-4 text-[14px] transition-all",
+                    selected
+                      ? "border-transparent bg-slate font-medium text-oat"
+                      : "border-umber-soft/50 bg-white text-slate",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <label className="mt-6 block">
+          <span className="text-[12px] text-slate/55">Tell us more (optional)</span>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            maxLength={400}
+            rows={3}
+            className="mt-1.5 w-full rounded-2xl border border-umber-soft/40 bg-white p-3.5 text-[15px] outline-none focus:border-sea focus:ring-2 focus:ring-sea/30"
+          />
+        </label>
+
+        {error ? (
+          <p role="alert" className="mt-3 rounded-xl bg-coral/10 px-3 py-2 text-[13px] text-coral">
+            {error}
           </p>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            // A negative rating goes on to the manager question — but only
+            // if the venue runs recovery. Otherwise it submits as-is.
+            if (!positive && serviceRecoveryEnabled) setPhase("recovery");
+            else void submit(false);
+          }}
+          className="mt-7 min-h-[56px] w-full rounded-2xl bg-slate text-[16px] font-semibold text-oat disabled:opacity-60"
+        >
+          {busy ? "Sending…" : "Continue"}
+        </button>
+      </Shell>
+    );
+  }
+
+  /* ----------------------------- recovery ---------------------------- */
+
+  if (phase === "recovery") {
+    return (
+      <Shell>
+        <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+          Would you like a manager to check in before you leave?
+        </h1>
+        <p className="mt-2 text-[15px] leading-relaxed text-slate/65">
+          Only if you&rsquo;d like to — either answer is completely fine.
+        </p>
+
+        {error ? (
+          <p role="alert" className="mt-4 rounded-xl bg-coral/10 px-3 py-2 text-[13px] text-coral">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-8 space-y-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit(true)}
+            className="min-h-[56px] w-full rounded-2xl bg-slate text-[16px] font-semibold text-oat disabled:opacity-60"
+          >
+            {busy ? "Sending…" : "Yes, please"}
+          </button>
+          {/* Same visual weight as yes — declining must not feel discouraged. */}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit(false)}
+            className="min-h-[56px] w-full rounded-2xl bg-white text-[16px] font-medium text-slate ring-1 ring-umber-soft/40 disabled:opacity-60"
+          >
+            No, thank you
+          </button>
+        </div>
+      </Shell>
+    );
+  }
+
+  /* ------------------------------ contact ---------------------------- */
+
+  if (phase === "contact") {
+    return (
+      <ContactCapture
+        venueName={venueName}
+        venueSlug={venueSlug}
+        sessionToken={sessionToken}
+        consentText={consentText}
+        marketingConsentEnabled={marketingConsentEnabled}
+        onDone={() => setPhase("thanks")}
+      />
+    );
+  }
+
+  /* ------------------------------ thanks ----------------------------- */
+
+  return (
+    <Shell>
+      <div className="text-center">
+        <span
+          aria-hidden
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-chartreuse text-3xl"
+        >
+          ✓
+        </span>
+        <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight">
+          Thanks for visiting {venueName}.
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-slate/65">
+          We hope to see you again soon.
+        </p>
+        {reviewUrl ? (
           <a
             href={reviewUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-7 inline-block rounded-xl bg-chartreuse px-6 py-3 text-base font-medium text-slate"
+            className="mt-8 flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-white text-[15px] font-medium text-slate ring-1 ring-umber-soft/40"
           >
-            Leave a Google review
+            Leave a public review
           </a>
-          <p className="mt-3 text-[11px] tracking-wide text-slate/40">
-            We never email or message guests.
-          </p>
-        </Centered>
-        {showIdentify ? <IdentifyCta slug={slug} /> : null}
-      </>
-    );
-  }
-
-  if (phase === "thanks") {
-    return (
-      <>
-        <Centered>
-          <p className="text-3xl">·</p>
-          <h2 className="mt-3 text-2xl font-medium">Thanks for letting us know.</h2>
-          <p className="mt-2 max-w-xs text-sm text-slate/60">
-            A manager will see your note and follow up if needed.
-          </p>
-          {reviewUrl ? (
-            <>
-              {/* Same link, same button, every rating — Google's review
-                  policy prohibits gating, and we don't do it. */}
-              <a
-                href={reviewUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-7 inline-block rounded-xl bg-chartreuse px-6 py-3 text-base font-medium text-slate"
-              >
-                Leave a Google review
-              </a>
-              <p className="mt-3 text-[11px] tracking-wide text-slate/40">
-                Public and in your words — good or bad.
-              </p>
-            </>
-          ) : null}
-        </Centered>
-        {showIdentify ? <IdentifyCta slug={slug} /> : null}
-      </>
-    );
-  }
-
-  if (phase === "note") {
-    return (
-      <div>
-        <button
-          onClick={() => setPhase("rating")}
-          className="text-sm text-slate/50 underline-offset-4 hover:text-slate hover:underline"
-        >
-          ← back
-        </button>
-        <p className="mt-6 text-base text-slate">Sorry to hear that.</p>
-        <p className="mt-1 text-sm text-slate/60">
-          What could we have done better? The manager sees this. Guests don&rsquo;t.
-        </p>
-        <textarea
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          maxLength={400}
-          rows={5}
-          placeholder="Optional, but more helpful than stars alone."
-          className="mt-4 block w-full rounded-2xl border border-slate/15 bg-white px-4 py-3 text-base text-slate placeholder-slate/35 outline-none focus:border-sea focus:ring-1 focus:ring-sea"
-        />
-        <p className="mt-1 text-right font-mono text-[10px] text-slate/40">{note.length}/400</p>
-        {error ? (
-          <p className="mt-3 rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{error}</p>
         ) : null}
-        <button
-          onClick={() => submit(rating!, note.trim() || null)}
-          className="mt-5 w-full rounded-xl bg-chartreuse py-4 text-base font-medium text-slate"
-        >
-          Send privately to the manager
-        </button>
       </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="text-base text-slate">How was your visit?</p>
-      <div
-        className="mt-8 flex justify-between"
-        onMouseLeave={() => setHover(null)}
-      >
-        {[1, 2, 3, 4, 5].map(n => {
-          const filled = (hover ?? rating ?? 0) >= n;
-          return (
-            <button
-              key={n}
-              onClick={() => pickRating(n)}
-              onMouseEnter={() => setHover(n)}
-              className="text-5xl text-slate transition-transform active:scale-90"
-              aria-label={`${n} star${n === 1 ? "" : "s"}`}
-            >
-              <span className={filled ? "text-slate" : "text-slate/20"}>{filled ? "★" : "☆"}</span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="mt-6 text-center text-[11px] tracking-wide text-slate/40">
-        Share it on Google, tell the manager privately, or both — your call.
-      </p>
-      {error ? (
-        <p className="mt-4 rounded-lg bg-coral/15 px-3 py-2 text-center text-sm text-coral">{error}</p>
-      ) : null}
-    </div>
+    </Shell>
   );
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      {children}
-    </div>
-  );
-}
+/* ------------------------- phone + consent ------------------------- */
 
-type IdentifyPhase = "cta" | "phone" | "code" | "saving" | "saved" | "skipped";
-
-function IdentifyCta({ slug }: { slug: string }) {
-  const [phase, setPhase] = useState<IdentifyPhase>("cta");
+function ContactCapture({
+  venueName,
+  venueSlug,
+  sessionToken,
+  consentText,
+  marketingConsentEnabled,
+  onDone,
+}: {
+  venueName: string;
+  venueSlug: string;
+  sessionToken: string;
+  consentText: string;
+  marketingConsentEnabled: boolean;
+  onDone: () => void;
+}) {
   const [phone, setPhone] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [code, setCode] = useState("");
+  // Unticked. Always. Consent has to be something the guest did.
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function sendCode() {
-    if (!phone.trim()) return;
-    setPhase("saving");
+  async function save() {
+    if (busy || !phone.trim()) return;
+    setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v/${slug}/profile/identify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
-      setPhase("code");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn’t send code");
-      setPhase("phone");
-    }
-  }
-
-  async function verify() {
-    if (!/^\d{6}$/.test(code)) {
-      setError("6-digit code only.");
-      return;
-    }
-    setPhase("saving");
-    setError(null);
-    try {
-      const res = await fetch(`/api/v/${slug}/profile/verify`, {
+      const res = await fetch(`/api/v/${venueSlug}/guest-contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionToken,
           phone: phone.trim(),
-          code,
-          displayName: displayName.trim() || undefined,
+          marketingConsent: marketingConsentEnabled ? consent : false,
         }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
-      setPhase("saved");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not verify");
-      setPhase("code");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body?.detail ?? "That doesn't look like a phone number.");
+        setBusy(false);
+        return;
+      }
+      onDone();
+    } catch {
+      setError("Couldn't save that. You can skip — nothing is lost.");
+      setBusy(false);
     }
   }
 
-  if (phase === "skipped") return null;
+  return (
+    <Shell>
+      <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+        Want to stay connected with {venueName}?
+      </h1>
+      <p className="mt-2 text-[15px] leading-relaxed text-slate/65">
+        Get occasional updates about special events, new menus and offers.
+      </p>
 
-  if (phase === "saved") {
-    return (
-      <div className="mt-6 rounded-2xl border border-chartreuse/40 bg-chartreuse/15 px-5 py-4 text-sm text-slate">
-        Saved. Next time you scan, your bartender will know your usual.
-      </div>
-    );
-  }
-
-  if (phase === "cta") {
-    return (
-      <div className="mt-8 rounded-2xl border border-slate/15 bg-white px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Become a regular</p>
-        <p className="mt-1 text-sm text-slate">
-          Save your preferences and the bartender will know your usual next time.
-          Just a phone number. No app, no spam.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={() => setPhase("phone")}
-            className="rounded-full bg-slate px-4 py-1.5 text-sm text-oat hover:bg-slate/90"
-          >
-            Yes, save
-          </button>
-          <button
-            onClick={() => setPhase("skipped")}
-            className="rounded-full border border-slate/15 px-4 py-1.5 text-sm text-slate/60 hover:border-slate/40"
-          >
-            No thanks
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === "phone" || phase === "saving") {
-    return (
-      <div className="mt-8 rounded-2xl border border-slate/15 bg-white px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Phone</p>
+      <label className="mt-6 block">
+        <span className="text-[12px] text-slate/55">Phone number</span>
         <input
           type="tel"
+          inputMode="tel"
+          autoComplete="tel"
           value={phone}
           onChange={e => setPhone(e.target.value)}
-          placeholder="(555) 555-5555"
-          className="mt-2 block w-full rounded border border-slate/15 bg-white px-3 py-2 text-base"
-          autoFocus
+          placeholder="(555) 123-4567"
+          className="mt-1.5 min-h-[52px] w-full rounded-2xl border border-umber-soft/40 bg-white px-4 text-[16px] outline-none focus:border-sea focus:ring-2 focus:ring-sea/30"
         />
-        <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-umber">Name (optional)</p>
-        <input
-          type="text"
-          value={displayName}
-          onChange={e => setDisplayName(e.target.value)}
-          placeholder="What should staff call you?"
-          className="mt-2 block w-full rounded border border-slate/15 bg-white px-3 py-2 text-base"
-        />
-        {error ? <p className="mt-3 text-xs text-coral">{error}</p> : null}
-        <div className="mt-4 flex justify-between">
-          <button
-            onClick={() => setPhase("skipped")}
-            className="text-[12px] text-slate/55 hover:text-slate"
-          >
-            cancel
-          </button>
-          <button
-            onClick={sendCode}
-            disabled={phase === "saving" || !phone.trim()}
-            className="rounded-full bg-slate px-4 py-1.5 text-sm text-oat hover:bg-slate/90 disabled:opacity-50"
-          >
-            {phase === "saving" ? "Sending…" : "Send 6-digit code"}
-          </button>
-        </div>
-      </div>
-    );
-  }
+      </label>
 
-  if (phase === "code") {
-    return (
-      <div className="mt-8 rounded-2xl border border-slate/15 bg-white px-5 py-4">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Enter code</p>
-        <p className="mt-1 text-xs text-slate/55">
-          Sent to {phone}. Expires in 5 minutes.
+      {marketingConsentEnabled ? (
+        <label className="mt-4 flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={e => setConsent(e.target.checked)}
+            className="mt-1 h-5 w-5 shrink-0 rounded border-umber-soft/60 accent-slate"
+          />
+          <span className="text-[12px] leading-relaxed text-slate/60">{consentText}</span>
+        </label>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="mt-4 rounded-xl bg-coral/10 px-3 py-2 text-[13px] text-coral">
+          {error}
         </p>
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={code}
-          onChange={e => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-          placeholder="123456"
-          className="mt-3 block w-full rounded border border-slate/15 bg-white px-3 py-2 text-center font-mono text-2xl tracking-widest"
-          autoFocus
-        />
-        {error ? <p className="mt-3 text-xs text-coral">{error}</p> : null}
-        <div className="mt-4 flex justify-between">
-          <button
-            onClick={() => { setPhase("phone"); setCode(""); setError(null); }}
-            className="text-[12px] text-slate/55 hover:text-slate"
-          >
-            ← back
-          </button>
-          <button
-            onClick={verify}
-            disabled={code.length !== 6}
-            className="rounded-full bg-slate px-4 py-1.5 text-sm text-oat hover:bg-slate/90 disabled:opacity-50"
-          >
-            Verify
-          </button>
-        </div>
-      </div>
-    );
-  }
+      ) : null}
 
-  return null;
+      <button
+        type="button"
+        disabled={busy || !phone.trim()}
+        onClick={save}
+        className="mt-6 min-h-[56px] w-full rounded-2xl bg-slate text-[16px] font-semibold text-oat disabled:opacity-50"
+      >
+        {busy ? "Saving…" : "Keep me in the loop"}
+      </button>
+
+      {/* Full width, full height, plainly worded. Skipping is a real
+          option, not a link hidden in small grey text. */}
+      <button
+        type="button"
+        onClick={onDone}
+        className="mt-3 min-h-[52px] w-full rounded-2xl bg-white text-[15px] font-medium text-slate ring-1 ring-umber-soft/40"
+      >
+        No thanks
+      </button>
+    </Shell>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="min-h-[100dvh] bg-oat px-6 text-slate">
+      <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center py-12">
+        {children}
+      </div>
+    </main>
+  );
 }

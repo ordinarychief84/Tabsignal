@@ -1,16 +1,13 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { resolveGuestSession } from "@/domain/sessions/resolve";
-import { tabItems } from "@/domain/billing/tab";
 import { getVenueBranding, resolveBrandingWithFallback } from "@/lib/branding";
-import { planFromOrg, meetsAtLeast } from "@/lib/plans";
-import { GuestRequestPanel } from "./request-panel";
+import { serverForTable } from "@/lib/server-identity";
+import { guestExperienceFrom } from "@/lib/guest-experience";
+import { GuestEntry } from "./guest-entry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const STALE_AFTER_MIN = 20;
 
 type PageProps = {
   params: { slug: string; tableId: string };
@@ -18,11 +15,16 @@ type PageProps = {
 };
 
 /**
- * Guest QR landing — the "After Dark" surface. A dark, venue-branded
- * canvas with a press-and-hold beacon instead of a form: guests pick a
- * signal, hold the beacon to send it, and watch a live Sent → Seen
- * timeline as staff acknowledge. Venue.brandColor drives the ambient
- * glow so every venue's page feels like *their* room.
+ * Where a scan lands.
+ *
+ * This used to open straight onto the signal beacon — a utility surface,
+ * first thing, before the guest had been greeted by anything. Someone who
+ * has just sat down in a room they chose gets a welcome instead: the
+ * venue's name, where they're sitting, and the person looking after them.
+ *
+ * The beacon isn't gone; it moved. Calling a server is now the one control
+ * docked on every screen of the guest experience (see ServiceSheet), which
+ * makes it more reachable than when it was a whole page you had to be on.
  */
 export default async function GuestPage({ params, searchParams }: PageProps) {
   const tableSeg = safeDecode(params.tableId);
@@ -35,174 +37,82 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
     return <InvalidScan reason={code} />;
   }
 
-  // Stale-tab detection + venue guest-copy overrides + branding, one call.
-  const session = await db.guestSession.findUnique({
-    where: { id: resolved.sessionId },
+  const venue = await db.venue.findUnique({
+    where: { id: resolved.venueId },
     select: {
-      lineItems: true,
-      venue: {
-        select: {
-          guestWelcomeMessage: true,
-          guestConfirmationMessage: true,
-          brandColor: true,
-          logoUrl: true,
-          // Regulars ("welcome back") is Pro-only. We resolve the plan here
-          // so the panel doesn't fire a pair-profile POST on every scan at
-          // venues that can't use it — that request 404s and still costs a
-          // three-join query on the hottest path in the product.
-          org: {
-            select: { subscriptionPriceId: true, subscriptionStatus: true, trialEndsAt: true },
-          },
-        },
-      },
-      requests: {
-        select: { createdAt: true },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
+      name: true,
+      brandColor: true,
+      logoUrl: true,
+      guestWelcomeMessage: true,
+      enabledFeatures: true,
+      requestsEnabled: true,
     },
   });
-  const regularsEnabled = session?.venue.org
-    ? meetsAtLeast(planFromOrg(session.venue.org), "pro")
-    : false;
+  if (!venue) notFound();
 
-  // Live BANNER promotions for this venue — same filter as the guest API.
-  const now = new Date();
-  const banners = await db.promotion.findMany({
-    where: {
-      venueId: resolved.venueId,
-      status: "ACTIVE",
-      type: "BANNER",
-      AND: [
-        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
-      ],
-    },
-    orderBy: [{ startsAt: "desc" }, { createdAt: "desc" }],
-    take: 6,
-  });
-
-  const items = session ? tabItems(session.lineItems) : [];
-  const lastRequestAt = session?.requests[0]?.createdAt ?? null;
-  const minutesSinceLast = lastRequestAt
-    ? (Date.now() - lastRequestAt.getTime()) / 60_000
-    : null;
-  const isStale =
-    items.length > 0 &&
-    (lastRequestAt === null || (minutesSinceLast ?? 0) > STALE_AFTER_MIN);
-  // Branding resolves through VenueBranding with legacy-field fallback
-  // (restructure P3.3) — partial branding degrades gracefully.
+  const config = guestExperienceFrom(venue.enabledFeatures);
   const branding = resolveBrandingWithFallback(
     {
-      brandColor: session?.venue?.brandColor ?? null,
-      logoUrl: session?.venue?.logoUrl ?? null,
-      guestWelcomeMessage: session?.venue?.guestWelcomeMessage ?? null,
+      brandColor: venue.brandColor,
+      logoUrl: venue.logoUrl,
+      guestWelcomeMessage: venue.guestWelcomeMessage,
     },
     await getVenueBranding(resolved.venueId),
   );
-  const welcomeMessage = branding.welcomeMessage;
-  const confirmationMessage = session?.venue?.guestConfirmationMessage ?? null;
-  const brandColor = branding.primaryColor ?? "#F2E7B7";
-  const logoUrl = branding.logoUrl;
+
+  const server = await serverForTable({
+    tableId: resolved.tableId,
+    venueName: resolved.venueName,
+    venueWelcomeMessage: branding.welcomeMessage ?? venue.guestWelcomeMessage,
+  });
 
   return (
-    <main
-      className="guest-dark guest-grain flex min-h-screen flex-col"
-      style={{ "--brand": brandColor } as React.CSSProperties}
-    >
-      <header className="px-6 pt-9 pb-2 text-center">
-        {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl}
-            alt={resolved.venueName}
-            className="mx-auto mb-3 h-12 w-12 rounded-2xl border border-white/10 object-cover"
-          />
-        ) : null}
-        <p className="text-[11px] uppercase tracking-[0.32em] text-white/45">
-          {resolved.venueName}
-        </p>
-        <h1 className="mt-1.5 text-[34px] font-medium leading-none tracking-tight text-white">
-          {resolved.tableLabel}
-        </h1>
-        <p className="mx-auto mt-2.5 max-w-[36ch] text-[13px] leading-relaxed text-white/55">
-          {welcomeMessage ?? "Pick a signal, hold the beacon. Your server sees it the second you let go."}
-        </p>
-      </header>
-
-      {banners.length > 0 ? (
-        <div className="space-y-2 px-6 pb-2 pt-3">
-          {banners.map(p => (
-            <div key={p.id} className="guest-card overflow-hidden rounded-2xl">
-              {p.bannerImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.bannerImageUrl} alt="" className="h-24 w-full object-cover" />
-              ) : null}
-              <div className="px-4 py-2.5">
-                <p className="text-sm font-medium text-white">{p.title}</p>
-                {p.description ? (
-                  <p className="mt-0.5 text-[12px] text-white/55">{p.description}</p>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      <GuestRequestPanel
-        sessionId={resolved.sessionId}
-        sessionToken={resolved.sessionToken}
-        regularsEnabled={regularsEnabled}
-        slug={params.slug}
-        tableLabel={resolved.tableLabel}
-        confirmationMessage={confirmationMessage}
-        prevTab={isStale ? {
-          itemCount: items.length,
-          lastRequestMinAgo: minutesSinceLast === null ? null : Math.round(minutesSinceLast),
-        } : null}
-      />
-
-      <footer className="mt-auto px-6 pb-6 pt-4">
-        <div className="flex items-center justify-center gap-4 text-[11px] tracking-wide">
-          <Link
-            href={`/v/${params.slug}/t/${encodeURIComponent(resolved.tableLabel)}/wishlist?s=${encodeURIComponent(resolved.sessionToken)}`}
-            className="text-white/40 underline-offset-4 transition-colors hover:text-white/80 hover:underline"
-          >
-            Wishlist
-          </Link>
-          <span className="text-white/15">·</span>
-          <p className="text-white/25">Powered by TabCall</p>
-        </div>
-      </footer>
-    </main>
+    <GuestEntry
+      venueName={resolved.venueName}
+      tableLabel={resolved.tableLabel}
+      server={
+        server
+          ? {
+              displayName: server.displayName,
+              // A venue can switch server photos off without unsetting them.
+              photoUrl: config.serverPhoto ? server.photoUrl : null,
+              welcomeMessage: server.welcomeMessage,
+            }
+          : null
+      }
+      homeHref={`/v/${params.slug}/t/${params.tableId}/home?s=${encodeURIComponent(resolved.sessionToken)}`}
+      sessionToken={resolved.sessionToken}
+      sessionId={resolved.sessionId}
+      venueSlug={params.slug}
+      brandColor={branding.primaryColor ?? venue.brandColor}
+      showWelcome={config.welcome}
+      requestsEnabled={venue.requestsEnabled}
+    />
   );
 }
 
-function safeDecode(s: string): string {
-  try { return decodeURIComponent(s); } catch { return s; }
+/** Table segments arrive URL-encoded ("Table%2012"). */
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function InvalidScan({ reason }: { reason: string }) {
+  const copy =
+    reason === "INVALID_TOKEN"
+      ? "That code doesn't match this table. Ask a member of staff for a fresh one."
+      : "We couldn't read that code. Ask a member of staff for a fresh one.";
   return (
-    <main className="guest-dark guest-grain flex min-h-screen flex-col">
-      <div className="flex flex-1 items-center justify-center px-6">
-        <div className="guest-card max-w-sm rounded-3xl px-8 py-10 text-center">
-          <p aria-hidden className="text-3xl">✳</p>
-          <h1 className="mt-3 text-2xl font-medium text-white">This QR has gone quiet</h1>
-          <p className="mt-3 text-sm leading-relaxed text-white/55">
-            The code on this table is expired or replaced. Wave your server
-            down the old-fashioned way — or ask for a fresh code.
-          </p>
-          <p className="mt-6 font-mono text-[10px] tracking-wider text-white/25">
-            {reason}
-          </p>
-          <Link
-            href="/"
-            className="mt-6 inline-block text-sm text-white/60 underline-offset-4 hover:text-white hover:underline"
-          >
-            ← TabCall
-          </Link>
-        </div>
+    <main className="flex min-h-[100dvh] items-center justify-center bg-oat px-6 text-center">
+      <div className="max-w-sm">
+        <p className="text-3xl" aria-hidden>·</p>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate">
+          That scan didn&rsquo;t work
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-slate/60">{copy}</p>
       </div>
     </main>
   );
