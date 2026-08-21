@@ -12,8 +12,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const venue = await db.venue.findUnique({ where: { slug: params.slug }, select: { name: true } });
   if (!venue) return {};
   return {
-    title: `${venue.name} — Order, Pay & Call Your Server by QR`,
-    description: `You're at ${venue.name}. Scan the QR on your table to see the menu, call your server or open your tab. Powered by TabCall.`,
+    // `absolute` so the site-wide "%s | TabCall" template doesn't append
+    // our name to the venue's own public page. This page belongs to them.
+    //
+    // It also no longer says "Pay": guest payments were removed in #86,
+    // and the venue's POS takes the money. Promising it here would have
+    // been the first thing a guest read and the first thing that turned
+    // out to be untrue.
+    title: { absolute: `${venue.name} — Menu & Service` },
+    description: `You're at ${venue.name}. Scan the QR on your table to browse the menu, see tonight's specials and call your server.`,
     alternates: { canonical: `${SITE_URL}/v/${params.slug}` },
   };
 }
