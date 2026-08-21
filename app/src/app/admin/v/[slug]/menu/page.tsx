@@ -48,9 +48,11 @@ export default async function MenuPage({ params }: { params: { slug: string } })
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Menu</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">Drinks &amp; food</h1>
-        <p className="mt-2 text-sm text-slate/60">
-          What guests can order. Inactive items are hidden from the guest browse view
-          but stay around for analytics.
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate/60">
+          What guests browse at the table. Your POS still takes the order —
+          this is how they find things worth asking about. Photos and tags do
+          most of that work: tags drive the &ldquo;what are you in the mood
+          for?&rdquo; prompts, and an untagged menu doesn&rsquo;t show them.
         </p>
       </header>
 
@@ -73,6 +75,9 @@ export default async function MenuPage({ params }: { params: { slug: string } })
           ageRestricted: i.ageRestricted,
           sortOrder: i.sortOrder,
           imageUrl: i.imageUrl,
+          // Without this the editor opens every item with an empty tag
+          // set and silently clears it on save.
+          tags: i.tags,
         }))}
       />
     </>
