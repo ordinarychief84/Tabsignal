@@ -53,35 +53,61 @@ on-call response, common incidents, and forensic queries.
    owner self-serves at `/signup`.
 2. Owner clicks magic-link email → lands on `/admin/v/<slug>/onboarding`.
 3. Owner adds tables (`/qr-tents` page generates QR code sheets).
-4. Owner connects Stripe (`/settings` → "Connect Stripe" → completes
-   Stripe-hosted onboarding). Verify `Venue.stripeChargesEnabled = true`
-   after the redirect.
+4. Owner adds their menu (`/menu`) and tags items for discovery
+   ("light", "bold", "sweet", "filling", "drink") — the tags drive the
+   guest's "what are you in the mood for?" prompts.
 5. Owner invites staff (`/staff`). Bartenders pick "Server", floor
-   managers pick "Manager".
-6. Operator confirms in `/operator/orgs/<orgId>/overview` that the venue
-   has tables, staff, and a Stripe Connect account.
+   managers pick "Manager". The invite email walks them through
+   choosing a password.
+6. Owner assigns staff to tables (`/tables`) — this is what lets the
+   guest welcome say "Meet Maya" instead of "a server".
+7. Operator confirms in `/operator/orgs/<orgId>/overview` that the venue
+   has tables and staff.
+
+> TabCall does NOT take guest payments. There is no Connect account and
+> no venue payout — the venue's own POS takes the order, holds the bill
+> and settles the card. The only money TabCall handles is the venue's
+> own subscription to us.
 
 ---
 
 ## 2. On-call response
 
-### Sev-1 — guest can't pay (PaymentIntent fails)
+### Sev-1 — guests can't reach a server
 
-1. Check Stripe Dashboard → recent events for the venue's Connect
-   account. Most common: `stripeChargesEnabled = false` because the
-   venue didn't finish onboarding.
-2. Query the venue:
+Requests are the product. If `/api/requests` is failing, guests are
+sitting with their hands up and nobody knows.
+
+1. Check the realtime service is up (Fly) — a request still WRITES if
+   realtime is down, but `routedAt` tells you whether it actually
+   reached anyone.
+2. `SELECT type, status, "routedAt" FROM "Request" WHERE "venueId" = ...
+   ORDER BY "createdAt" DESC LIMIT 20;` — rows with `routedAt` null
+   were recorded but never routed.
+3. The floor can still work the queue by polling: `/staff` refreshes on
+   a 30s safety-net interval independent of the socket.
+
+### Sev-2 — a venue's own subscription payment fails
+
+This is the venue paying US. There is no Connect account and no
+per-guest charge to investigate.
+
+1. Stripe Dashboard → Customers → find the org's customer record →
+   check the failed invoice.
+2. Query the org's recorded state:
    ```sql
-   SELECT slug, stripeAccountId, stripeChargesEnabled, stripeDetailsSubmitted
-   FROM "Venue" WHERE slug = '<slug>';
+   SELECT o.name, o."subscriptionStatus", o."subscriptionPriceId",
+          o."subscriptionPeriodEnd", o."trialEndsAt"
+   FROM "Organization" o
+   JOIN "Venue" v ON v."orgId" = o.id
+   WHERE v.slug = '<slug>';
    ```
-3. If `stripeChargesEnabled = false`, the bill flow already shows
-   guests a "Pay in person" fallback (see
-   `app/src/app/v/[slug]/t/[tableId]/bill/bill-screen.tsx`). Tell the
-   venue to finish onboarding via Settings → "Connect Stripe."
-4. If charges are enabled but PIs are still failing: check Sentry for
-   the venue's error patterns; most likely a Stripe API key rotation
-   issue or an invalid `application_fee_amount` (we charge 0.5%).
+3. A `PAST_DUE` org keeps working — we do not cut off a venue
+   mid-service over a card decline. Chase it commercially.
+4. To comp or reinstate access immediately:
+   `/operator/orgs/<orgId>/billing` → set the tier. That records the
+   grant in our DB; pair it with a Stripe subscription on the
+   customer if you want it to actually invoice next cycle.
 
 ### Sev-1 — staff queue not receiving requests
 
@@ -193,18 +219,27 @@ Stripe Dashboard → Developers → Webhooks → the failing endpoint → click
 the event → "Resend." The handler is idempotent (row-locked via
 `SELECT … FOR UPDATE` on `WebhookEvent.id`) so re-delivery is safe.
 
-### Re-issue a magic link for a locked-out owner
+### A locked-out owner or server
 
-```sql
-SELECT id, email FROM "StaffMember" WHERE email = '<email>';
-```
-Then in the operator console: `/operator` → impersonate that venue. From
-the impersonated session you can resend the invite (`/admin/v/<slug>/staff`
-→ "Resend invite"). Or, via SQL only:
-```sql
-UPDATE "StaffMember" SET status = 'INVITED' WHERE id = '<staffId>';
-```
-Then have them retry sign-in at `/staff/login`.
+Sign-in is email + password (`/staff/login`). Magic-link sign-in was
+removed — a link now only ever confirms an address or carries an invite.
+
+1. **They forgot it.** Point them at `/forgot-password`. This is the
+   normal path and needs nobody on-call.
+2. **The reset email isn't arriving.** Check Resend logs. Reset tokens
+   last one hour and are single-use.
+3. **They never set one** (invited, never accepted). A manager can
+   resend from `/admin/v/<slug>/staff` → "Resend invite". The invite
+   lands on "Choose a password", which is what gives them a credential
+   of their own.
+4. **Their status blocks it.** Reset only works for `ACTIVE` rows:
+   ```sql
+   SELECT id, email, status, ("passwordHash" IS NOT NULL) AS has_password,
+          ("emailVerifiedAt" IS NOT NULL) AS verified
+   FROM "StaffMember" WHERE email = '<email>';
+   ```
+   `SUSPENDED` is a deliberate act by their manager — do not undo it
+   from here; tell the manager.
 
 ### Pause a venue (kill switches)
 
@@ -218,17 +253,34 @@ Operator-side override (SQL):
 UPDATE "Venue" SET "requestsEnabled" = false WHERE slug = '<slug>';
 ```
 
-### Refund a guest payment
+### A guest wants a refund
 
-Issue the refund in **Stripe Dashboard** (Charges → find the charge →
-Refund). The `charge.refunded` webhook handler will:
-- Append a negative refund line-item to the GuestSession
-- Mark BillSplit.paidAt=null on full split refunds
-- Cancel matching PreOrders if fully refunded
-- Emit a `payment_refunded` realtime event so the manager UI sees it
+Not ours to give. TabCall never charged them — the venue's POS took the
+payment on the venue's own terminal, so the refund happens there. If a
+venue asks us to refund a guest, the answer is that we have no record of
+the charge and no way to reverse it.
 
-Do NOT manually edit `GuestSession.lineItems` — let the webhook do it
-so the state stays consistent.
+Venue SUBSCRIPTION refunds (the venue paying us) are a different thing
+and are issued in the Stripe Dashboard as normal.
+
+### A guest asked for a manager and nobody came
+
+Service recovery fires only when the guest explicitly said yes after a
+poor rating.
+
+```sql
+SELECT f.id, f.rating, f."managerRecoveryRequested", f."recoveryResolvedAt",
+       t.label, f."createdAt"
+FROM "FeedbackReport" f
+JOIN "GuestSession" gs ON gs.id = f."sessionId"
+JOIN "Table" t ON t.id = gs."tableId"
+WHERE f."venueId" = '<venueId>' AND f."managerRecoveryRequested" = true
+ORDER BY f."createdAt" DESC LIMIT 20;
+```
+
+The alert goes to the venue room over realtime, deliberately NOT to the
+server who received the rating. If the venue watches no device on that
+room, they will miss it — check what they actually have open.
 
 ---
 
