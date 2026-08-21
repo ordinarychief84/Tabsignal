@@ -61,9 +61,19 @@ enum StaffStatus {
 
 enum RequestType {
   DRINK
+  // BILL is "ready for the check" — a signal to the server that the table
+  // wants to close out. TabCall never touched the money; the POS settles.
+  // Name kept because it is written into every historical row.
   BILL
   HELP
   REFILL
+  // Guest is ready to order. Notifies the assigned server; it does NOT
+  // submit anything to the POS.
+  ORDER
+  // Birthday, anniversary, engagement — the server gets a heads-up so the
+  // room can react. Deliberately separate from HELP so it can be styled
+  // and staffed differently.
+  CELEBRATION
 }
 
 enum RequestStatus {
@@ -193,6 +203,9 @@ model Venue {
   posIntegration           PosIntegration?
   gbpConnection            GbpConnection?
   googleReviews            GoogleReview[]
+  guestContacts            GuestContact[]
+  guestVisits              GuestVisit[]
+  campaigns                Campaign[]
 
   @@index([orgId])
 }
@@ -310,6 +323,16 @@ model StaffMember {
   // alongside TableAssignment for venues that group staff by zone rather
   // than per-table. Pure metadata — display + filter only.
   section            String?
+  // The three fields a GUEST may see. Everything else on this row is
+  // internal: `name` can be a legal name, `email` is a credential, and
+  // neither belongs on a stranger's phone. displayName is the first name
+  // the server actually goes by on the floor.
+  displayName        String?
+  photoUrl           String?
+  // Optional per-server greeting. Falls back to the venue default, then to
+  // a TabCall default — a server is never required to write one, and the
+  // venue owner can overwrite it.
+  welcomeMessage     String?       @db.Text
   // Optional password sign-in. Magic-link remains the default path;
   // password is an opt-in upgrade. Nullable so every existing row
   // keeps working unchanged. passwordChangedAt mirrors the
@@ -535,6 +558,12 @@ model Request {
   resolutionAction ResolutionAction?
   resolutionNote   String?
   escalatedAt      DateTime?
+  // When the request actually reached a destination, and which one. Split
+  // from createdAt because "we recorded it" and "a human could see it" are
+  // different moments, and only the second one is a service-time promise
+  // we can honestly report on.
+  routedAt         DateTime?
+  routingChannel   String?
   createdAt        DateTime          @default(now())
   venue            Venue             @relation(fields: [venueId], references: [id])
   table            Table             @relation(fields: [tableId], references: [id])
@@ -617,38 +646,57 @@ model WebhookEvent {
 }
 
 model FeedbackReport {
-  id              String       @id @default(cuid())
-  venueId         String
+  id                       String        @id @default(cuid())
+  venueId                  String
   // One feedback per session. The route already enforces this via a
   // findFirst+throw, but the unique constraint is the source of truth
   // and closes the concurrent-submit race window.
-  sessionId       String       @unique
-  rating          Int
-  note            String?
+  sessionId                String        @unique
+  // 1-5, unchanged. The guest picks one of four faces; lib/feedback maps
+  // them onto this scale so existing reports, averages and the Google
+  // review threshold keep meaning the same thing.
+  rating                   Int
+  // Derived from rating at write time so queries don't re-derive it and
+  // drift: NEGATIVE | NEUTRAL | POSITIVE.
+  sentiment                String?
+  // Set only when the guest explicitly asked for a manager. This is what
+  // raises a service-recovery alert; a bad rating alone does not, because
+  // "I'd rather just leave" is a valid answer.
+  managerRecoveryRequested Boolean       @default(false)
+  recoveryResolvedAt       DateTime?
+  recoveryResolvedById     String?
+  // Set only if the guest later chose to leave a phone number. Feedback is
+  // submitted anonymously and stays that way unless they opt in.
+  guestContactId           String?
+  note                     String?
   // Reviews suite R2: employee + shift attribution, stamped at submit
   // time from the session's service history (who actually acknowledged
   // requests at this table) and the venue's timezone. Name denormalized
   // so attribution survives staff churn/deletion.
-  servedByStaffId String?
-  servedByName    String?
+  servedByStaffId          String?
+  servedByName             String?
   // "morning" | "afternoon" | "evening" | "late" in the VENUE's tz.
-  shiftBucket     String?
+  shiftBucket              String?
   // AI classification (PRD v2.0 F4 — bad-review intercept)
-  aiCategory      String? // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
-  aiSuggestion    String?
-  aiServerName    String?
-  seenByMgr       Boolean      @default(false)
+  aiCategory               String? // service_speed | drink_quality | staff_attitude | wait_time | food | noise | other
+  aiSuggestion             String?
+  aiServerName             String?
+  seenByMgr                Boolean       @default(false)
   // Manager-flagged for follow-up (escalation, refund, legal, etc).
   // Distinct from seenByMgr: a review can be seen AND flagged. Reviews
   // page filters on this column independently.
-  flagged         Boolean      @default(false)
-  flaggedAt       DateTime?
-  createdAt       DateTime     @default(now())
-  venue           Venue        @relation(fields: [venueId], references: [id])
-  session         GuestSession @relation(fields: [sessionId], references: [id])
+  flagged                  Boolean       @default(false)
+  flaggedAt                DateTime?
+  createdAt                DateTime      @default(now())
+  venue                    Venue         @relation(fields: [venueId], references: [id])
+  session                  GuestSession  @relation(fields: [sessionId], references: [id])
+  guestContact             GuestContact? @relation(fields: [guestContactId], references: [id], onDelete: SetNull)
+  tags                     FeedbackTag[]
 
   @@index([venueId, createdAt])
   @@index([venueId, servedByStaffId])
+  // The manager queue: open recovery requests, newest first.
+  @@index([venueId, managerRecoveryRequested, recoveryResolvedAt])
 }
 
 // =====================================================================
@@ -1141,4 +1189,171 @@ model PosSyncLog {
   venue               Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
 
   @@index([venueId, createdAt])
+}
+
+// ----------------------------------------------------------------------
+// Guest relationship
+//
+// A guest who leaves a phone number is giving it to ONE venue. Consent is
+// given to that venue, the venue is the data controller, and a guest who
+// opts out of one has not opted out of the others. So contacts are keyed
+// on (venueId, phone) rather than on phone alone.
+//
+// This is deliberately separate from GuestProfile, which backs the Pro
+// "Regulars" feature and is a cross-venue identity the guest opts into by
+// verifying an OTP. Different purpose, different consent, different blast
+// radius if either is ever breached.
+// ----------------------------------------------------------------------
+
+enum MarketingConsentStatus {
+  // Never asked, or asked and declined the checkbox. NOT marketable.
+  PENDING
+  SUBSCRIBED
+  UNSUBSCRIBED
+}
+
+model GuestContact {
+  id          String   @id @default(cuid())
+  venueId     String
+  // E.164. Never rendered to floor staff — see lib/guest-contacts.
+  phone       String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  venue              Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  consents           MarketingConsent[]
+  visits             GuestVisit[]
+  feedback           FeedbackReport[]
+  campaignRecipients CampaignRecipient[]
+
+  // One record per phone per venue. The same number at two venues is two
+  // rows on purpose: two relationships, two consent decisions.
+  @@unique([venueId, phone])
+  @@index([venueId, lastSeenAt])
+}
+
+model MarketingConsent {
+  id                 String                 @id @default(cuid())
+  guestContactId     String
+  venueId            String
+  status             MarketingConsentStatus @default(PENDING)
+  // The EXACT wording shown when they ticked the box. If the wording
+  // changes, old consent doesn't silently cover the new terms — which is
+  // the whole point of keeping a version rather than a boolean.
+  consentTextVersion String?
+  // Where it came from: "post_visit_feedback", "import", "admin".
+  consentSource      String?
+  consentedAt        DateTime?
+  optedOutAt         DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  guestContact GuestContact @relation(fields: [guestContactId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, status])
+  @@index([guestContactId])
+}
+
+model GuestVisit {
+  id               String    @id @default(cuid())
+  venueId          String
+  tableId          String?
+  guestSessionId   String    @unique
+  // Null until (and unless) the guest leaves a number. Most visits stay
+  // anonymous, and that is a success state, not a gap.
+  guestContactId   String?
+  assignedServerId String?
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+  rating           Int?
+  createdAt        DateTime  @default(now())
+
+  venue        Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guestContact GuestContact? @relation(fields: [guestContactId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, startedAt])
+  @@index([guestContactId])
+}
+
+model FeedbackTag {
+  id         String   @id @default(cuid())
+  feedbackId String
+  tag        String
+  createdAt  DateTime @default(now())
+
+  feedback FeedbackReport @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, tag])
+  @@index([tag])
+}
+
+// ----------------------------------------------------------------------
+// Campaigns
+//
+// The management layer is real and persists. Whether anything is actually
+// DELIVERED depends on a messaging provider being configured; without one
+// a campaign can be composed and scheduled but never reports as sent.
+// See lib/campaigns — nothing here pretends a message went out.
+// ----------------------------------------------------------------------
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+enum CampaignAudience {
+  ALL_SUBSCRIBED
+  VISITED_LAST_30_DAYS
+  RETURNING_GUESTS
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+model Campaign {
+  id           String           @id @default(cuid())
+  venueId      String
+  name         String
+  message      String           @db.Text
+  audienceType CampaignAudience @default(ALL_SUBSCRIBED)
+  status       CampaignStatus   @default(DRAFT)
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  venue      Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  recipients CampaignRecipient[]
+
+  @@index([venueId, status])
+}
+
+model CampaignRecipient {
+  id             String                  @id @default(cuid())
+  campaignId     String
+  guestContactId String
+  status         CampaignRecipientStatus @default(PENDING)
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  failureReason  String?
+  createdAt      DateTime                @default(now())
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  guestContact GuestContact @relation(fields: [guestContactId], references: [id], onDelete: Cascade)
+
+  // One row per guest per campaign — the database, not application code,
+  // is what guarantees nobody gets the same campaign twice.
+  @@unique([campaignId, guestContactId])
+  @@index([campaignId, status])
 }
