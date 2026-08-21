@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { GuestFacingCard } from "./guest-facing-card";
 
 type Table = { id: string; label: string; zone: string | null };
 
@@ -19,6 +20,10 @@ type Member = {
   invitedAt: string;
   invitedBy: { name: string; email: string } | null;
   tableIds: string[];
+  /** How a guest sees this person. Null = fall back to the venue default. */
+  displayName: string | null;
+  photoUrl: string | null;
+  welcomeMessage: string | null;
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -79,11 +84,27 @@ export function PeoplePanel(props: {
   currentRole: string;
   currentStaffId: string;
   assignableRoles: string[];
+  venueName: string;
+  /** Venue-wide greeting, so the preview can show the real fallback. */
+  venueDefaultWelcome: string | null;
 }) {
   const [items, setItems] = useState<Member[]>(props.initial);
   const [error, setError] = useState<string | null>(null);
   const [editingTablesFor, setEditingTablesFor] = useState<string | null>(null);
   const canInvite = props.assignableRoles.length > 0;
+
+  /**
+   * Reflect a guest-facing save back into the list.
+   *
+   * The card owns the request — photo uploads persist on their own, and
+   * the text saves on a button — so this only keeps the row in sync.
+   */
+  function saveGuestFacing(
+    id: string,
+    next: { displayName: string | null; photoUrl: string | null; welcomeMessage: string | null },
+  ) {
+    setItems(curr => curr.map(i => (i.id === id ? { ...i, ...next } : i)));
+  }
   const isManagerTier = props.currentRole === "OWNER" || props.currentRole === "MANAGER" || props.currentRole === "PLATFORM" || props.currentRole === "STAFF";
   const canRemove = props.currentRole === "OWNER" || props.currentRole === "PLATFORM" || props.currentRole === "STAFF";
 
@@ -239,6 +260,10 @@ export function PeoplePanel(props: {
             tables={props.tables}
             isSelf={m.email === props.currentEmail}
             isEditingTables={editingTablesFor === m.id}
+            venueName={props.venueName}
+            venueDefaultWelcome={props.venueDefaultWelcome}
+            canEditGuestFacing={isManagerTier}
+            onSaveGuestFacing={saveGuestFacing}
             assignableRoles={props.assignableRoles}
             isManagerTier={isManagerTier}
             canRemove={canRemove}
@@ -266,6 +291,10 @@ export function PeoplePanel(props: {
             tables={props.tables}
             isSelf={m.email === props.currentEmail}
             isEditingTables={editingTablesFor === m.id}
+            venueName={props.venueName}
+            venueDefaultWelcome={props.venueDefaultWelcome}
+            canEditGuestFacing={isManagerTier}
+            onSaveGuestFacing={saveGuestFacing}
             assignableRoles={props.assignableRoles}
             isManagerTier={isManagerTier}
             canRemove={canRemove}
@@ -294,6 +323,10 @@ export function PeoplePanel(props: {
               tables={props.tables}
               isSelf={m.email === props.currentEmail}
               isEditingTables={false}
+              venueName={props.venueName}
+              venueDefaultWelcome={props.venueDefaultWelcome}
+              canEditGuestFacing={isManagerTier}
+              onSaveGuestFacing={saveGuestFacing}
               assignableRoles={props.assignableRoles}
               isManagerTier={isManagerTier}
               canRemove={canRemove}
@@ -393,6 +426,11 @@ function InviteCard({ assignableRoles, onInvited, onError }: {
         invitedAt: new Date().toISOString(),
         invitedBy: null,
         tableIds: [],
+        // A fresh invite has none of these yet; the venue default covers
+        // them until someone fills them in.
+        displayName: null,
+        photoUrl: null,
+        welcomeMessage: null,
       });
       if (body.inviteLink) {
         setLastInvite({
@@ -506,6 +544,13 @@ function Row(props: {
   tables: Table[];
   isSelf: boolean;
   isEditingTables: boolean;
+  venueName: string;
+  venueDefaultWelcome: string | null;
+  canEditGuestFacing: boolean;
+  onSaveGuestFacing: (
+    id: string,
+    next: { displayName: string | null; photoUrl: string | null; welcomeMessage: string | null },
+  ) => void;
   assignableRoles: string[];
   isManagerTier: boolean;
   canRemove: boolean;
@@ -639,9 +684,25 @@ function Row(props: {
         </div>
       ) : null}
 
-      {/* Inline table editor */}
+      {/* Inline table editor + how they're introduced at those tables.
+          Same panel on purpose: they're one decision. */}
       {props.isEditingTables ? (
-        <div className="border-t border-slate/5 px-5 py-4">
+        <div className="space-y-5 border-t border-slate/5 px-5 py-4">
+          <GuestFacingCard
+            staffId={m.id}
+            legalName={m.name}
+            venueName={props.venueName}
+            venueDefaultWelcome={props.venueDefaultWelcome}
+            initial={{
+              displayName: m.displayName,
+              photoUrl: m.photoUrl,
+              welcomeMessage: m.welcomeMessage,
+            }}
+            canEdit={props.canEditGuestFacing}
+            onSaved={next => props.onSaveGuestFacing(m.id, next)}
+          />
+
+          <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-umber">
             Assign tables to {m.name}
           </p>
@@ -688,6 +749,7 @@ function Row(props: {
             >
               Clear
             </button>
+          </div>
           </div>
         </div>
       ) : null}
@@ -740,7 +802,7 @@ function RowActions({
               onClick={() => { onToggleTables(); setOpen(false); }}
               className="block w-full px-3 py-2 text-left text-slate/80 hover:bg-slate/5"
             >
-              Edit tables
+              Tables &amp; guest intro
             </button>
           ) : null}
           {showResendInvite && isManagerTier ? (

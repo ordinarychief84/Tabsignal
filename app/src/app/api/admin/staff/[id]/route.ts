@@ -73,6 +73,15 @@ const PatchBody = z.object({
   status: z.enum(["ACTIVE", "INVITED", "SUSPENDED"]).optional(),
   // Free-text section (e.g. "Patio"). Pass null to clear.
   section: z.string().max(40).nullable().optional(),
+  // The three fields a GUEST may see. Everything else on this row is
+  // internal — `name` can be a legal name and `email` is a credential,
+  // and neither belongs on a stranger's phone.
+  //
+  // These shipped with the schema in #91 and nothing could set them, so
+  // the per-server welcome could never actually be personalised.
+  displayName: z.string().trim().max(40).nullable().optional(),
+  photoUrl: z.string().url().nullable().optional(),
+  welcomeMessage: z.string().trim().max(400).nullable().optional(),
 });
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -90,7 +99,18 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   // Build the update payload incrementally so we only audit the fields
   // that actually change.
-  const data: { name?: string; role?: StaffRole; status?: StaffStatus; suspendedAt?: Date | null; suspendedById?: string | null; section?: string | null } = {};
+  const data: {
+    name?: string;
+    role?: StaffRole;
+    status?: StaffStatus;
+    suspendedAt?: Date | null;
+    suspendedById?: string | null;
+    section?: string | null;
+    // Guest-facing trio — see the block further down.
+    displayName?: string | null;
+    photoUrl?: string | null;
+    welcomeMessage?: string | null;
+  } = {};
   const changes: Record<string, { from: unknown; to: unknown }> = {};
 
   if (parsed.name && parsed.name !== target.name) {
@@ -177,6 +197,35 @@ export async function PATCH(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "UNSUPPORTED_STATUS_TRANSITION" }, { status: 400 });
     }
     changes.status = { from: target.status, to: parsed.status };
+  }
+
+  // How a guest sees this person. Gated on staff.assign_tables rather
+  // than a new permission: whoever decides which tables someone covers is
+  // the same person who should decide how they're introduced at them.
+  //
+  // A member of staff editing their OWN entry is always allowed — that's
+  // their name and their photo.
+  const GUEST_FACING = ["displayName", "photoUrl", "welcomeMessage"] as const;
+  const touchesGuestFacing = GUEST_FACING.some(k => parsed[k] !== undefined);
+  if (touchesGuestFacing) {
+    const isSelf = target.id === session.staffId;
+    if (!isSelf && !can(session.role, "staff.assign_tables")) {
+      return NextResponse.json(
+        { error: "FORBIDDEN", detail: "Your role can't change how staff appear to guests." },
+        { status: 403 },
+      );
+    }
+    for (const key of GUEST_FACING) {
+      const value = parsed[key];
+      if (value === undefined) continue;
+      // Empty string means "clear it", so the venue default takes over
+      // rather than a blank greeting reaching a guest.
+      data[key] = typeof value === "string" && value.trim() === "" ? null : value;
+    }
+    // Recorded as a single entry: the exact wording of a greeting isn't
+    // audit-worthy, but "someone changed how this person appears to
+    // guests" is.
+    changes.guestFacing = { from: null, to: GUEST_FACING.filter(k => parsed[k] !== undefined) };
   }
 
   if (Object.keys(data).length === 0) {

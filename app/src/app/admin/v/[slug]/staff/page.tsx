@@ -13,7 +13,7 @@ export default async function PeoplePage({ params }: { params: { slug: string } 
 
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
-    select: { id: true },
+    select: { id: true, name: true, guestWelcomeMessage: true },
   });
   if (!venue || venue.id !== session.venueId) return null;
 
@@ -44,14 +44,20 @@ export default async function PeoplePage({ params }: { params: { slug: string } 
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Team</p>
         <h1 className="mt-2 text-3xl font-medium tracking-tight">People</h1>
-        <p className="mt-2 text-sm text-slate/60">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate/60">
           Owners run the venue. Managers handle staff &amp; settings. Servers
           and Hosts work the floor. Viewers can read reports without changing
           anything. Suspending keeps history; removing wipes the row.
         </p>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate/60">
+          Anyone assigned to a table is introduced to guests there by name.
+          Open a person to set how that reads.
+        </p>
       </header>
 
       <PeoplePanel
+        venueName={venue.name}
+        venueDefaultWelcome={venue.guestWelcomeMessage}
         currentEmail={session.email}
         currentRole={session.role}
         currentStaffId={session.staffId}
@@ -69,6 +75,12 @@ export default async function PeoplePage({ params }: { params: { slug: string } 
           invitedAt: s.createdAt.toISOString(),
           invitedBy: s.invitedBy ? { name: s.invitedBy.name, email: s.invitedBy.email } : null,
           tableIds: s.assignments.map(a => a.tableId),
+          // The three fields a guest sees. Passed explicitly because the
+          // menu page taught me what happens when a mapped prop quietly
+          // omits one: the editor opens empty and clears it on save.
+          displayName: s.displayName,
+          photoUrl: s.photoUrl,
+          welcomeMessage: s.welcomeMessage,
         }))}
       />
     </>
