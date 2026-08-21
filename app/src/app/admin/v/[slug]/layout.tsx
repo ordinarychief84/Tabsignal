@@ -55,7 +55,6 @@ function venueNav(slug: string, paid: boolean, pro: boolean): NavGroup[] {
       heading: "Team",
       items: [
         { href: `${base}/staff`, label: "People" },
-        { href: `${base}/tips`, label: "Tips", locked: growthLock },
         { href: `${base}/audit`, label: "Audit log" },
       ],
     },
