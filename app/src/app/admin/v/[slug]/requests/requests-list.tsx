@@ -8,7 +8,7 @@ export type LiveRequest = {
   id: string;
   tableId: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
@@ -32,9 +32,13 @@ const TAB_ORDER: { id: Tab; label: string }[] = [
 
 const REQUEST_LABEL: Record<LiveRequest["type"], string> = {
   DRINK: "Drink",
-  BILL: "Bill",
+  // "Check", not "Bill" — the guest is signalling they want to close out,
+  // and the POS settles it.
+  BILL: "Check",
   HELP: "Help",
   REFILL: "Refill",
+  ORDER: "Ready to order",
+  CELEBRATION: "Celebrating",
 };
 
 // Same threshold the floor app uses so the buckets line up.

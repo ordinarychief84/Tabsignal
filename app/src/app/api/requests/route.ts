@@ -16,7 +16,10 @@ function tokensEqual(a: string, b: string): boolean {
 const Body = z.object({
   sessionId: z.string().min(1),
   sessionToken: z.string().min(1),
-  type: z.enum(["DRINK", "BILL", "HELP", "REFILL"]),
+  // BILL is "ready for the check" — a signal to the server, not a
+  // payment. TabCall never touches the money; the POS settles the bill.
+  // ORDER means "we're ready to order", and does NOT submit anything.
+  type: z.enum(["DRINK", "BILL", "HELP", "REFILL", "ORDER", "CELEBRATION"]),
   note: z.string().max(120).optional(),
 });
 
@@ -81,6 +84,13 @@ export async function POST(req: Request) {
       type: parsed.type,
       note: parsed.note ?? null,
       idCheckRequired,
+      // Stamped in the same write as creation because this route always
+      // hands the request to the realtime layer immediately below. A
+      // future queued path would leave it null until it actually reached
+      // somewhere, which is the point of the column: the guest is told
+      // "notified", and this is what makes that claim checkable.
+      routedAt: new Date(),
+      routingChannel: "realtime",
     },
     include: {
       table: {

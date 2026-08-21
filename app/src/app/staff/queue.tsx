@@ -7,7 +7,7 @@ type Item = {
   id: string;
   tableId?: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
@@ -23,11 +23,16 @@ type Tab = "pending" | "active" | "completed" | "delayed";
 
 const DELAYED_THRESHOLD_MS = 90_000;
 
+// "Check", not "Bill": the guest is signalling they want to close out.
+// TabCall doesn't hold the money — the server takes it on the venue's own
+// terminal — so the wording says what the server has to DO.
 const REQUEST_LABEL: Record<Item["type"], string> = {
   DRINK: "Drink",
-  BILL: "Bill",
+  BILL: "Check",
   HELP: "Help",
   REFILL: "Refill",
+  ORDER: "Ready to order",
+  CELEBRATION: "Celebrating",
 };
 
 // Safety-net poll interval — covers socket reconnect gaps. Real-time pushes

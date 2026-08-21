@@ -4,6 +4,9 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { meetsAtLeast, planFromOrg } from "@/lib/plans";
 import { verifyProfileToken, PROFILE_COOKIE } from "@/lib/profile-cookie";
+import { guestExperienceFrom } from "@/lib/guest-experience";
+import { consentText } from "@/lib/consent";
+import { serverForTable } from "@/lib/server-identity";
 import { FeedbackScreen } from "./feedback-screen";
 
 export const dynamic = "force-dynamic";
@@ -76,23 +79,30 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     );
   }
 
+  const config = guestExperienceFrom(venue.enabledFeatures);
+  // Name the server on the "what stood out?" chips when the table has one.
+  const server = await serverForTable({
+    tableId: session.tableId,
+    venueName: venue.name,
+    venueWelcomeMessage: venue.guestWelcomeMessage,
+  });
+  // isPro / alreadyIdentified drive the Pro "Regulars" pairing prompt,
+  // which is a separate opt-in from this venue-scoped contact capture.
+  void isPro;
+  void alreadyIdentified;
+
   return (
-    <main className="min-h-screen bg-oat text-slate">
-      <div className="mx-auto flex max-w-md flex-col px-6 py-10">
-        <header className="mb-8">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{venue.name}</p>
-          <h1 className="mt-2 text-3xl font-medium tracking-tight">
-            {venue.reviewPrompt ?? "How was tonight?"}
-          </h1>
-        </header>
-        <FeedbackScreen
-          slug={params.slug}
-          sessionId={session.id}
-          sessionToken={session.sessionToken}
-          showIdentify={isPro && !alreadyIdentified}
-        />
-      </div>
-    </main>
+    <FeedbackScreen
+      venueName={venue.name}
+      venueSlug={params.slug}
+      sessionId={session.id}
+      sessionToken={session.sessionToken}
+      serverName={server?.displayName ?? null}
+      consentText={consentText(venue.name)}
+      phoneCaptureEnabled={config.phoneCapture}
+      marketingConsentEnabled={config.marketingConsent}
+      serviceRecoveryEnabled={config.serviceRecovery}
+    />
   );
 }
 

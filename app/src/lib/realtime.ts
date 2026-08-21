@@ -126,4 +126,25 @@ export const events = {
         })
       ),
     ]).then(() => undefined),
+
+  /**
+   * A guest rated the visit badly and asked to speak to someone before
+   * they leave. High priority: they are still in the building, and the
+   * window to fix it closes when they walk out.
+   *
+   * Fans out to the venue room only — the manager dashboard, service
+   * display and host tablet all listen there. Deliberately NOT sent to
+   * per-staff rooms: the server who just got a two-star rating is the
+   * wrong person to hand the recovery to.
+   *
+   * The payload carries no phone number and no guest identity. This event
+   * reaches the floor, and the floor has no business holding either.
+   */
+  serviceRecovery: (venueId: string, payload: unknown) =>
+    emit({
+      kind: "venue",
+      id: venueId,
+      event: "service_recovery",
+      payload: { priority: "high", ...(payload as Record<string, unknown>) },
+    }).then(() => undefined),
 };
