@@ -7,7 +7,6 @@ import { classifyFeedback } from "@/lib/ai/classify-feedback";
 import { badRatingHtml, badRatingSubject, badRatingText } from "@/lib/email/bad-rating-email";
 import { sendEmail } from "@/lib/email/send";
 import { venueAlertRecipients } from "@/lib/email/recipients";
-import { signCompToken } from "@/lib/auth/comp-token";
 import { attributionForSession, shiftBucketFor } from "@/domain/reviews/attribution";
 import { googleReviewUrl } from "@/domain/reviews/links";
 import { sanitizeTags, sentimentFor } from "@/lib/feedback";
@@ -20,7 +19,6 @@ function tokensEqual(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb);
 }
 
-const COMP_DEFAULT_CENTS = 2000; // $20
 
 // Tie feedback to the guest who actually owns the tab. Without this
 // check, anyone who scrapes a session ID (visible in the QR URL flow)
@@ -176,25 +174,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   // lowercases the result. Manager-configured override on Settings wins.
   const to = await venueAlertRecipients(session.venueId);
 
-  // If the tab is still open (not paid), include a "Comp $20 to Table N"
-  // CTA in the email so the manager can apply the credit in one tap.
-  let compCta: { url: string; amountCents: number } | undefined;
-  if (!session.paidAt && session.expiresAt.getTime() > Date.now()) {
-    try {
-      const token = await signCompToken({
-        sessionId: session.id,
-        venueId: session.venueId,
-        amountCents: COMP_DEFAULT_CENTS,
-        tableLabel: session.table.label,
-      });
-      compCta = {
-        url: `${APP_URL}/comp/${encodeURIComponent(token)}`,
-        amountCents: COMP_DEFAULT_CENTS,
-      };
-    } catch {
-      // Sign failure shouldn't break the email path.
-    }
-  }
+  // The "Comp $20 to this table" CTA is gone with the rest of the money
+  // handling: TabCall doesn't hold the tab, so it can't credit it. A
+  // manager who wants to comp does it on the POS, which is where the
+  // bill actually lives. Service recovery replaced it as the response to
+  // a bad rating, and unlike a silent credit it puts a person at the
+  // table.
 
   const baseArgs = {
     venueName: session.venue.name,
@@ -204,7 +189,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     classification,
     occurredAt: new Date(),
     staffQueueUrl: `${APP_URL}/staff`,
-    compCta,
   };
 
   if (to.length > 0) {

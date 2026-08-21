@@ -78,7 +78,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   // Cascading wipe of every venue-scoped row. Mirrors the manual
   // delete pattern used during the test-data cleanup in this session.
-  // Helpers: collect ids first since LinkTokenUse / CompAction / BillSplit
+  // Helpers: collect ids first since LinkTokenUse
   // don't expose relation filters in their WhereInput.
   const staffIds = (await db.staffMember.findMany({
     where: { venueId: v.id }, select: { id: true },
@@ -89,7 +89,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   await db.$transaction([
     db.linkTokenUse.deleteMany({ where: { staffId: { in: staffIds } } }),
-    db.compAction.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     db.feedbackReport.deleteMany({ where: { venueId: v.id } }),
     db.request.deleteMany({ where: { venueId: v.id } }),
     db.guestSession.deleteMany({ where: { venueId: v.id } }),
@@ -98,7 +97,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     db.menuItem.deleteMany({ where: { venueId: v.id } }),
     db.menuCategory.deleteMany({ where: { venueId: v.id } }),
     db.venueSpecial.deleteMany({ where: { venueId: v.id } }),
-    db.tipPool.deleteMany({ where: { venueId: v.id } }),
     db.tableAssignment.deleteMany({ where: { table: { venueId: v.id } } }),
     db.table.deleteMany({ where: { venueId: v.id } }),
     db.auditLog.deleteMany({ where: { venueId: v.id } }),

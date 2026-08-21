@@ -9,7 +9,6 @@ export type BadRatingArgs = {
   occurredAt: Date;
   staffQueueUrl: string;
   /** Pre-built "Comp $X" CTA. Omit if the tab is already paid or unknown. */
-  compCta?: { url: string; amountCents: number };
 };
 
 export function badRatingSubject(args: BadRatingArgs): string {
@@ -26,9 +25,6 @@ export function badRatingHtml(args: BadRatingArgs): string {
     ? `<p style="margin:0;color:#8B6F4E;"><strong>Staff named:</strong> ${escapeHtml(args.classification.serverName)}</p>`
     : "";
 
-  const compCta = args.compCta
-    ? `<a href="${escapeHtml(args.compCta.url)}" style="display:inline-block;background:#F2E7B7;color:#232130;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;margin-right:8px;">Comp $${(args.compCta.amountCents / 100).toFixed(0)} to ${escapeHtml(args.tableLabel)}</a>`
-    : "";
 
   return `<!doctype html>
 <html>
@@ -47,10 +43,9 @@ export function badRatingHtml(args: BadRatingArgs): string {
             <p style="margin:14px 0 0;color:#232130;"><strong>Suggested action:</strong> ${escapeHtml(args.classification.suggestion)}</p>
           </td></tr>
           <tr><td style="padding:18px 28px 24px;border-top:1px solid #E2E8F0;background:#F7F5F2;">
-            ${compCta}
             <a href="${escapeHtml(args.staffQueueUrl)}" style="display:inline-block;background:#232130;color:#FFFFFF;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;">Open live queue</a>
             <p style="margin:14px 0 0;font-size:11px;color:#8B6F4E;line-height:1.5;">
-              ${args.compCta ? "Comp link is single-use and expires in 24h. " : ""}AI-generated suggestion, verify before acting. The guest&rsquo;s words matter more than the category.
+              AI-generated suggestion, verify before acting. The guest&rsquo;s words matter more than the category.
             </p>
           </td></tr>
         </table>
@@ -71,11 +66,6 @@ export function badRatingText(args: BadRatingArgs): string {
   if (args.classification.serverName) lines.push(`Staff named: ${args.classification.serverName}`);
   lines.push(`Suggested action: ${args.classification.suggestion}`);
   lines.push("");
-  if (args.compCta) {
-    lines.push(`Comp $${(args.compCta.amountCents / 100).toFixed(0)} to ${args.tableLabel}: ${args.compCta.url}`);
-    lines.push("(single-use, expires in 24h)");
-    lines.push("");
-  }
   lines.push(`Live queue: ${args.staffQueueUrl}`);
   lines.push("");
   lines.push("AI-generated. Verify before acting.");

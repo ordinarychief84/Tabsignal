@@ -24,11 +24,6 @@ enum SubscriptionStatus {
   CANCELED
 }
 
-enum TipPoolPeriod {
-  SHIFT
-  DAY
-  WEEK
-}
 
 enum PosType {
   NONE
@@ -192,7 +187,6 @@ model Venue {
   feedback                 FeedbackReport[]
   menuCategories           MenuCategory[]
   menuItems                MenuItem[]
-  tipPools                 TipPool[]
   reservations             Reservation[]
   waitlist                 Waitlist[]
   specials                 VenueSpecial[]
@@ -514,38 +508,7 @@ model GuestSession {
 // who worked. We do NOT touch funds — we record splits and the manager
 // settles via cash/payroll. Stripe Connect doesn't support arbitrary
 // venue → staff transfers without a marketplace marketplace setup.
-model TipPool {
-  id             String         @id @default(cuid())
-  venueId        String
-  period         TipPoolPeriod  @default(SHIFT)
-  startedAt      DateTime
-  endedAt        DateTime?
-  // Total tips collected during this period (mirrored from GuestSession
-  // tipPercent + payment data at close time).
-  totalTipsCents Int            @default(0)
-  closedAt       DateTime?
-  createdAt      DateTime       @default(now())
-  venue          Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  shares         TipPoolShare[]
 
-  @@index([venueId, startedAt])
-}
-
-model TipPoolShare {
-  id            String    @id @default(cuid())
-  poolId        String
-  staffMemberId String
-  // Hours worked or weight assigned (e.g., bartender = 1.0, barback = 0.5).
-  shareWeight   Float     @default(1.0)
-  // Computed payout once the pool is closed.
-  payoutCents   Int       @default(0)
-  paidOutAt     DateTime?
-  createdAt     DateTime  @default(now())
-  pool          TipPool   @relation(fields: [poolId], references: [id], onDelete: Cascade)
-
-  @@unique([poolId, staffMemberId])
-  @@index([staffMemberId])
-}
 
 model Request {
   id               String            @id @default(cuid())
@@ -628,17 +591,6 @@ model PasswordResetToken {
 // triggered from the AI bad-rating email. The email contains a signed
 // JWT with a jti; applying the comp inserts the jti here so the link
 // can't be replayed (e.g. forwarded to another manager).
-model CompAction {
-  jti         String   @id
-  sessionId   String
-  venueId     String
-  amountCents Int
-  reason      String?
-  appliedAt   DateTime @default(now())
-
-  @@index([sessionId])
-  @@index([venueId, appliedAt])
-}
 
 // Stripe webhook idempotency: Stripe may deliver the same event multiple
 // times. We insert by event ID; the unique constraint dedupes retries.

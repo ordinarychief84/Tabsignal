@@ -60,7 +60,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   await db.$transaction([
     db.linkTokenUse.deleteMany({ where: { staffId: { in: staffIds } } }),
-    db.compAction.deleteMany({ where: { sessionId: { in: sessionIds } } }),
     db.feedbackReport.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.request.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.guestSession.deleteMany({ where: { venueId: { in: venueIds } } }),
@@ -69,7 +68,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     db.menuItem.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.menuCategory.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.venueSpecial.deleteMany({ where: { venueId: { in: venueIds } } }),
-    db.tipPool.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.tableAssignment.deleteMany({ where: { table: { venueId: { in: venueIds } } } }),
     db.table.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.auditLog.deleteMany({ where: { venueId: { in: venueIds } } }),

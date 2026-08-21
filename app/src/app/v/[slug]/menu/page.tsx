@@ -6,7 +6,6 @@ import { dollars } from "@/lib/bill";
 import { planFromOrg, meetsAtLeast } from "@/lib/plans";
 import { SITE_URL } from "@/lib/seo";
 import { WishlistHeart } from "./wishlist-heart";
-import { OrderCartProvider, AddToOrder } from "./order-cart";
 import { GuestBackLink } from "@/components/guest/back-link";
 
 export const dynamic = "force-dynamic";
@@ -220,7 +219,6 @@ export default async function PublicMenuPage({
                           savedInit={savedItemIds.has(it.id)}
                         />
                       ) : null}
-                      <AddToOrder id={it.id} name={it.name} priceCents={it.priceCents} />
                     </div>
                   </li>
                 ))}
@@ -266,7 +264,6 @@ export default async function PublicMenuPage({
                         savedInit={savedItemIds.has(it.id)}
                       />
                     ) : null}
-                    <AddToOrder id={it.id} name={it.name} priceCents={it.priceCents} />
                   </div>
                 </li>
               ))}
@@ -282,19 +279,11 @@ export default async function PublicMenuPage({
   );
 
   // Ordering only exists for a guest who arrived from a table QR — a
-  // public browser has no tab to send an order to, so they get the menu
-  // exactly as before.
-  if (!guest) return body;
-  return (
-    <OrderCartProvider
-      slug={params.slug}
-      sessionId={guest.sessionId}
-      sessionToken={guest.sessionToken}
-      tableLabel={guest.tableLabel}
-    >
-      {body}
-    </OrderCartProvider>
-  );
+  // The ordering cart is gone. TabCall doesn't take the order and doesn't
+  // hold the bill, so a running total on a guest's phone was promising
+  // something the product can't do. Prices stay — a menu without them
+  // isn't a menu — but adding up to a total is the POS's job.
+  return body;
 }
 
 async function loadGuestContext(

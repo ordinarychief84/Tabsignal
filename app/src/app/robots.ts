@@ -23,7 +23,6 @@ export default function robots(): MetadataRoute.Robots {
           "/staff",
           "/api/",
           "/dashboard",
-          "/comp/",
           "/founder",
         ],
       },
