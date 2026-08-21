@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { normalizeTags } from "@/lib/menu-discovery";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateAdminRoute } from "@/lib/plan-gate";
@@ -42,6 +43,10 @@ const CreateBody = z.object({
   isFeatured: z.boolean().optional(),
   ageRestricted: z.boolean().default(false),
   imageUrl: z.string().url().nullable().optional(),
+  // Discovery tags. These are what drive the guest's "what are you in
+  // the mood for?" prompts — without them that row simply doesn't render,
+  // which is why the editor has to expose them.
+  tags: z.array(z.string().trim().min(1).max(24)).max(8).optional(),
 });
 
 export async function POST(req: Request, ctx: { params: { slug: string } }) {
@@ -72,6 +77,10 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
       isFeatured: parsed.isFeatured ?? false,
       ageRestricted: parsed.ageRestricted,
       imageUrl: parsed.imageUrl ?? null,
+      // Normalised here rather than trusting the client: the guest side
+      // matches tags case-insensitively, so storing them lowercase keeps
+      // "Light" and "light" from becoming two different things.
+      tags: normalizeTags(parsed.tags),
     },
   });
   return NextResponse.json({ id: created.id });

@@ -75,3 +75,28 @@ function hash(value: string): number {
   }
   return h;
 }
+
+/**
+ * Normalise tags on the way IN.
+ *
+ * The guest side matches case-insensitively, so storing them lowercase
+ * stops "Light" and "light" becoming two different things a venue has to
+ * keep in sync by hand. Trimmed, de-duplicated, and capped at 8 — past
+ * that a tag stops narrowing anything.
+ */
+export function normalizeTags(tags: string[] | undefined | null): string[] {
+  if (!tags) return [];
+  const clean = tags.map(t => t.trim().toLowerCase()).filter(Boolean);
+  return [...new Set(clean)].slice(0, 8);
+}
+
+/**
+ * The tags that actually do something, for the editor to suggest.
+ *
+ * A venue can type anything, but only these feed a discovery prompt — so
+ * the editor offers them first rather than letting someone invent
+ * "yummy" and wonder why nothing happens.
+ */
+export const SUGGESTED_TAGS: string[] = [
+  ...new Set(MOOD_PROMPTS.flatMap(p => p.tags)),
+];
