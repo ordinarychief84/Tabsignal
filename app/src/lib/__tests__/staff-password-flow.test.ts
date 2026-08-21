@@ -45,6 +45,8 @@ type StubState = {
   staffById: Map<string, StaffRow>;
   session: { kind: "session"; staffId: string; venueId: string; email: string; role: string; iat: number } | null;
   updates: Array<{ id: string; data: Record<string, unknown> }>;
+  /** Emails that have an active PlatformAdmin row — TabCall's own people. */
+  platformAdmins: Set<string>;
 };
 
 let state: StubState;
@@ -65,7 +67,24 @@ beforeEach(async () => {
     staffById: new Map([[row.id, row]]),
     session: null,
     updates: [],
+    platformAdmins: new Set<string>(),
   };
+
+  // Own the operator boundary rather than reaching it through the db
+  // mock. bun's module registry is process-wide and two sibling suites
+  // install their own env-only stub of this module, so whose version
+  // /api/auth/login sees depends on file order — the operator test below
+  // passed standalone and failed in a full run. Every export is listed;
+  // a partial stub would follow this file into the next suite.
+  mock.module("@/lib/auth/operator", () => ({
+    isOperator: () => false,
+    isPlatformStaff: () => false,
+    operatorAllowlist: () => [],
+    isOperatorAsync: async (sess: { email: string } | null) =>
+      !!sess && state.platformAdmins.has(sess.email.toLowerCase()),
+    isPlatformStaffAsync: async (sess: { email: string } | null) =>
+      !!sess && state.platformAdmins.has(sess.email.toLowerCase()),
+  }));
 
   // Mock @/lib/db — only the methods the route handlers touch.
   mock.module("@/lib/db", () => ({
@@ -86,6 +105,18 @@ beforeEach(async () => {
           }
           return { id: where.id };
         },
+      },
+      // /api/auth/login asks whether the caller is platform staff so it
+      // can point operators at the console instead of the floor. Empty by
+      // default — these are venue accounts; one test adds a row.
+      platformAdmin: {
+        findUnique: async ({ where }: { where: { email?: string } }) =>
+          where.email && state.platformAdmins.has(where.email)
+            ? { id: "pa_1", suspendedAt: null }
+            : null,
+      },
+      orgMember: {
+        findFirst: async () => null,
       },
     },
   }));
@@ -256,6 +287,66 @@ describe("POST /api/auth/login", () => {
     expect(setCookie).toContain("tabsignal_session=");
     // lastSeenAt update fired
     expect(state.updates.some(u => u.id === "stf_1" && (u.data.lastSeenAt as Date) instanceof Date)).toBe(true);
+  });
+
+
+  /* --------------------- where sign-in lands you -------------------- */
+
+  test("honours a safe same-origin next", async () => {
+    const { POST } = await import("../../app/api/auth/login/route");
+    const res = await POST(
+      makeReq("https://tab-call.test/api/auth/login", {
+        email: "owner@example.com",
+        password: "KnownPasswordIs1234!",
+        next: "/admin/v/luna/menu",
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).next).toBe("/admin/v/luna/menu");
+  });
+
+  test("refuses to bounce anywhere off-site", async () => {
+    // An open redirect here would hand a phisher a tab-call.com link that
+    // lands on their page with the victim freshly authenticated.
+    const { POST } = await import("../../app/api/auth/login/route");
+    for (const evil of ["//evil.example", "https://evil.example/x", "javascript:alert(1)"]) {
+      const res = await POST(
+        makeReq("https://tab-call.test/api/auth/login", {
+          email: "owner@example.com",
+          password: "KnownPasswordIs1234!",
+          next: evil,
+        }),
+      );
+      expect((await res.json()).next).toBe("/staff");
+    }
+  });
+
+  test("with no next, a venue account lands on the floor", async () => {
+    const { POST } = await import("../../app/api/auth/login/route");
+    const res = await POST(
+      makeReq("https://tab-call.test/api/auth/login", {
+        email: "owner@example.com",
+        password: "KnownPasswordIs1234!",
+      }),
+    );
+    expect((await res.json()).next).toBe("/staff");
+  });
+
+  test("with no next, an operator lands in the platform console", async () => {
+    // Matches what /api/auth/callback picks, so both ways in agree —
+    // before this, password sign-in always dumped operators on the floor.
+    // Identified by a PlatformAdmin row rather than OPERATOR_EMAILS:
+    // that env var is unset in production, and it's read once at module
+    // load so a test can't flip it anyway.
+    state.platformAdmins.add("owner@example.com");
+    const { POST } = await import("../../app/api/auth/login/route");
+    const res = await POST(
+      makeReq("https://tab-call.test/api/auth/login", {
+        email: "owner@example.com",
+        password: "KnownPasswordIs1234!",
+      }),
+    );
+    expect((await res.json()).next).toBe("/operator");
   });
 
   test("per-email lockout: 10 attempts allowed, 11th returns 429 RATE_LIMITED", async () => {
@@ -450,5 +541,61 @@ describe("POST /api/auth/set-password", () => {
     expect(res.status).toBe(200);
     const upd = state.updates.find(u => u.id === "stf_1");
     expect(upd?.data.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+  });
+
+  test("first-time setup does NOT sign the caller out", async () => {
+    // The account most likely to be here is an invited server who just
+    // tapped their invite on a phone. There is no old password to cut
+    // off, so ending their session to make them retype the one they chose
+    // ten seconds ago protects nothing and strands them mid-shift.
+    const row = state.staffByEmail.get("owner@example.com")!;
+    row.passwordHash = null;
+    // Arriving from an invite link, which is the case this covers.
+    row.emailVerifiedAt = null;
+    state.staffByEmail.set(row.email, row);
+    state.staffById.set(row.id, row);
+
+    state.session = {
+      kind: "session",
+      staffId: "stf_1",
+      venueId: "v_1",
+      email: "owner@example.com",
+      role: "OWNER",
+      iat: Math.floor(Date.now() / 1000),
+    };
+    const { POST } = await import("../../app/api/auth/set-password/route");
+    const res = await POST(
+      makeReq("https://tab-call.test/api/auth/set-password", {
+        newPassword: "FirstTimePassword-2026",
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).signedOut).toBe(false);
+    const upd = state.updates.find(u => u.id === "stf_1");
+    expect(upd?.data.sessionsValidAfter).toBeUndefined();
+    // The link only reached them because it was delivered to that
+    // address, so setting a password from it settles verification too.
+    expect((upd?.data.emailVerifiedAt as Date) instanceof Date).toBe(true);
+  });
+
+  test("rotation DOES sign the caller out, and says so", async () => {
+    state.session = {
+      kind: "session",
+      staffId: "stf_1",
+      venueId: "v_1",
+      email: "owner@example.com",
+      role: "OWNER",
+      iat: Math.floor(Date.now() / 1000),
+    };
+    const { POST } = await import("../../app/api/auth/set-password/route");
+    const res = await POST(
+      makeReq("https://tab-call.test/api/auth/set-password", {
+        currentPassword: "KnownPasswordIs1234!",
+        newPassword: "RotatedPassword-2026",
+      }),
+    );
+    expect(res.status).toBe(200);
+    // The form reads this to decide between "carry on" and "sign in again".
+    expect((await res.json()).signedOut).toBe(true);
   });
 });

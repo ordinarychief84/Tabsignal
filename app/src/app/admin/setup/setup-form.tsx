@@ -196,7 +196,8 @@ function SetupSuccess({ data }: { data: CreatedVenue }) {
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Step 2</p>
           <p className="mt-2 text-lg font-medium text-slate">Invite a staff member</p>
           <p className="mt-2 text-sm text-slate/60">
-            They sign in by magic link. No passwords, ever.
+            They get an invite email, choose a password, and they&rsquo;re on
+            the floor.
           </p>
           <p className="mt-5 text-sm font-medium text-slate">Add staff →</p>
         </a>

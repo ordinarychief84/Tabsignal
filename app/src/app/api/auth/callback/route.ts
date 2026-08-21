@@ -89,7 +89,27 @@ export async function GET(req: Request) {
     role: staff.role,
   });
   const defaultDest = operator ? "/operator" : "/staff";
-  const dest = safeNext(claims.next ?? url.searchParams.get("next"), defaultDest);
+  let dest = safeNext(claims.next ?? url.searchParams.get("next"), defaultDest);
+
+  // A link is how you ACCEPT an invite or confirm an address — it is not
+  // how you sign in. So an account that arrives here without a password
+  // has to choose one before it goes anywhere, otherwise this link is the
+  // only thing that ever gets it in and the next expiry strands them.
+  //
+  // Invited staff are the case that matters: the manager adds them, they
+  // tap the invite, and until now they landed on the floor with no
+  // credential of their own. Owners come through signup, which already
+  // takes a password, so they pass straight through.
+  //
+  // Google accounts are exempt — Google IS their credential, and demanding
+  // a second one would be asking for a password they'd never type.
+  const linkedToGoogle = await db.authIdentity.findFirst({
+    where: { staffId: staff.id },
+    select: { id: true },
+  });
+  if (!staff.passwordHash && !linkedToGoogle) {
+    dest = `/staff/account/password?first=1&next=${encodeURIComponent(dest)}`;
+  }
 
   // Belt-and-braces against SameSite-Strict / ITP / older WebView
   // quirks: instead of issuing an HTTP redirect (whose response carries

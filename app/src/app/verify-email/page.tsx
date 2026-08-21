@@ -3,17 +3,18 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Verify your email",
-  description: "How TabCall verifies your email via the magic-link sign-in.",
+  description: "How TabCall confirms your email address.",
   robots: { index: false, follow: true },
 };
 
 /**
  * Email-verification explainer.
  *
- * Magic-link sign-in IS the email verification — clicking the link
- * from the user's inbox proves ownership of the address. This page
- * exists so users with a SaaS habit of typing "/verify-email" land
- * somewhere sensible.
+ * Signing in is email + password. The one link we still send proves the
+ * address is yours — password sign-in refuses to mint a session until
+ * that's settled, so this is a gate you pass once, not a way in you use
+ * every shift. This page exists so users with a SaaS habit of typing
+ * "/verify-email" land somewhere sensible.
  *
  * Real callback handling for verification lives at /api/auth/callback.
  */
@@ -61,16 +62,17 @@ function Waiting() {
       </span>
       <h1 className="mt-5 text-center text-2xl font-semibold tracking-tight text-slate">Check your email</h1>
       <p className="mt-3 text-center text-[14px] leading-relaxed text-slate/65">
-        We send a single-use sign-in link to your inbox. Tap it from this
-        device and you&rsquo;re in — that&rsquo;s also how we verify
-        you own the address.
+        We sent a single-use link to your inbox. Tap it from this device to
+        confirm the address is yours. You only do this once — after that
+        it&rsquo;s your email and password.
       </p>
       <p className="mt-4 rounded-xl bg-slate/[0.03] p-3 text-[12px] leading-relaxed text-slate/65">
-        Didn&rsquo;t get one yet? Head back to{" "}
+        Didn&rsquo;t get one? Try signing in at{" "}
         <Link href="/login" className="text-umber underline-offset-4 hover:underline">
           /login
         </Link>{" "}
-        and request a new link.
+        — if the address still needs confirming, we&rsquo;ll offer to send a
+        fresh link.
       </p>
     </>
   );
@@ -89,7 +91,7 @@ function Success() {
       </span>
       <h1 className="mt-5 text-center text-2xl font-semibold tracking-tight text-slate">You&rsquo;re in.</h1>
       <p className="mt-3 text-center text-[14px] leading-relaxed text-slate/65">
-        Your email is verified. We&rsquo;re taking you to your dashboard.
+        Address confirmed. From now on, sign in with your email and password.
       </p>
       <Link
         href="/staff"
@@ -115,14 +117,14 @@ function Expired() {
       </span>
       <h1 className="mt-5 text-center text-2xl font-semibold tracking-tight text-slate">Link expired</h1>
       <p className="mt-3 text-center text-[14px] leading-relaxed text-slate/65">
-        Sign-in links are single-use and valid for 15 minutes. We can
-        send a fresh one in a few seconds.
+        Confirmation links work once and don&rsquo;t last long. Sign in with
+        your password and we&rsquo;ll offer you a fresh one.
       </p>
       <Link
         href="/login"
         className="mt-6 inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-chartreuse text-[15px] font-semibold text-slate shadow-soft hover:-translate-y-0.5 hover:shadow-lift"
       >
-        Request a new link
+        Go to sign-in
       </Link>
     </>
   );

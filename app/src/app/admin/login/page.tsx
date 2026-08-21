@@ -10,9 +10,10 @@ export const metadata = { title: "TabCall · Super-admin sign-in" };
 /**
  * Password sign-in for TabCall super admins (PlatformAdmin rows).
  *
- * This is distinct from /staff/login (which is magic-link auth for
- * StaffMember rows). A super admin who tries to access /admin/login
- * while already signed in is bounced straight to /operator.
+ * This is distinct from /staff/login, which signs in StaffMember rows
+ * against their own table. Both take a password; the accounts are
+ * separate. A super admin who tries to access /admin/login while already
+ * signed in is bounced straight to /operator.
  */
 export default async function AdminLoginPage({
   searchParams,
@@ -47,12 +48,12 @@ export default async function AdminLoginPage({
           <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Super admin</p>
           <h1 className="mt-2 text-3xl font-medium leading-tight text-slate">Sign in</h1>
           <p className="mt-3 text-sm leading-relaxed text-slate/65">
-            Password sign-in for the TabCall platform admin console. Regular
-            staff sign in at{" "}
+            Password sign-in for the TabCall platform admin console. Venue
+            owners and staff sign in at{" "}
             <Link href="/staff/login" className="text-umber underline-offset-4 hover:underline">
               /staff/login
-            </Link>{" "}
-            by magic link.
+            </Link>
+            .
           </p>
 
           {searchParams.changed === "1" ? (

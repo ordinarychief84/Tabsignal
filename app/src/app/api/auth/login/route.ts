@@ -5,13 +5,15 @@ import { loginStaffWithPassword } from "@/lib/auth/staff-password";
 import { signSessionToken } from "@/lib/auth/token";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 import { rateLimitAsync } from "@/lib/rate-limit";
+import { isPlatformStaffAsync } from "@/lib/auth/operator";
+import { safeNext } from "@/lib/auth/redirect";
 
 /**
  * POST /api/auth/login
  *
- * Email + password sign-in for StaffMember rows. Magic-link via
- * /api/auth/start remains the default and continues to work
- * unchanged for accounts that haven't set a password.
+ * Email + password sign-in for StaffMember rows — the way into a venue
+ * account. /api/auth/start still exists, but only to confirm an email
+ * address or carry a staff invite; it is not a way to sign in.
  *
  * Same generic INVALID_CREDENTIALS error for unknown-email, wrong-
  * password, and no-password-set so callers can't probe registration
@@ -25,6 +27,12 @@ import { rateLimitAsync } from "@/lib/rate-limit";
 const Body = z.object({
   email: z.string().email().max(200),
   password: z.string().min(1).max(200),
+  // Where the caller was headed before being bounced here. Passed through
+  // safeNext, which rejects protocol-relative hosts and javascript:/data:
+  // schemes — an open redirect on the sign-in endpoint would hand any
+  // phisher a tab-call.com link that lands on their page WITH the user
+  // freshly authenticated.
+  next: z.string().max(512).optional(),
 });
 
 export async function POST(req: Request) {
@@ -83,7 +91,21 @@ export async function POST(req: Request) {
     .update({ where: { id: result.staff.id }, data: { lastSeenAt: new Date() } })
     .catch(() => undefined);
 
-  const res = NextResponse.json({ ok: true, email: result.staff.email });
+  // Where to land. An explicit `next` wins; otherwise operators go to the
+  // platform console and everyone else to the floor — the same choice
+  // /api/auth/callback makes, so both ways in agree. Deciding it here
+  // rather than in the form means the client never has to know who is an
+  // operator.
+  const operator = await isPlatformStaffAsync({
+    kind: "session",
+    staffId: result.staff.id,
+    venueId: result.staff.venueId,
+    email: result.staff.email,
+    role: result.staff.role as "OWNER" | "MANAGER" | "SERVER" | "HOST" | "VIEWER" | "STAFF",
+  });
+  const next = safeNext(parsed.next, operator ? "/operator" : "/staff");
+
+  const res = NextResponse.json({ ok: true, email: result.staff.email, next });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return res;
 }
