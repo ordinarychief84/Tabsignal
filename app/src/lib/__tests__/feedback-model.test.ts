@@ -101,6 +101,26 @@ describe("tagLabel", () => {
     expect(sanitizeTags(5, [SERVER_TAG])).toEqual([SERVER_TAG]);
   });
 
+  test("an id in BOTH vocabularies resolves by the rating", () => {
+    // Regression: "service" is "Great service" when praised and plain
+    // "Service" when complained about. Without the rating, a manager
+    // reading a 2/5 recovery card saw "Great service" listed as the
+    // reason the guest wanted a word.
+    expect(tagLabel("service", null, 5)).toBe("Great service");
+    expect(tagLabel("service", null, 2)).toBe("Service");
+    expect(tagLabel("service", null, 1)).toBe("Service");
+  });
+
+  test("without a rating it still returns a usable label", () => {
+    expect(tagLabel("service")).toBe("Great service");
+    expect(tagLabel("cleanliness")).toBe("Cleanliness");
+  });
+
+  test("an id in only one vocabulary ignores the rating", () => {
+    expect(tagLabel("cleanliness", null, 5)).toBe("Cleanliness");
+    expect(tagLabel("atmosphere", null, 1)).toBe("Atmosphere");
+  });
+
   test("vocabularies have no duplicate ids within themselves", () => {
     for (const vocab of [POSITIVE_TAGS, NEGATIVE_TAGS]) {
       const ids = vocab.map(t => t.id);

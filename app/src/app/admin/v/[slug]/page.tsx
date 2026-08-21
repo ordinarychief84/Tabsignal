@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { readOnboardingState, deriveOnboarding } from "@/lib/onboarding";
+import { can } from "@/lib/auth/permissions";
+import { getStaffSession } from "@/lib/auth/session";
+import { RecoveryQueue } from "./recovery-queue";
 import { ManagerFloor } from "./manager-floor";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · manager dashboard" };
 
 export default async function ManagerDashboard({ params }: { params: { slug: string } }) {
+  // The layout already gated access to this venue; this is only for the
+  // caller's ROLE, which decides who can clear a recovery request.
+  const session = await getStaffSession();
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
     select: {
@@ -105,6 +111,11 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
 
   const avgAckSec = ackMedianSeconds(ackedToday);
   const tableActivity = aggregateByTable(todayRequestsByTable);
+  // Recovery is a manager job by design — the escalation exists to reach
+  // someone senior to the server who received the rating.
+  const isManagerTier = session
+    ? can(session.role === "STAFF" ? "OWNER" : session.role, "staff.assign_tables")
+    : false;
   const leaderboard = computeLeaderboard(leaderboardRaw);
 
   return (
@@ -134,6 +145,10 @@ export default async function ManagerDashboard({ params }: { params: { slug: str
           </span>
         </Link>
       ) : null}
+
+      {/* Above the header on purpose: a guest who asked for a manager and
+          is still in the building outranks every number below. */}
+      <RecoveryQueue venueId={venue.id} canResolve={isManagerTier} />
 
       <header className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
