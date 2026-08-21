@@ -3,22 +3,31 @@
 import Link from "next/link";
 import { useState } from "react";
 
+/**
+ * Email + password sign-in for StaffMember rows — the one way into a
+ * venue account.
+ *
+ * There used to be two sign-in screens with two different auth models:
+ * /login took a password, while /staff/login (where all 50-odd
+ * "you need to sign in" redirects land) emailed a one-tap link. So the
+ * page a venue actually got sent to was the one that couldn't use the
+ * password they chose at signup, and a server who'd set a password still
+ * had to go and find an email to get onto the floor. One form now, used
+ * by both, so the two can't drift again.
+ *
+ * Links still exist, but only for the two jobs a password can't do:
+ * proving you own the address (verification) and getting in when you've
+ * forgotten it (reset). Neither is a way to sign in.
+ *
+ * `nextUrl` carries the page the caller was trying to reach. Without one
+ * the server decides — operators to the platform console, everyone else
+ * to the floor — which is the same choice /api/auth/callback makes, so
+ * both routes in land in the same place.
+ */
+
 type Status = "idle" | "submitting" | "error" | "verify-needed";
 
-/**
- * Password-only sign-in form for StaffMember rows.
- *
- * The signup flow now collects a password upfront and gates first
- * login on a one-tap email verification link. After that link is
- * clicked, the only way in is email + password. Magic-link login
- * is no longer a UI option — keeps the form clean and the auth
- * model unambiguous.
- *
- * If the account hasn't verified its email yet, /api/auth/login
- * returns 401 EMAIL_UNVERIFIED. The form shows a "resend
- * verification link" call to action that POSTs /api/auth/start.
- */
-export function LoginForm() {
+export function PasswordSignIn({ nextUrl }: { nextUrl?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,7 +55,11 @@ export function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          ...(nextUrl ? { next: nextUrl } : {}),
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.status === 401 && body?.error === "EMAIL_UNVERIFIED") {
@@ -68,7 +81,9 @@ export function LoginForm() {
         setError(body?.detail || body?.error || `HTTP ${res.status}`);
         return;
       }
-      window.location.href = "/staff";
+      // Full navigation, not a router push: the session cookie was just
+      // set and every destination is server-rendered off it.
+      window.location.href = body?.next || nextUrl || "/staff";
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Sign-in failed");
@@ -81,11 +96,14 @@ export function LoginForm() {
       await fetch("/api/auth/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          ...(nextUrl ? { next: nextUrl } : {}),
+        }),
       });
     } catch {
-      // The /auth/start endpoint always returns 200 to avoid leaking
-      // whether the email is registered; nothing to do on error.
+      // /auth/start always returns 200 so it can't be used to probe which
+      // emails are registered; there is nothing to report either way.
     }
     setVerifyResent(true);
   }
@@ -96,16 +114,16 @@ export function LoginForm() {
     return (
       <div className="space-y-4" role="status" aria-live="polite">
         <div className="rounded-2xl bg-coral-soft/50 p-5">
-          <p className="text-base font-semibold text-slate">Verify your email first</p>
+          <p className="text-base font-semibold text-slate">Confirm your email first</p>
           <p className="mt-2 text-[14px] leading-relaxed text-slate/75">
-            Your password is right — but the email on{" "}
-            <span className="font-mono text-xs">{email}</span> hasn&rsquo;t been
-            verified yet. We&rsquo;ll send a fresh one-tap link.
+            Your password is right — we just haven&rsquo;t confirmed that{" "}
+            <span className="font-mono text-xs">{email}</span> is yours. One tap
+            on the link we send and you&rsquo;re in for good.
           </p>
         </div>
         {verifyResent ? (
           <p className="rounded-xl bg-chartreuse/20 p-4 text-[14px] text-slate">
-            Verification link sent. Check your inbox.
+            Sent. Check your inbox — the link works once.
           </p>
         ) : (
           <button
@@ -113,7 +131,7 @@ export function LoginForm() {
             onClick={resendVerification}
             className="min-h-[48px] w-full rounded-xl bg-chartreuse text-[15px] font-semibold text-slate shadow-soft hover:-translate-y-0.5 hover:shadow-lift"
           >
-            Send verification link
+            Send the confirmation link
           </button>
         )}
       </div>
@@ -135,7 +153,7 @@ export function LoginForm() {
           inputMode="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
           placeholder="you@your-restaurant.com"
           className="mt-1.5 block w-full rounded-xl border border-slate/15 bg-white px-3.5 py-3 text-[15px] text-slate placeholder-slate/35 outline-none transition-shadow focus:border-slate/40 focus:ring-4 focus:ring-slate/[0.08]"
         />
@@ -159,13 +177,13 @@ export function LoginForm() {
             minLength={1}
             maxLength={200}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             placeholder="Your password"
             className="block w-full rounded-xl border border-slate/15 bg-white px-3.5 py-3 pr-12 text-[15px] text-slate placeholder-slate/35 outline-none transition-shadow focus:border-slate/40 focus:ring-4 focus:ring-slate/[0.08]"
           />
           <button
             type="button"
-            onClick={() => setShowPassword((s) => !s)}
+            onClick={() => setShowPassword(s => !s)}
             aria-label={showPassword ? "Hide password" : "Show password"}
             className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate/55 hover:bg-slate/[0.04] hover:text-slate"
           >
@@ -198,13 +216,6 @@ export function LoginForm() {
       >
         {status === "submitting" ? "Signing in…" : "Sign in"}
       </button>
-
-      <p className="text-center text-[12px] text-slate/55">
-        New here?{" "}
-        <Link href="/signup" className="text-umber underline-offset-4 hover:underline">
-          Create a restaurant account
-        </Link>
-      </p>
     </form>
   );
 }

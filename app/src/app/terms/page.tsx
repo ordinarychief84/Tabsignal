@@ -51,9 +51,11 @@ export default function TermsPage() {
 
         <Section title="Your account">
           <p>
-            You sign in with a magic link, no passwords. The link expires in
-            15 minutes. Keep your email account secure: anyone with access to
-            it can sign in to your venue.
+            You sign in with your email and a password. We email you a link
+            once, to confirm the address is yours and to let a new team member
+            choose their password; after that the password is how you get in.
+            Keep both secure — anyone with them can sign in to your venue, and
+            anyone with your email can reset the password.
           </p>
         </Section>
 

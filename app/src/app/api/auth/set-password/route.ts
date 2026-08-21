@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   const staff = await db.staffMember.findUnique({
     where: { id: session.staffId },
-    select: { id: true, passwordHash: true, status: true },
+    select: { id: true, passwordHash: true, status: true, emailVerifiedAt: true },
   });
   if (!staff || staff.status === "SUSPENDED") {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
@@ -98,16 +98,30 @@ export async function POST(req: Request) {
     );
   }
 
+  // Rotation invalidates every cookie minted before now, the caller's
+  // included: the point of changing a password is to cut off whoever
+  // might have had the old one.
+  //
+  // First-time setup is not that. There is no old password to cut off,
+  // and the account most likely to be here is an invited server who just
+  // tapped their invite on a phone — signing them out of the session they
+  // arrived in, to make them retype the password they chose ten seconds
+  // ago, protects nothing. They stay signed in and carry on.
+  const isRotation = Boolean(staff.passwordHash);
+
   await db.staffMember.update({
     where: { id: staff.id },
     data: {
       passwordHash: newHash,
       passwordChangedAt: new Date(),
-      // Bump sessionsValidAfter so every cookie minted before this
-      // rotation is invalidated, including the caller's current session.
-      sessionsValidAfter: new Date(),
+      ...(isRotation ? { sessionsValidAfter: new Date() } : {}),
+      // Setting a password from an invite link also settles the address:
+      // the link only reached them because it was delivered there.
+      ...(staff.emailVerifiedAt ? {} : { emailVerifiedAt: new Date() }),
     },
   });
 
-  return NextResponse.json({ ok: true });
+  // The caller uses this to decide whether to send the user on or bounce
+  // them to sign in again.
+  return NextResponse.json({ ok: true, signedOut: isRotation });
 }

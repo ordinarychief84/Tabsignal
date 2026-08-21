@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { LoginForm } from "./login-form";
+import { PasswordSignIn } from "@/components/auth/password-sign-in";
 import { oauthGoogleEnabled } from "@/lib/auth/oauth-google";
 import { GoogleSignInButton, AuthDivider } from "../google-signin-button";
 
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 
 /**
  * Owner / staff log-in landing. Matches the /signup split-layout shell
- * so the auth pair feels coherent. Magic-link backend: enter email,
- * receive a single-use sign-in link.
+ * so the auth pair feels coherent. Email + password, sharing its form
+ * with /staff/login so the two sign-in screens can't drift apart.
  *
  * Operators with a PlatformAdmin password account sign in at
  * /admin/login instead.
@@ -89,7 +89,7 @@ export default function LoginPage() {
                 <AuthDivider />
               </>
             ) : null}
-            <LoginForm />
+            <PasswordSignIn />
             <p className="mt-6 text-center text-[12px] text-slate/55">
               Don&rsquo;t have an account?{" "}
               <Link href="/signup" className="text-umber underline-offset-4 hover:underline">

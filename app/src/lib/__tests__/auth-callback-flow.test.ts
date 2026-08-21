@@ -32,10 +32,21 @@ type StaffStub = {
   venueId: string;
   role: string;
   status: "ACTIVE" | "INVITED" | "SUSPENDED";
+  /**
+   * A link accepts an invite or confirms an address; it isn't a way to
+   * sign in. So the callback sends an account with no password to choose
+   * one before anywhere else, and the destination assertions below only
+   * hold for accounts that already have one. Defaults to "has a password"
+   * so each test states its own case.
+   */
+  passwordHash?: string | null;
 };
 
 type StubState = {
   staff: StaffStub | null;
+  /** Federated identities for state.staff — Google accounts are exempt
+   *  from the set-a-password step, since Google IS their credential. */
+  identities: Array<{ id: string; staffId: string }>;
   linkTokenUseShouldConflict: boolean;
   linkTokenUseCalls: Array<{ jti: string; staffId: string }>;
   staffUpdates: Array<{ id: string; data: Record<string, unknown> }>;
@@ -46,6 +57,7 @@ let state: StubState;
 beforeEach(() => {
   state = {
     staff: null,
+    identities: [],
     linkTokenUseShouldConflict: false,
     linkTokenUseCalls: [],
     staffUpdates: [],
@@ -68,13 +80,19 @@ beforeEach(() => {
     db: {
       staffMember: {
         findUnique: async ({ where }: { where: { id: string } }) => {
-          if (state.staff && state.staff.id === where.id) return state.staff;
-          return null;
+          if (!state.staff || state.staff.id !== where.id) return null;
+          // Default to having a password: the interesting case is the
+          // account that doesn't, and those tests say so explicitly.
+          return { passwordHash: "$2a$12$stub", ...state.staff };
         },
         update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
           state.staffUpdates.push({ id: where.id, data });
           return { id: where.id, ...data };
         },
+      },
+      authIdentity: {
+        findFirst: async ({ where }: { where: { staffId: string } }) =>
+          state.identities.find(i => i.staffId === where.staffId) ?? null,
       },
       linkTokenUse: {
         create: async ({ data }: { data: { jti: string; staffId: string } }) => {
@@ -368,4 +386,99 @@ describe("GET /api/auth/callback", () => {
       "https://tab-call.test/admin/v/luna-lounge",
     );
   });
+
+  /* ------------------------------------------------------------------ *
+   * A link accepts an invite; a password is how you sign in after that. *
+   * ------------------------------------------------------------------ */
+
+  test("an invited server with no password is sent to choose one, carrying their destination", async () => {
+    state.staff = {
+      id: "stf_1",
+      email: "newhire@example.com",
+      venueId: "v_1",
+      role: "SERVER",
+      status: "INVITED",
+      passwordHash: null,
+    };
+    const token = await signLinkToken({
+      kind: "link",
+      staffId: "stf_1",
+      email: "newhire@example.com",
+    });
+    const { GET } = await import("../../app/api/auth/callback/route");
+    const res = await GET(await callbackReq(token));
+    const html = await res.text();
+    // Without this they'd land on the floor holding nothing but a
+    // single-use link — and be locked out the moment it expires.
+    expect(html).toContain(
+      "/staff/account/password?first=1&next=" + encodeURIComponent("/staff"),
+    );
+    // Still signed in: they need a session to be able to set the password.
+    expect(res.headers.get("set-cookie")).toContain("tabsignal_session=");
+  });
+
+  test("the destination they were headed for survives the detour", async () => {
+    state.staff = {
+      id: "stf_1",
+      email: "newhire@example.com",
+      venueId: "v_1",
+      role: "MANAGER",
+      status: "INVITED",
+      passwordHash: null,
+    };
+    const token = await signLinkToken({
+      kind: "link",
+      staffId: "stf_1",
+      email: "newhire@example.com",
+      next: "/admin/v/luna/onboarding",
+    });
+    const { GET } = await import("../../app/api/auth/callback/route");
+    const res = await GET(await callbackReq(token));
+    expect(await res.text()).toContain(
+      "next=" + encodeURIComponent("/admin/v/luna/onboarding"),
+    );
+  });
+
+  test("an account that already has a password goes straight through", async () => {
+    state.staff = {
+      id: "stf_1",
+      email: "owner@example.com",
+      venueId: "v_1",
+      role: "OWNER",
+      status: "ACTIVE",
+      passwordHash: "$2a$12$already-set",
+    };
+    const token = await signLinkToken({
+      kind: "link",
+      staffId: "stf_1",
+      email: "owner@example.com",
+    });
+    const { GET } = await import("../../app/api/auth/callback/route");
+    const res = await GET(await callbackReq(token));
+    const html = await res.text();
+    expect(html).not.toContain("/staff/account/password");
+    expect(html).toContain("https://tab-call.test/staff");
+  });
+
+  test("a Google account is exempt — Google is its credential", async () => {
+    state.staff = {
+      id: "stf_1",
+      email: "google@example.com",
+      venueId: "v_1",
+      role: "SERVER",
+      status: "ACTIVE",
+      passwordHash: null,
+    };
+    state.identities = [{ id: "ai_1", staffId: "stf_1" }];
+    const token = await signLinkToken({
+      kind: "link",
+      staffId: "stf_1",
+      email: "google@example.com",
+    });
+    const { GET } = await import("../../app/api/auth/callback/route");
+    const res = await GET(await callbackReq(token));
+    // Demanding a password here would be asking for one they'd never type.
+    expect(await res.text()).not.toContain("/staff/account/password");
+  });
+
 });

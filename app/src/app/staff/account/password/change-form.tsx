@@ -4,7 +4,17 @@ import { useState } from "react";
 
 type Status = "idle" | "submitting" | "error" | "saved";
 
-export function StaffChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
+export function StaffChangePasswordForm({
+  hasPassword,
+  nextUrl = "/staff",
+  firstRun = false,
+}: {
+  hasPassword: boolean;
+  /** Where to go after a first-time save, which keeps the session. */
+  nextUrl?: string;
+  /** Rendered as the closing step of accepting an invite. */
+  firstRun?: boolean;
+}) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -62,8 +72,13 @@ export function StaffChangePasswordForm({ hasPassword }: { hasPassword: boolean 
         return;
       }
       setStatus("saved");
+      // Rotation invalidated this session server-side, so the only place
+      // to go is back to sign-in. A first-time save didn't, so carry on to
+      // wherever they were headed — for an invited server that's the floor
+      // they were trying to reach.
+      const dest = body?.signedOut ? "/staff/login?changed=1" : nextUrl;
       setTimeout(() => {
-        window.location.href = "/login?changed=1";
+        window.location.href = dest;
       }, 1200);
     } catch (e) {
       setStatus("error");
@@ -74,9 +89,15 @@ export function StaffChangePasswordForm({ hasPassword }: { hasPassword: boolean 
   if (status === "saved") {
     return (
       <div className="rounded-2xl border border-chartreuse/40 bg-chartreuse/15 p-4" role="status" aria-live="polite">
-        <p className="text-sm font-medium text-slate">Password saved.</p>
+        <p className="text-sm font-medium text-slate">
+          {hasPassword ? "Password updated." : "Password set."}
+        </p>
         <p className="mt-1 text-xs text-slate/65">
-          Sending you to sign in with the new password…
+          {hasPassword
+            ? "Sending you to sign in with the new password…"
+            : firstRun
+              ? "Taking you in…"
+              : "Done — back to where you were…"}
         </p>
       </div>
     );
@@ -156,7 +177,13 @@ export function StaffChangePasswordForm({ hasPassword }: { hasPassword: boolean 
         disabled={!canSubmit}
         className="min-h-[48px] w-full rounded-xl bg-chartreuse text-[15px] font-semibold text-slate shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-lift disabled:translate-y-0 disabled:opacity-60 disabled:hover:translate-y-0"
       >
-        {status === "submitting" ? "Saving…" : hasPassword ? "Update password" : "Set password"}
+        {status === "submitting"
+          ? "Saving…"
+          : hasPassword
+            ? "Update password"
+            : firstRun
+              ? "Set password and continue"
+              : "Set password"}
       </button>
     </form>
   );
