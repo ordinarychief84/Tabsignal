@@ -51,6 +51,10 @@ export function BillingFlipPanel({
     }
   }
 
+  // Tier order, for wording the quick actions. Only Growth can be
+  // approached from both sides; Pro is always up, Starter always down.
+  const RANK: Record<string, number> = { free: 0, growth: 1, pro: 2 };
+
   // One-click grant/revoke. Paid → ACTIVE (access takes immediately);
   // Starter → NONE. Reason is stamped for the audit trail.
   function quickFlip(targetPlan: "free" | "growth" | "pro") {
@@ -79,7 +83,9 @@ export function BillingFlipPanel({
         no Stripe charge until a subscription is wired up separately.
       </p>
 
-      {/* One-click quick actions — the common path. */}
+      {/* One-click quick actions — the common path. Direction is read off
+          the current tier, so the Growth button doesn't say "upgrade" to
+          an org sitting on Pro. */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="text-[11px] uppercase tracking-[0.16em] text-umber">Currently {currentPlanId}</span>
         <span className="mx-1 text-slate/30">·</span>
@@ -90,7 +96,7 @@ export function BillingFlipPanel({
             disabled={busy}
             className="rounded-full bg-sea-soft/70 px-3.5 py-1.5 text-sm font-medium text-slate hover:bg-sea-soft disabled:opacity-50"
           >
-            ↑ Upgrade to Growth
+            {RANK[currentPlanId] > RANK.growth ? "↓ Downgrade to Growth" : "↑ Upgrade to Growth"}
           </button>
         ) : null}
         {currentPlanId !== "pro" ? (
