@@ -1,5 +1,18 @@
 # TabCall — UX Plan
 
+> **Historical — superseded 2026-08-21.**
+>
+> This document predates three changes that invalidate parts of it:
+> guest payments were removed entirely (PR #86, schema included), venue
+> sign-in moved from magic links to email + password (#90), and the guest
+> experience was rebuilt around the service relationship (#91–#93).
+>
+> Treat anything below about paying, bills, splits, wallets or magic-link
+> sign-in as a record of what TabCall used to do. `docs/RUNBOOK.md` is
+> maintained and is the one to trust for how the product behaves today.
+
+
+
 **Audience:** Restaurant, bar, club, lounge owners (primary) and their floor managers and serving staff.
 **Style:** Swiss / International Typographic Style. Grid, hierarchy, restraint.
 **Date:** 2026-05-05.

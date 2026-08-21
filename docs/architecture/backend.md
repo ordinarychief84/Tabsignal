@@ -1,5 +1,18 @@
 # TabCall — Backend Architecture (MVP)
 
+> **Historical — superseded 2026-08-21.**
+>
+> This document predates three changes that invalidate parts of it:
+> guest payments were removed entirely (PR #86, schema included), venue
+> sign-in moved from magic links to email + password (#90), and the guest
+> experience was rebuilt around the service relationship (#91–#93).
+>
+> Treat anything below about paying, bills, splits, wallets or magic-link
+> sign-in as a record of what TabCall used to do. `docs/RUNBOOK.md` is
+> maintained and is the one to trust for how the product behaves today.
+
+
+
 **Audience:** Senior engineer joining the project on Monday.
 **Scope:** What's needed to ship F1–F5 of PRD v2.0 to a single venue, then to 50.
 **Date:** 2026-05-05.
@@ -118,7 +131,7 @@ The split exists because Vercel's serverless model can't hold a long-lived WebSo
 
 | Method | Path                          | Purpose                                |
 | ------ | ----------------------------- | -------------------------------------- |
-| POST   | `/api/auth/start`             | Email a magic link. Always returns 200. |
+| POST   | `/api/auth/start`             | Email a confirm-address link. NOT a sign-in path since #90. Always returns 200. |
 | GET    | `/api/auth/callback?token=…`  | Set session cookie, redirect `/staff`.  |
 | POST   | `/api/auth/logout`            | Clear cookie, redirect login.           |
 | GET    | `/api/auth/me`                | Return current session (debug / SPA).   |
@@ -351,7 +364,7 @@ We measure these in Vercel Speed Insights + Fastify pino; alerting is Phase 2.
 ## 15. Build sequence (architectural cut)
 
 1. Schema + migration — done.
-2. Auth (cookie JWT, magic link via Resend) — done.
+2. Auth (cookie JWT; email + password since #90, Resend for confirm/reset links) — done.
 3. Setup wizard + QR generator — done.
 4. Real-time stack (Fastify, /internal/emit, browser singletons) — done.
 5. Bill + Stripe Payment Element + webhook idempotency — done; needs `whsec_…` for end-to-end test.
