@@ -115,7 +115,7 @@ export default async function GuestProfilePage({
                     <ul className="mt-2 flex flex-wrap gap-1.5">
                       {f.tags.map(t => (
                         <li key={t} className="rounded-full bg-oat px-2.5 py-1 text-[11px] text-slate/70">
-                          {tagLabel(t)}
+                          {tagLabel(t, null, f.rating)}
                         </li>
                       ))}
                     </ul>

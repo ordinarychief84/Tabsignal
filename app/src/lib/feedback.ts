@@ -86,12 +86,30 @@ export function sanitizeTags(rating: number, tags: unknown): string[] {
   return [...new Set(clean)].slice(0, 8);
 }
 
-/** Label for a tag, with the server placeholder resolved for display. */
-export function tagLabel(tag: string, serverName?: string | null): string {
+/**
+ * Label for a tag, with the server placeholder resolved for display.
+ *
+ * `rating` matters more than it looks. Some ids live in BOTH vocabularies
+ * — "service" is "Great service" on a good report and plain "Service" on a
+ * complaint — so resolving without it showed a manager "Great service" as
+ * the reason a guest rated them 2/5 and asked for someone to come over.
+ * Omitted, it still falls back to a sensible label rather than throwing.
+ */
+export function tagLabel(
+  tag: string,
+  serverName?: string | null,
+  rating?: number,
+): string {
   if (tag === SERVER_TAG) {
     return serverName ? `${serverName} was amazing` : "Our server was amazing";
   }
+  // Search the vocabulary the rating actually belongs to first.
+  const [first, second] =
+    rating !== undefined && !isPositive(rating)
+      ? [NEGATIVE_TAGS, POSITIVE_TAGS]
+      : [POSITIVE_TAGS, NEGATIVE_TAGS];
   const found =
-    POSITIVE_TAGS.find(t => t.id === tag) ?? NEGATIVE_TAGS.find(t => t.id === tag);
+    (first as readonly { id: string; label: string }[]).find(t => t.id === tag) ??
+    (second as readonly { id: string; label: string }[]).find(t => t.id === tag);
   return found?.label ?? tag;
 }
