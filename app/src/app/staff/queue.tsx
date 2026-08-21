@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSocket, joinRoom } from "@/lib/socket";
+// `formatAge` here takes milliseconds; the one further down this file
+// takes seconds and is used for the per-row timers. Aliased rather than
+// merged so neither caller has to think about which unit it is getting.
+import { computeMultiCall, formatAge as formatAgeMs } from "@/lib/staff/multi-call";
 
 type Item = {
   id: string;
   tableId?: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION" | "CLEAN" | "SUPPLIES";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
@@ -33,6 +37,8 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
   REFILL: "Refill",
   ORDER: "Ready to order",
   CELEBRATION: "Celebrating",
+  CLEAN: "Clear the table",
+  SUPPLIES: "Supplies",
 };
 
 // Safety-net poll interval — covers socket reconnect gaps. Real-time pushes
@@ -41,6 +47,19 @@ const POLL_INTERVAL_MS = 30_000;
 
 type StaffMate = { id: string; name: string };
 
+/**
+ * Multi-call: two or more of YOUR tables waiting at once.
+ *
+ * Salvaged from PR #42, which was opened in May and then sat behind three
+ * months of unrelated churn. The detection is a pure function with its own
+ * tests; only the wiring below is new, rebuilt against the current queue
+ * rather than merging a branch that also rewrote auth routes since
+ * replaced.
+ *
+ * The cue exists to break single-table tunnel vision when the floor is
+ * busy — a drink at T4 and a check at T12 landing in the same minute
+ * should feel different from either one alone.
+ */
 export function StaffQueue({
   venueId,
   venueSlug: venueSlugProp,
@@ -96,6 +115,29 @@ export function StaffQueue({
   }[]>([]);
   const aborter = useRef<AbortController | null>(null);
   const assignedSet = new Set(assignedTableIds);
+  // One shared clock for the multi-call ages.
+  const [tickNow, setTickNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setTickNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  // Recomputed each render off the same `items` the list uses, so the
+  // banner can never disagree with the rows underneath it.
+  const multiCall = computeMultiCall(
+    items.map(i => ({
+      id: i.id,
+      tableId: i.tableId,
+      tableLabel: i.tableLabel,
+      type: i.type,
+      status: i.status,
+      createdAt: i.createdAt,
+    })),
+    assignedSet,
+    // Ticks with the per-row timers already in this component, so the
+    // banner's ages advance with them rather than freezing until the next
+    // refresh.
+    tickNow,
+  );
 
   const refresh = useCallback(async () => {
     aborter.current?.abort();
@@ -414,6 +456,37 @@ export function StaffQueue({
 
   return (
     <>
+      {/* Only when 2+ of your OWN tables are waiting. One table calling is
+          just the queue doing its job and doesn't need shouting about. */}
+      {multiCall.count >= 2 ? (
+        <section
+          role="alert"
+          aria-live="assertive"
+          className="mb-3 rounded-2xl border-2 border-coral bg-coral/10 px-4 py-3"
+        >
+          <p className="text-[11px] uppercase tracking-[0.18em] text-coral">
+            {multiCall.count} of your tables are waiting
+          </p>
+          <ul className="mt-2 space-y-1">
+            {multiCall.tables.map(t => (
+              <li key={t.tableId} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="font-medium text-slate">
+                  {t.tableLabel}
+                  <span className="ml-2 text-[12px] font-normal text-slate/60">
+                    {REQUEST_LABEL[t.oldestRequestType as Item["type"]] ?? t.oldestRequestType}
+                    {t.openCount > 1 ? ` +${t.openCount - 1}` : ""}
+                  </span>
+                </span>
+                {/* Oldest first, so the top row is the one to walk to. */}
+                <span className="shrink-0 font-mono text-[12px] tabular-nums text-coral">
+                  {formatAgeMs(t.oldestAgeMs)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {orderToasts.length > 0 ? (
         <ul className="mb-3 space-y-2">
           {orderToasts.map(o => (

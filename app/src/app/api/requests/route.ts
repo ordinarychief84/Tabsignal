@@ -19,7 +19,7 @@ const Body = z.object({
   // BILL is "ready for the check" — a signal to the server, not a
   // payment. TabCall never touches the money; the POS settles the bill.
   // ORDER means "we're ready to order", and does NOT submit anything.
-  type: z.enum(["DRINK", "BILL", "HELP", "REFILL", "ORDER", "CELEBRATION"]),
+  type: z.enum(["DRINK", "BILL", "HELP", "REFILL", "ORDER", "CELEBRATION", "CLEAN", "SUPPLIES"]),
   note: z.string().max(120).optional(),
 });
 

@@ -74,6 +74,11 @@ enum RequestType {
   // room can react. Deliberately separate from HELP so it can be styled
   // and staffed differently.
   CELEBRATION
+  // Clear or wipe the table.
+  CLEAN
+  // Napkins, cutlery, condiments — a runner can handle it without pulling
+  // the server off another table.
+  SUPPLIES
 }
 
 enum RequestStatus {
