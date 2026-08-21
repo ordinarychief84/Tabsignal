@@ -6,7 +6,7 @@ import { getSocket, joinRoom } from "@/lib/socket";
 type Item = {
   id: string;
   tableLabel: string;
-  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION";
+  type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION" | "CLEAN" | "SUPPLIES";
   note: string | null;
   status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
   createdAt: string;
@@ -40,6 +40,8 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
   REFILL: "Refill",
   ORDER: "Ready to order",
   CELEBRATION: "Celebrating",
+  CLEAN: "Clear the table",
+  SUPPLIES: "Supplies",
 };
 
 export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string }) {

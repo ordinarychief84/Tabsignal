@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from "react";
 export type ServiceOption = {
   id: string;
   /** RequestType sent to the API. */
-  type: "HELP" | "REFILL" | "ORDER" | "BILL" | "CELEBRATION" | "DRINK";
+  type: "HELP" | "REFILL" | "ORDER" | "BILL" | "CELEBRATION" | "DRINK" | "CLEAN" | "SUPPLIES";
   label: string;
   emoji: string;
 };
@@ -34,6 +34,10 @@ export const SERVICE_OPTIONS: ServiceOption[] = [
   // card machine; TabCall never handles the money.
   { id: "check", type: "BILL", label: "Ready for the check", emoji: "🧾" },
   { id: "celebrate", type: "CELEBRATION", label: "Celebrating something", emoji: "🎉" },
+  // Both of these can go to a runner rather than pulling the assigned
+  // server away from another table.
+  { id: "clean", type: "CLEAN", label: "Clear the table", emoji: "🧽" },
+  { id: "supplies", type: "SUPPLIES", label: "Napkins / cutlery", emoji: "🍴" },
   { id: "other", type: "HELP", label: "Something else", emoji: "💬" },
 ];
 
