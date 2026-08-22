@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ServiceSheet } from "@/components/guest/service-sheet";
 import { MOOD_PROMPTS, itemsForPrompt, type MoodPrompt } from "@/lib/menu-discovery";
+import { ChefsPick } from "./chefs-pick";
 
 /**
  * The guest home.
@@ -58,6 +59,11 @@ export function GuestHome(props: {
   items: Item[];
   categories: { id: string; name: string }[];
   prompts: MoodPrompt[];
+  chefsPick: {
+    answerId: string;
+    basis: "popular" | "featured";
+    choices: { id: string; name: string; imageUrl: string | null; priceCents: number }[];
+  } | null;
   promotions: Promo[];
   specials: { id: string; title: string; description: string | null }[];
   picks: Pick[];
@@ -70,6 +76,8 @@ export function GuestHome(props: {
     feedback: boolean;
   };
   requestsEnabled: boolean;
+  /** Undefined when the venue has feedback switched off. */
+  feedbackHref?: string;
   initialTab: string;
 }) {
   const accent = props.brandColor || "#F2E7B7";
@@ -242,6 +250,7 @@ export function GuestHome(props: {
           sessionToken={props.sessionToken}
           sessionId={props.sessionId}
           venueSlug={props.venueSlug}
+          feedbackHref={props.feedbackHref}
         />
       ) : null}
     </div>
@@ -257,6 +266,7 @@ function normalizeTab(value: string): TabId {
 
 function ForYou({
   prompts,
+  chefsPick,
   items,
   promotions,
   pickedIds,
@@ -267,6 +277,11 @@ function ForYou({
   sessionToken,
 }: {
   prompts: MoodPrompt[];
+  chefsPick: {
+    answerId: string;
+    basis: "popular" | "featured";
+    choices: { id: string; name: string; imageUrl: string | null; priceCents: number }[];
+  } | null;
   items: Item[];
   promotions: Promo[];
   picks: Pick[];
@@ -286,6 +301,16 @@ function ForYou({
     <div className="space-y-8">
       {config.specials && headline ? (
         <RevealCard promo={headline} accent={accent} onExplore={() => onOpenTab("specials")} />
+      ) : null}
+
+      {/* One round, once per visit. A second would make it a quiz. */}
+      {chefsPick ? (
+        <ChefsPick
+          choices={chefsPick.choices}
+          answerId={chefsPick.answerId}
+          basis={chefsPick.basis}
+          onView={() => onOpenTab("menu")}
+        />
       ) : null}
 
       {config.menuDiscovery && prompts.length > 0 ? (

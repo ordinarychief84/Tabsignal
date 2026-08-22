@@ -26,6 +26,7 @@ export function GuestEntry(props: {
   brandColor: string | null;
   showWelcome: boolean;
   requestsEnabled: boolean;
+  feedbackHref?: string;
 }) {
   const router = useRouter();
   const [sheetSignal, setSheetSignal] = useState(0);
@@ -55,6 +56,7 @@ export function GuestEntry(props: {
           venueSlug={props.venueSlug}
           autoOpen={sheetSignal > 0}
           showDock={false}
+          feedbackHref={props.feedbackHref}
         />
       ) : null}
     </>

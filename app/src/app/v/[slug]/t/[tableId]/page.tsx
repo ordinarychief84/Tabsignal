@@ -80,13 +80,22 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
             }
           : null
       }
-      homeHref={`/v/${params.slug}/t/${params.tableId}/home?s=${encodeURIComponent(resolved.sessionToken)}`}
+      // `?s=` is the QR token on EVERY page of the table surface, which is
+      // what resolveGuestSession validates against. Passing the session
+      // token here instead sent the guest's primary call to action —
+      // "Explore the menu" — straight to a dead end.
+      homeHref={`/v/${params.slug}/t/${params.tableId}/home?s=${encodeURIComponent(searchParams.s ?? "")}`}
       sessionToken={resolved.sessionToken}
       sessionId={resolved.sessionId}
       venueSlug={params.slug}
       brandColor={branding.primaryColor ?? venue.brandColor}
       showWelcome={config.welcome}
       requestsEnabled={venue.requestsEnabled}
+      feedbackHref={
+        config.feedback
+          ? `/v/${params.slug}/t/${params.tableId}/feedback?s=${encodeURIComponent(searchParams.s ?? "")}`
+          : undefined
+      }
     />
   );
 }
