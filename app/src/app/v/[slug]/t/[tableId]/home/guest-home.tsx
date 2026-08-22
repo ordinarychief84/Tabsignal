@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { ServiceSheet } from "@/components/guest/service-sheet";
 import { MOOD_PROMPTS, itemsForPrompt, type MoodPrompt } from "@/lib/menu-discovery";
 import { ChefsPick } from "./chefs-pick";
+import { ItemSheet } from "@/components/guest/item-sheet";
 
 /**
  * The guest home.
@@ -85,6 +86,10 @@ export function GuestHome(props: {
   const [tab, setTab] = useState<TabId>(normalizeTab(props.initialTab));
   const [busyItem, setBusyItem] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // The dish a guest tapped into. Rows used to be inert: the only
+  // interactive thing was a small unlabelled star, so there was no way to
+  // read a description that didn't fit on two lines.
+  const [openItem, setOpenItem] = useState<Item | null>(null);
 
   const byId = useMemo(() => new Map(props.items.map(i => [i.id, i])), [props.items]);
   const pickedIds = useMemo(() => new Set(picks.map(p => p.menuItemId)), [picks]);
@@ -140,7 +145,9 @@ export function GuestHome(props: {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-oat pb-32 text-slate">
+    // pb-36 clears the docked control plus its scrim, so the last row of a
+    // menu is readable instead of half-hidden under it.
+    <div className="min-h-[100dvh] bg-oat pb-36 text-slate">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-64 opacity-50"
@@ -188,6 +195,7 @@ export function GuestHome(props: {
             picks={picks}
             pickedIds={pickedIds}
             onSave={savePick}
+            onOpen={setOpenItem}
             accent={accent}
             onOpenTab={setTab}
           />
@@ -199,6 +207,7 @@ export function GuestHome(props: {
             categories={props.categories}
             pickedIds={pickedIds}
             onSave={savePick}
+            onOpen={setOpenItem}
             canSave={props.config.myPicks}
           />
         ) : null}
@@ -209,6 +218,7 @@ export function GuestHome(props: {
             categories={props.categories}
             pickedIds={pickedIds}
             onSave={savePick}
+            onOpen={setOpenItem}
             canSave={props.config.myPicks}
           />
         ) : null}
@@ -234,11 +244,29 @@ export function GuestHome(props: {
         ) : null}
       </main>
 
+      {openItem ? (
+        <ItemSheet
+          item={{
+            id: openItem.id,
+            name: openItem.name,
+            description: openItem.description,
+            priceCents: openItem.priceCents,
+            imageUrl: openItem.imageUrl,
+            tags: openItem.tags,
+          }}
+          saved={pickedIds.has(openItem.id)}
+          canSave={props.config.myPicks}
+          onToggleSave={() => void savePick(openItem)}
+          onClose={() => setOpenItem(null)}
+        />
+      ) : null}
+
+      {/* Above the docked control, not behind it. */}
       {toast ? (
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-0 bottom-24 z-40 mx-auto w-fit rounded-full bg-slate px-4 py-2 text-[13px] text-oat shadow-lift"
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto w-fit rounded-full bg-slate px-4 py-2 text-[13px] text-oat shadow-lift"
         >
           {toast}
         </div>
@@ -271,6 +299,7 @@ function ForYou({
   promotions,
   pickedIds,
   onSave,
+  onOpen,
   accent,
   onOpenTab,
   config,
@@ -287,6 +316,7 @@ function ForYou({
   picks: Pick[];
   pickedIds: Set<string>;
   onSave: (item: Item) => void;
+  onOpen: (item: Item) => void;
   accent: string;
   onOpenTab: (t: TabId) => void;
   config: { menuDiscovery: boolean; specials: boolean; myPicks: boolean };
@@ -352,6 +382,7 @@ function ForYou({
                     item={item}
                     saved={pickedIds.has(item.id)}
                     onSave={() => onSave(item)}
+                    onOpen={() => onOpen(item)}
                     canSave={config.myPicks}
                   />
                 ))
@@ -370,6 +401,7 @@ function ForYou({
               item={item}
               saved={pickedIds.has(item.id)}
               onSave={() => onSave(item)}
+              onOpen={() => onOpen(item)}
               canSave={config.myPicks}
             />
           ))}
@@ -461,12 +493,14 @@ function MenuList({
   categories,
   pickedIds,
   onSave,
+  onOpen,
   canSave,
 }: {
   items: Item[];
   categories: { id: string; name: string }[];
   pickedIds: Set<string>;
   onSave: (item: Item) => void;
+  onOpen: (item: Item) => void;
   canSave: boolean;
 }) {
   if (items.length === 0) {
@@ -479,12 +513,38 @@ function MenuList({
 
   return (
     <div className="space-y-8">
+      {/* Jump to a section. A real menu is sixty items deep, and scrolling
+          past every cocktail to reach the food is the thing that makes a
+          guest give up and put the phone down. */}
+      {grouped.length > 1 ? (
+        <nav className="sticky top-[52px] z-20 -mx-5 overflow-x-auto bg-oat/95 px-5 py-2 backdrop-blur">
+          <ul className="flex gap-1.5">
+            {grouped.map(group => (
+              <li key={group.id}>
+                <a
+                  href={`#cat-${group.id}`}
+                  onClick={e => {
+                    e.preventDefault();
+                    document
+                      .getElementById(`cat-${group.id}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className="inline-flex min-h-[36px] items-center whitespace-nowrap rounded-full border border-umber-soft/50 bg-white px-3.5 text-[13px] text-slate/75 active:bg-oat"
+                >
+                  {group.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
+
       {grouped.map(group => (
-        <section key={group.id}>
+        <section key={group.id} id={`cat-${group.id}`} className="scroll-mt-28">
           <h2 className="text-[17px] font-semibold tracking-tight">{group.name}</h2>
           <div className="mt-3 space-y-2">
             {group.items.map(item => (
-              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} canSave={canSave} />
+              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} />
             ))}
           </div>
         </section>
@@ -496,7 +556,7 @@ function MenuList({
           ) : null}
           <div className="mt-3 space-y-2">
             {uncategorised.map(item => (
-              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} canSave={canSave} />
+              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} />
             ))}
           </div>
         </section>
@@ -509,42 +569,61 @@ function ItemRow({
   item,
   saved,
   onSave,
+  onOpen,
   canSave,
 }: {
   item: Item;
   saved: boolean;
   onSave: () => void;
+  onOpen: () => void;
   canSave: boolean;
 }) {
   return (
-    <article className="flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-umber-soft/25">
-      {item.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
-      ) : null}
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-medium leading-snug">{item.name}</p>
-        {item.description ? (
-          <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-slate/60">
-            {item.description}
-          </p>
+    <article className="flex items-stretch gap-1 rounded-2xl bg-white ring-1 ring-umber-soft/25">
+      {/* The whole row opens the dish. It used to be inert — the only
+          interactive thing was the star — so a two-line description was
+          all a guest could ever read. */}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-h-[64px] flex-1 items-center gap-3 rounded-l-2xl p-3 text-left active:bg-oat/60"
+      >
+        {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
         ) : null}
-        <p className="mt-1 font-mono text-[13px] tabular-nums text-slate/70">
-          ${(item.priceCents / 100).toFixed(2)}
-        </p>
-      </div>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-medium leading-snug text-slate">{item.name}</span>
+          {item.description ? (
+            <span className="mt-0.5 line-clamp-1 block text-[13px] leading-snug text-slate/55">
+              {item.description}
+            </span>
+          ) : null}
+          <span className="mt-1 block font-mono text-[13px] tabular-nums text-slate/70">
+            ${(item.priceCents / 100).toFixed(2)}
+          </span>
+        </span>
+      </button>
+
       {canSave ? (
         <button
           type="button"
           onClick={onSave}
           aria-pressed={saved}
           aria-label={saved ? `Remove ${item.name} from My Picks` : `Save ${item.name} to My Picks`}
-          className={[
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg transition-all",
-            saved ? "bg-chartreuse text-slate" : "bg-oat text-slate/40",
-          ].join(" ")}
+          className="flex w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-r-2xl border-l border-umber-soft/20 active:bg-oat/60"
         >
-          {saved ? "★" : "☆"}
+          <span
+            aria-hidden
+            className={["text-xl leading-none", saved ? "text-slate" : "text-slate/30"].join(" ")}
+          >
+            {saved ? "★" : "☆"}
+          </span>
+          {/* Labelled. An unexplained star on a restaurant menu reads as a
+              rating, not a shortlist. */}
+          <span className={["text-[10px] leading-none", saved ? "text-slate" : "text-slate/40"].join(" ")}>
+            {saved ? "Saved" : "Save"}
+          </span>
         </button>
       ) : null}
     </article>

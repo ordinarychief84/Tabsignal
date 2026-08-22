@@ -163,7 +163,7 @@ export function ServiceSheet({
     <>
       {/* Docked, thumb-height, clear of the iOS home indicator. */}
       {showDock ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 [background:linear-gradient(to_top,var(--guest-bg,#F7F5F2)_55%,transparent)]">
           <button
             type="button"
             onClick={() => setOpen(true)}
