@@ -50,6 +50,7 @@ export function ServiceSheet({
   venueSlug,
   autoOpen = false,
   showDock = true,
+  feedbackHref,
 }: {
   /** Null when the table has no assigned server. */
   serverName: string | null;
@@ -59,6 +60,13 @@ export function ServiceSheet({
   venueSlug: string;
   /** Opened by another control on the page, e.g. "Need Sarah now?". */
   autoOpen?: boolean;
+  /**
+   * Where "how was tonight?" goes. Offered only after the guest asks for
+   * the check — that's the one moment they've told us they're finishing,
+   * and asking mid-meal is the interruption the spec warns about.
+   * Undefined when the venue has feedback switched off.
+   */
+  feedbackHref?: string;
   /**
    * Whether to render the docked button. False on the welcome screen,
    * which has its own "Need Sarah now?" action — two of the same control
@@ -189,6 +197,10 @@ export function ServiceSheet({
                 acknowledged={status === "acknowledged"}
                 label={chosen?.label ?? ""}
                 onClose={reset}
+                // Only after the check. Asking someone to rate their
+                // night while they're still eating it is the interruption
+                // we're trying to avoid.
+                feedbackHref={chosen?.type === "BILL" ? feedbackHref : undefined}
               />
             ) : (
               <>
@@ -268,11 +280,13 @@ function Confirmation({
   acknowledged,
   label,
   onClose,
+  feedbackHref,
 }: {
   who: string;
   acknowledged: boolean;
   label: string;
   onClose: () => void;
+  feedbackHref?: string;
 }) {
   return (
     <div role="status" aria-live="polite" className="py-2 text-center">
@@ -295,13 +309,31 @@ function Confirmation({
           : `We've passed on "${label}". You'll see it here the moment they pick it up.`}
       </p>
 
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-5 min-h-[48px] w-full rounded-2xl bg-slate text-[15px] font-semibold text-oat"
-      >
-        Back to the menu
-      </button>
+      {feedbackHref ? (
+        <>
+          <a
+            href={feedbackHref}
+            className="mt-5 flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-chartreuse text-[15px] font-semibold text-slate"
+          >
+            How was tonight?
+          </a>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-2 min-h-[44px] w-full text-[14px] text-slate/55"
+          >
+            Maybe later
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 min-h-[48px] w-full rounded-2xl bg-slate text-[15px] font-semibold text-oat"
+        >
+          Back to the menu
+        </button>
+      )}
     </div>
   );
 }

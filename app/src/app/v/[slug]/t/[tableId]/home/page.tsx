@@ -5,6 +5,7 @@ import { getVenueBranding, resolveBrandingWithFallback } from "@/lib/branding";
 import { serverForTable } from "@/lib/server-identity";
 import { guestExperienceFrom } from "@/lib/guest-experience";
 import { availablePrompts } from "@/lib/menu-discovery";
+import { chefsPickRound } from "@/lib/chefs-pick";
 import { GuestHome } from "./guest-home";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +116,12 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
       : Promise.resolve([]),
   ]);
 
+  // Seeded on the session so the round is stable if the guest taps back
+  // into it, and differs between tables.
+  const chefsPick = config.specials
+    ? await chefsPickRound({ venueId: resolved.venueId, seed: resolved.sessionId })
+    : null;
+
   const branding = resolveBrandingWithFallback(
     {
       brandColor: venue.brandColor,
@@ -159,6 +166,7 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
       }))}
       categories={categories}
       prompts={config.menuDiscovery ? availablePrompts(items) : []}
+      chefsPick={chefsPick}
       promotions={promotions.map(p => ({
         id: p.id,
         title: p.title,
@@ -185,6 +193,11 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
         feedback: config.feedback,
       }}
       requestsEnabled={venue.requestsEnabled}
+      feedbackHref={
+        config.feedback
+          ? `/v/${params.slug}/t/${params.tableId}/feedback?s=${encodeURIComponent(searchParams.s ?? "")}`
+          : undefined
+      }
       initialTab={searchParams.tab ?? "for-you"}
     />
   );

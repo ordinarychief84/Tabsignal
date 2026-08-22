@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { resolveGuestSession } from "@/domain/sessions/resolve";
 import { meetsAtLeast, planFromOrg } from "@/lib/plans";
 import { verifyProfileToken, PROFILE_COOKIE } from "@/lib/profile-cookie";
 import { guestExperienceFrom } from "@/lib/guest-experience";
@@ -11,12 +11,6 @@ import { FeedbackScreen } from "./feedback-screen";
 
 export const dynamic = "force-dynamic";
 
-function tokensEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
 
 type PageProps = {
   params: { slug: string; tableId: string };
@@ -35,10 +29,20 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
   const profileToken = cookies().get(PROFILE_COOKIE)?.value;
   const alreadyIdentified = !!profileToken && !!(await verifyProfileToken(profileToken));
 
+  // Same credential and same resolver as the rest of the table surface.
+  // This used to compare `?s=` against the SESSION token while the entry
+  // and home pages compared it against the QR token, so a link that
+  // worked on one page was a dead end on the next.
   const tableSeg = safeDecode(params.tableId);
-  const session = await db.guestSession.findFirst({
-    where: { venueId: venue.id, OR: [{ tableId: tableSeg }, { table: { label: tableSeg } }] },
-    orderBy: { createdAt: "desc" },
+  let resolved;
+  try {
+    resolved = await resolveGuestSession(params.slug, tableSeg, searchParams.s ?? null);
+  } catch {
+    return <ScanPrompt />;
+  }
+
+  const session = await db.guestSession.findUnique({
+    where: { id: resolved.sessionId },
     include: { feedback: true },
   });
   if (!session) notFound();
@@ -46,23 +50,6 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
   // Without the matching session token, anyone could navigate here and the
   // page would render a FeedbackScreen pre-loaded with the previous party's
   // sessionToken (a secret) — letting them silently take over the tab.
-  const providedToken = searchParams.s ?? "";
-  if (!providedToken || !tokensEqual(session.sessionToken, providedToken)) {
-    return (
-      <main className="flex min-h-screen flex-col bg-oat text-slate">
-        <div className="flex flex-1 items-center justify-center px-6">
-          <div className="max-w-sm text-center">
-            <p className="text-3xl">·</p>
-            <h1 className="mt-3 text-2xl font-medium tracking-tight">Scan the QR</h1>
-            <p className="mt-3 text-sm leading-relaxed text-slate/60">
-              Feedback is tied to your scan. Scan the table QR to leave a rating.
-            </p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   if (session.feedback.length > 0) {
     return (
       <main className="flex min-h-screen flex-col bg-oat text-slate">
@@ -108,4 +95,21 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
 
 function safeDecode(s: string): string {
   try { return decodeURIComponent(s); } catch { return s; }
+}
+
+/** Reached without a valid scan. */
+function ScanPrompt() {
+  return (
+    <main className="flex min-h-[100dvh] flex-col bg-oat text-slate">
+      <div className="flex flex-1 items-center justify-center px-6">
+        <div className="max-w-sm text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">Scan the QR</h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate/60">
+            Feedback is tied to your visit. Scan the code on your table to
+            leave a rating.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
 }
