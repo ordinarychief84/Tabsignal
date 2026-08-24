@@ -5,6 +5,8 @@ import { ServiceSheet } from "@/components/guest/service-sheet";
 import { MOOD_PROMPTS, itemsForPrompt, type MoodPrompt } from "@/lib/menu-discovery";
 import { ChefsPick } from "./chefs-pick";
 import { ItemSheet } from "@/components/guest/item-sheet";
+import { Stagger, Pop, ProgressRing } from "@/components/guest/motion";
+import { guestPalette, accentFor } from "@/lib/guest-palette";
 
 /**
  * The guest home.
@@ -81,7 +83,13 @@ export function GuestHome(props: {
   feedbackHref?: string;
   initialTab: string;
 }) {
-  const accent = props.brandColor || "#F2E7B7";
+  // A whole family from the venue's colour, not one wash. Everything the
+  // guest sees is tinted with THEIR colour, which is the difference
+  // between colourful and merely decorated.
+  const palette = guestPalette(props.brandColor);
+  const accent = palette.base;
+  // Bumped on every save so the header count can pop.
+  const [savePulse, setSavePulse] = useState(0);
   const [picks, setPicks] = useState<Pick[]>(props.picks);
   const [tab, setTab] = useState<TabId>(normalizeTab(props.initialTab));
   const [busyItem, setBusyItem] = useState<string | null>(null);
@@ -130,6 +138,7 @@ export function GuestHome(props: {
         });
         if (!res.ok) throw new Error(String(res.status));
         setToast(already ? `Removed ${item.name}` : `Saved ${item.name}`);
+        if (!already) setSavePulse(n => n + 1);
         setTimeout(() => setToast(null), 1800);
       } catch {
         // Put it back — a silent failure would leave the guest showing
@@ -150,15 +159,40 @@ export function GuestHome(props: {
     <div className="min-h-[100dvh] bg-oat pb-36 text-slate">
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-64 opacity-50"
-        style={{ background: `radial-gradient(70% 100% at 50% 0%, ${accent}44 0%, transparent 70%)` }}
+        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-72"
+        style={{
+          background: `linear-gradient(170deg, ${palette.wash[2]} 0%, ${palette.wash[0]} 45%, transparent 92%)`,
+        }}
       />
 
-      <header className="px-5 pt-8">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-umber">{props.venueName}</p>
-        <h1 className="mt-1.5 text-[26px] font-semibold leading-tight tracking-tight">
-          {props.greeting}, {props.tableLabel}
-        </h1>
+      <header className="flex items-start justify-between gap-4 px-5 pt-8">
+        <div className="min-w-0">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.18em]"
+            style={{ color: palette.deep }}
+          >
+            {props.venueName}
+          </p>
+          <h1 className="mt-1.5 text-[27px] font-semibold leading-tight tracking-tight">
+            {props.greeting}, {props.tableLabel}
+          </h1>
+        </div>
+
+        {/* Quiet progress. Not a score — no points, no streak — just a
+            hint that there's more of the menu to look at. Gone once
+            they've seen it all rather than congratulating anyone. */}
+        {props.config.myPicks && picks.length > 0 ? (
+          <span className="mt-1 shrink-0">
+            <Pop trigger={savePulse}>
+              <span
+                className="flex h-9 min-w-9 items-center justify-center rounded-full px-2.5 text-[13px] font-semibold"
+                style={{ background: palette.base, color: palette.on }}
+              >
+                {picks.length}
+              </span>
+            </Pop>
+          </span>
+        ) : null}
       </header>
 
       <nav className="sticky top-0 z-30 mt-5 overflow-x-auto border-b border-umber-soft/30 bg-oat/90 px-5 backdrop-blur">
@@ -169,16 +203,18 @@ export function GuestHome(props: {
                 type="button"
                 onClick={() => setTab(t.id)}
                 aria-current={tab === t.id ? "page" : undefined}
+                style={tab === t.id ? { borderColor: palette.deep, color: palette.deep } : undefined}
                 className={[
-                  "-mb-px min-h-[44px] whitespace-nowrap border-b-2 px-3 text-[14px] transition-colors",
-                  tab === t.id
-                    ? "border-slate font-semibold text-slate"
-                    : "border-transparent text-slate/50",
+                  "-mb-px min-h-[44px] whitespace-nowrap border-b-2 px-3 text-[14px] transition-all",
+                  tab === t.id ? "font-semibold" : "border-transparent text-slate/50",
                 ].join(" ")}
               >
                 {t.label}
                 {t.id === "picks" && picks.length > 0 ? (
-                  <span className="ml-1.5 rounded-full bg-slate px-1.5 py-0.5 text-[10px] font-semibold text-oat">
+                  <span
+                    className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                    style={{ background: palette.base, color: palette.on }}
+                  >
                     {picks.length}
                   </span>
                 ) : null}
@@ -196,6 +232,7 @@ export function GuestHome(props: {
             pickedIds={pickedIds}
             onSave={savePick}
             onOpen={setOpenItem}
+            palette={palette}
             accent={accent}
             onOpenTab={setTab}
           />
@@ -209,6 +246,7 @@ export function GuestHome(props: {
             onSave={savePick}
             onOpen={setOpenItem}
             canSave={props.config.myPicks}
+            palette={palette}
           />
         ) : null}
 
@@ -220,11 +258,12 @@ export function GuestHome(props: {
             onSave={savePick}
             onOpen={setOpenItem}
             canSave={props.config.myPicks}
+            palette={palette}
           />
         ) : null}
 
         {tab === "specials" ? (
-          <Specials promotions={props.promotions} specials={props.specials} byId={byId} accent={accent} />
+          <Specials promotions={props.promotions} specials={props.specials} byId={byId} accent={accent} palette={palette} />
         ) : null}
 
         {tab === "picks" ? (
@@ -240,6 +279,7 @@ export function GuestHome(props: {
             sessionToken={props.sessionToken}
             sessionId={props.sessionId}
             serverName={props.serverName}
+            palette={palette}
           />
         ) : null}
       </main>
@@ -300,6 +340,7 @@ function ForYou({
   pickedIds,
   onSave,
   onOpen,
+  palette,
   accent,
   onOpenTab,
   config,
@@ -317,6 +358,7 @@ function ForYou({
   pickedIds: Set<string>;
   onSave: (item: Item) => void;
   onOpen: (item: Item) => void;
+  palette: ReturnType<typeof guestPalette>;
   accent: string;
   onOpenTab: (t: TabId) => void;
   config: { menuDiscovery: boolean; specials: boolean; myPicks: boolean };
@@ -384,6 +426,7 @@ function ForYou({
                     onSave={() => onSave(item)}
                     onOpen={() => onOpen(item)}
                     canSave={config.myPicks}
+                    palette={palette}
                   />
                 ))
               )}
@@ -403,6 +446,7 @@ function ForYou({
               onSave={() => onSave(item)}
               onOpen={() => onOpen(item)}
               canSave={config.myPicks}
+              palette={palette}
             />
           ))}
           {items.filter(i => i.isFeatured).length === 0 ? (
@@ -495,6 +539,7 @@ function MenuList({
   onSave,
   onOpen,
   canSave,
+  palette,
 }: {
   items: Item[];
   categories: { id: string; name: string }[];
@@ -502,6 +547,7 @@ function MenuList({
   onSave: (item: Item) => void;
   onOpen: (item: Item) => void;
   canSave: boolean;
+  palette: ReturnType<typeof guestPalette>;
 }) {
   if (items.length === 0) {
     return <p className="text-[15px] text-slate/55">The menu isn&rsquo;t up yet — ask your server.</p>;
@@ -519,7 +565,7 @@ function MenuList({
       {grouped.length > 1 ? (
         <nav className="sticky top-[52px] z-20 -mx-5 overflow-x-auto bg-oat/95 px-5 py-2 backdrop-blur">
           <ul className="flex gap-1.5">
-            {grouped.map(group => (
+            {grouped.map((group, i) => (
               <li key={group.id}>
                 <a
                   href={`#cat-${group.id}`}
@@ -529,7 +575,10 @@ function MenuList({
                       .getElementById(`cat-${group.id}`)
                       ?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className="inline-flex min-h-[36px] items-center whitespace-nowrap rounded-full border border-umber-soft/50 bg-white px-3.5 text-[13px] text-slate/75 active:bg-oat"
+                  // Indexed, not hashed: neighbours must never come out
+                  // the same colour.
+                  style={{ background: accentFor(palette, group.name, i) }}
+                  className="inline-flex min-h-[36px] items-center whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium text-slate transition-transform active:scale-95"
                 >
                   {group.name}
                 </a>
@@ -539,14 +588,23 @@ function MenuList({
         </nav>
       ) : null}
 
-      {grouped.map(group => (
+      {grouped.map((group, i) => (
         <section key={group.id} id={`cat-${group.id}`} className="scroll-mt-28">
-          <h2 className="text-[17px] font-semibold tracking-tight">{group.name}</h2>
-          <div className="mt-3 space-y-2">
+          <h2 className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
+            <span
+              aria-hidden
+              className="h-5 w-1.5 rounded-full"
+              style={{ background: accentFor(palette, group.name, i) }}
+            />
+            {group.name}
+          </h2>
+          {/* Rows arrive as you reach them, rather than the whole menu
+              being already settled by the time you scroll down. */}
+          <Stagger className="mt-3 space-y-2">
             {group.items.map(item => (
-              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} />
+              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} palette={palette} />
             ))}
-          </div>
+          </Stagger>
         </section>
       ))}
       {uncategorised.length > 0 ? (
@@ -556,7 +614,7 @@ function MenuList({
           ) : null}
           <div className="mt-3 space-y-2">
             {uncategorised.map(item => (
-              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} />
+              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} palette={palette} />
             ))}
           </div>
         </section>
@@ -571,13 +629,18 @@ function ItemRow({
   onSave,
   onOpen,
   canSave,
+  palette,
 }: {
   item: Item;
   saved: boolean;
   onSave: () => void;
   onOpen: () => void;
   canSave: boolean;
+  palette: ReturnType<typeof guestPalette>;
 }) {
+  // Local counter so THIS row's star pops on tap, not every row's.
+  const [pulse, setPulse] = useState(0);
+
   return (
     <article className="flex items-stretch gap-1 rounded-2xl bg-white ring-1 ring-umber-soft/25">
       {/* The whole row opens the dish. It used to be inert — the only
@@ -608,21 +671,28 @@ function ItemRow({
       {canSave ? (
         <button
           type="button"
-          onClick={onSave}
+          onClick={() => { setPulse(n => n + 1); onSave(); }}
           aria-pressed={saved}
           aria-label={saved ? `Remove ${item.name} from My Picks` : `Save ${item.name} to My Picks`}
-          className="flex w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-r-2xl border-l border-umber-soft/20 active:bg-oat/60"
+          style={saved ? { background: `${palette.wash[0]}` } : undefined}
+          className="flex w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-r-2xl border-l border-umber-soft/20 transition-colors active:bg-oat/60"
         >
-          <span
-            aria-hidden
-            className={["text-xl leading-none", saved ? "text-slate" : "text-slate/30"].join(" ")}
-          >
-            {saved ? "★" : "☆"}
-          </span>
+          <Pop trigger={pulse}>
+            <span
+              aria-hidden
+              className="text-xl leading-none"
+              style={{ color: saved ? palette.deep : undefined }}
+            >
+              <span className={saved ? "" : "text-slate/30"}>{saved ? "★" : "☆"}</span>
+            </span>
+          </Pop>
           {/* Labelled. An unexplained star on a restaurant menu reads as a
               rating, not a shortlist. */}
-          <span className={["text-[10px] leading-none", saved ? "text-slate" : "text-slate/40"].join(" ")}>
-            {saved ? "Saved" : "Save"}
+          <span
+            className="text-[10px] leading-none"
+            style={{ color: saved ? palette.deep : undefined }}
+          >
+            <span className={saved ? "" : "text-slate/40"}>{saved ? "Saved" : "Save"}</span>
           </span>
         </button>
       ) : null}
@@ -637,41 +707,59 @@ function Specials({
   specials,
   byId,
   accent,
+  palette,
 }: {
   promotions: Promo[];
   specials: { id: string; title: string; description: string | null }[];
   byId: Map<string, Item>;
   accent: string;
+  palette: ReturnType<typeof guestPalette>;
 }) {
   if (promotions.length === 0 && specials.length === 0) {
     return <p className="text-[15px] text-slate/55">Nothing running tonight.</p>;
   }
   return (
     <div className="space-y-4">
-      {promotions.map(p => (
-        <article key={p.id} className="rounded-3xl bg-white p-5 shadow-card ring-1 ring-umber-soft/25">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-umber">
-            {p.type.replace(/_/g, " ").toLowerCase()}
-          </p>
-          <h3 className="mt-1.5 text-[19px] font-semibold tracking-tight">{p.title}</h3>
-          {p.description ? (
-            <p className="mt-1.5 text-[14px] leading-relaxed text-slate/70">{p.description}</p>
-          ) : null}
-          {p.itemIds.length > 0 ? (
-            <ul className="mt-3 flex flex-wrap gap-1.5">
-              {p.itemIds.map(id => byId.get(id)).filter(Boolean).map(item => (
-                <li
-                  key={item!.id}
-                  className="rounded-full px-3 py-1 text-[12px] text-slate"
-                  style={{ background: `${accent}55` }}
-                >
-                  {item!.name}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </article>
-      ))}
+      {/* Swipeable, per the brief. Snap points so a card always lands
+          square rather than half off the edge. */}
+      {promotions.length > 0 ? (
+        <div className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {promotions.map((p, i) => (
+            <article
+              key={p.id}
+              className="w-[85%] shrink-0 snap-center rounded-3xl p-5 shadow-card"
+              style={{
+                background: `linear-gradient(150deg, ${accentFor(palette, p.id, i)}, ${palette.wash[0]})`,
+              }}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate/70">
+                {p.type.replace(/_/g, " ").toLowerCase()}
+              </p>
+              <h3 className="mt-1.5 text-[20px] font-semibold leading-snug tracking-tight text-slate">
+                {p.title}
+              </h3>
+              {p.description ? (
+                <p className="mt-1.5 text-[14px] leading-relaxed text-slate/75">{p.description}</p>
+              ) : null}
+              {p.itemIds.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {p.itemIds.map(id => byId.get(id)).filter(Boolean).map(item => (
+                    <li
+                      key={item!.id}
+                      className="rounded-full bg-white/70 px-3 py-1 text-[12px] text-slate"
+                    >
+                      {item!.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {promotions.length > 1 ? (
+        <p className="text-center text-[11px] text-slate/40">Swipe for more</p>
+      ) : null}
       {specials.map(s => (
         <article key={s.id} className="rounded-3xl bg-white p-5 ring-1 ring-umber-soft/25">
           <h3 className="text-[19px] font-semibold tracking-tight">{s.title}</h3>
@@ -695,6 +783,7 @@ function MyPicks({
   sessionToken,
   sessionId,
   serverName,
+  palette,
 }: {
   picks: Pick[];
   byId: Map<string, Item>;
@@ -704,6 +793,7 @@ function MyPicks({
   sessionToken: string;
   sessionId: string;
   serverName: string | null;
+  palette: ReturnType<typeof guestPalette>;
 }) {
   const [shared, setShared] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -790,15 +880,32 @@ function MyPicks({
               .map(t => ({ item: byId.get(t.menuItemId), quantity: t.quantity }))
               .filter(t => t.item)
               .sort((a, b) => b.quantity - a.quantity)
-              .map(t => (
-                <li
-                  key={t.item!.id}
-                  className="flex items-center justify-between rounded-xl bg-white/70 px-3.5 py-2.5 text-[14px] ring-1 ring-umber-soft/20"
-                >
-                  <span>{t.item!.name}</span>
-                  <span className="font-mono tabular-nums text-slate/55">× {t.quantity}</span>
-                </li>
-              ))}
+              .map((t, i, all) => {
+                const top = all[0]?.quantity ?? 1;
+                return (
+                  <li
+                    key={t.item!.id}
+                    className="relative overflow-hidden rounded-xl bg-white/70 px-3.5 py-2.5 text-[14px] ring-1 ring-umber-soft/20"
+                  >
+                    {/* Proportional fill — how much of the table wants
+                        this, at a glance. Counts only; who saved what
+                        never leaves the database. */}
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-0 left-0 transition-[width] duration-700 ease-out motion-reduce:transition-none"
+                      style={{
+                        width: `${Math.round((t.quantity / top) * 100)}%`,
+                        background: accentFor(palette, t.item!.id, i),
+                        opacity: 0.5,
+                      }}
+                    />
+                    <span className="relative flex items-center justify-between">
+                      <span>{t.item!.name}</span>
+                      <span className="font-mono tabular-nums text-slate/60">× {t.quantity}</span>
+                    </span>
+                  </li>
+                );
+              })}
           </ul>
           {/* Counts only. Who saved what never leaves the database. */}
           <p className="mt-2 text-[12px] text-slate/45">
