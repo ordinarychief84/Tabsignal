@@ -1027,16 +1027,38 @@ function ItemRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-[64px] flex-1 items-center gap-3 rounded-l-2xl p-3 text-left active:bg-surface-hover"
+        className="flex min-h-[96px] flex-1 items-center gap-3 rounded-l-2xl p-3 text-left active:bg-surface-hover"
       >
+        {/* Bigger than it was, and the space is reserved either way.
+            A drinks-led room is selling the look of the thing, and a
+            56px thumbnail beside a wall of text is a list, not a menu.
+            Reserving the box also stops a half-photographed menu from
+            rendering ragged, with some rows indented and some not. */}
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
-        ) : null}
+          <img
+            src={item.imageUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-20 w-20 shrink-0 rounded-xl object-cover"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl text-[22px] font-semibold text-plum/70"
+            style={{ background: palette.wash[0] }}
+          >
+            {item.name.charAt(0).toUpperCase()}
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-medium leading-snug text-plum">{item.name}</span>
           {item.description ? (
-            <span className="mt-0.5 line-clamp-1 block text-[13px] leading-snug text-graphite/80">
+            // Two lines, not one. A cocktail's description IS the sell —
+            // "Absolut Citron, lemon juice, triple sec" clipped after
+            // four words tells a guest nothing.
+            <span className="mt-0.5 line-clamp-2 block text-[13px] leading-snug text-graphite/80">
               {item.description}
             </span>
           ) : null}
