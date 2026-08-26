@@ -8,7 +8,7 @@ import { venuePlanForVenueId } from "@/lib/plan-gate";
 import { meetsAtLeast } from "@/lib/plans";
 import { UpgradeRequired } from "../upgrade-required";
 import { METRICS, buildSegment, segmentKey, venueMetricsForDate, type MetricName } from "@/lib/benchmarks";
-import { guestExperienceMetrics, guestRelationshipMetrics, type Rate } from "@/lib/guest-analytics";
+import { guestExperienceMetrics, guestRelationshipMetrics, menuDiscoveryMetrics, type Rate } from "@/lib/guest-analytics";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "TabCall · analytics" };
@@ -65,9 +65,10 @@ export default async function AnalyticsPage({
   // Guest experience + relationship, over the same window as the rest of
   // the page.
   const since = new Date(data.rangeStart);
-  const [experience, relationship] = await Promise.all([
+  const [experience, relationship, discovery] = await Promise.all([
     guestExperienceMetrics(venue.id, since),
     guestRelationshipMetrics(venue.id, since),
+    menuDiscoveryMetrics(venue.id, since),
   ]);
 
   return (
@@ -109,6 +110,49 @@ export default async function AnalyticsPage({
             value={experience.averageRating === null ? "—" : `${experience.averageRating}/5`}
           />
         </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-3 text-[11px] uppercase tracking-[0.16em] text-umber">
+          Menu discovery
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <RateMetric
+            label="Looked at the menu"
+            rate={discovery.explorationRate}
+            hint="Of visits that scanned"
+          />
+          <RateMetric
+            label="Engaged with a special"
+            rate={discovery.specialEngagementRate}
+            hint="Of visits that scanned"
+          />
+          <Metric label="Specials opened" value={String(discovery.specialsRevealed)} />
+          <RateMetric
+            label="Finished the chef's round"
+            rate={discovery.chefPickCompletionRate}
+            hint="Of those who saw it"
+          />
+        </div>
+
+        {discovery.mostViewed.length > 0 || discovery.mostSaved.length > 0 ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <ItemChart title="Most looked at" rows={discovery.mostViewed} />
+            <ItemChart title="Most saved" rows={discovery.mostSaved} />
+          </div>
+        ) : (
+          <p className="mt-3 text-[13px] text-slate/50">
+            Nothing yet for this period. These fill in as guests browse.
+          </p>
+        )}
+
+        {discovery.savedAfterSuggestion > 0 ? (
+          <p className="mt-3 text-[12px] leading-relaxed text-slate/50">
+            {discovery.savedAfterSuggestion} saved after one of your
+            &ldquo;goes well with&rdquo; suggestions. That&rsquo;s a count of
+            saves, not sales — TabCall can&rsquo;t see your till.
+          </p>
+        ) : null}
       </section>
 
       <section className="mb-8">
@@ -350,6 +394,45 @@ function BenchmarkRow({ row }: { row: BenchmarkRowData }) {
 }
 
 /** A plain count or value. */
+/**
+ * A small ranked bar list. Proportional to the top row rather than to a
+ * fixed scale, because the useful question is "what stands out tonight",
+ * not "how does this compare to an absolute number nobody set".
+ *
+ * Counts are printed next to every bar. A bar chart with no numbers
+ * invites a manager to read a 3-vs-2 difference as significant.
+ */
+function ItemChart({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { menuItemId: string; name: string; count: number }[];
+}) {
+  if (rows.length === 0) return null;
+  const top = rows[0]!.count;
+  return (
+    <div className="rounded-2xl border border-umber-soft/30 bg-white p-4">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-umber">{title}</p>
+      <ul className="mt-3 space-y-1.5">
+        {rows.map(r => (
+          <li key={r.menuItemId} className="relative overflow-hidden rounded-lg bg-oat px-3 py-2">
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-0 bg-saffron/45"
+              style={{ width: `${Math.round((r.count / top) * 100)}%` }}
+            />
+            <span className="relative flex items-center justify-between gap-3 text-[13px]">
+              <span className="truncate text-slate">{r.name}</span>
+              <span className="shrink-0 font-mono tabular-nums text-slate/60">{r.count}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-2xl border border-slate/10 bg-white p-4">

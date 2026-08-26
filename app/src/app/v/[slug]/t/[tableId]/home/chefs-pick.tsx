@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTrack, useTrackOnce } from "@/components/guest/track";
 
 /**
  * Guess tonight's pick.
@@ -34,6 +35,10 @@ export function ChefsPick({
   onView: (id: string) => void;
 }) {
   const [picked, setPicked] = useState<string | null>(null);
+  const track = useTrack();
+  // How many guests were offered the round, so "completed" has a
+  // denominator that isn't invented.
+  useTrackOnce("chef_pick_started");
   const answer = choices.find(c => c.id === answerId);
   const correct = picked === answerId;
 
@@ -57,7 +62,10 @@ export function ChefsPick({
               <li key={choice.id}>
                 <button
                   type="button"
-                  onClick={() => setPicked(choice.id)}
+                  onClick={() => {
+                    track("chef_pick_completed", { menuItemId: choice.id });
+                    setPicked(choice.id);
+                  }}
                   className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-umber-soft/40 bg-white px-3 text-left transition-all hover:border-slate/30 active:scale-[0.99]"
                 >
                   {choice.imageUrl ? (

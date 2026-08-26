@@ -16,6 +16,7 @@ import {
 } from "@/components/guest/service-status-card";
 import { WaitingRecommendation } from "@/components/guest/waiting-recommendation";
 import { PairingSuggestion } from "@/components/guest/pairing-suggestion";
+import { TrackProvider, useTrack, useTrackOnce } from "@/components/guest/track";
 import { pairingLabel, suggestionFor, type PairingRelationship } from "@/lib/pairings";
 import { MOOD_PROMPTS, itemsForPrompt, type MoodPrompt } from "@/lib/menu-discovery";
 import { ChefsPick } from "./chefs-pick";
@@ -82,7 +83,7 @@ function navSlotFor(tab: TabId): GuestNavId {
 
 const DRINK_TAGS = new Set(["drink", "drinks", "cocktail", "wine", "beer", "coffee"]);
 
-export function GuestHome(props: {
+type GuestHomeProps = {
   venueSlug: string;
   tableSeg: string;
   sessionToken: string;
@@ -133,7 +134,26 @@ export function GuestHome(props: {
     relationship: PairingRelationship;
     sortOrder: number;
   }[];
-}) {
+};
+
+/**
+ * Wraps the home in the analytics provider so every control below can
+ * raise an event without threading a callback through eight components.
+ * The provider batches and never blocks a render — see components/guest/track.
+ */
+export function GuestHome(props: GuestHomeProps) {
+  return (
+    <TrackProvider
+      venueSlug={props.venueSlug}
+      sessionId={props.sessionId}
+      sessionToken={props.sessionToken}
+    >
+      <GuestHomeInner {...props} />
+    </TrackProvider>
+  );
+}
+
+function GuestHomeInner(props: GuestHomeProps) {
   // A whole family from the venue's colour, not one wash. Everything the
   // guest sees is tinted with THEIR colour, which is the difference
   // between colourful and merely decorated.
@@ -156,6 +176,11 @@ export function GuestHome(props: {
     props.activeRequest,
   );
   const [requestOpen, setRequestOpen] = useState(props.activeRequest !== null);
+  const track = useTrack();
+
+  // Reaching the home means they got past the welcome and chose to look
+  // at the menu — the difference between a scan and a visit.
+  useTrackOnce("menu_explored");
 
   const byId = useMemo(() => new Map(props.items.map(i => [i.id, i])), [props.items]);
   const pickedIds = useMemo(() => new Set(picks.map(p => p.menuItemId)), [picks]);
@@ -190,6 +215,7 @@ export function GuestHome(props: {
           }),
         });
         if (!res.ok) throw new Error(String(res.status));
+        track(already ? "pick_removed" : "pick_saved", { menuItemId: item.id });
         setToast(already ? `Removed ${item.name}` : `Saved ${item.name}`);
         if (!already) setSavePulse(n => n + 1);
         setTimeout(() => setToast(null), 1800);
@@ -203,7 +229,7 @@ export function GuestHome(props: {
         setBusyItem(null);
       }
     },
-    [busyItem, pickedIds, props.picks, props.sessionId, props.sessionToken, props.venueSlug],
+    [busyItem, pickedIds, props.picks, props.sessionId, props.sessionToken, props.venueSlug, track],
   );
 
   /**
@@ -229,6 +255,8 @@ export function GuestHome(props: {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok || !body?.id) throw new Error(String(res.status));
+        track("ready_to_order_requested");
+        track("service_requested");
         setActiveRequest({
           id: body.id,
           type,
@@ -244,7 +272,7 @@ export function GuestHome(props: {
         return false;
       }
     },
-    [props.sessionId, props.sessionToken],
+    [props.sessionId, props.sessionToken, track],
   );
 
   /**
@@ -297,6 +325,16 @@ export function GuestHome(props: {
   }, [pairing, props.promotions, props.items, byId, pickedIds]);
 
   const navSlot = navSlotFor(tab);
+
+  // Opening a dish is the clearest signal of interest short of saving it,
+  // and it's what "most viewed items" is built from.
+  const openDish = useCallback(
+    (item: Item) => {
+      track("menu_item_viewed", { menuItemId: item.id });
+      setOpenItem(item);
+    },
+    [track],
+  );
 
   return (
     // pb-28 clears the bottom bar so the last row of a menu is readable
@@ -365,7 +403,7 @@ export function GuestHome(props: {
                 saved={pickedIds.has(waiting.item.id)}
                 canSave={props.config.myPicks}
                 onSave={() => void savePick(waiting.item)}
-                onOpen={() => setOpenItem(waiting.item)}
+                onOpen={() => openDish(waiting.item)}
               />
             ) : null}
           </ServiceStatusCard>
@@ -377,7 +415,7 @@ export function GuestHome(props: {
             picks={picks}
             pickedIds={pickedIds}
             onSave={savePick}
-            onOpen={setOpenItem}
+            onOpen={openDish}
             palette={palette}
             accent={accent}
             onOpenTab={setTab}
@@ -390,7 +428,7 @@ export function GuestHome(props: {
             categories={props.categories}
             pickedIds={pickedIds}
             onSave={savePick}
-            onOpen={setOpenItem}
+            onOpen={openDish}
             canSave={props.config.myPicks}
             palette={palette}
           />
@@ -402,7 +440,7 @@ export function GuestHome(props: {
             categories={props.categories}
             pickedIds={pickedIds}
             onSave={savePick}
-            onOpen={setOpenItem}
+            onOpen={openDish}
             canSave={props.config.myPicks}
             palette={palette}
           />
@@ -436,8 +474,11 @@ export function GuestHome(props: {
                   sourceName={pairing.sourceName}
                   saved={false}
                   canSave={props.config.myPicks}
-                  onSave={() => void savePick(pairing.item)}
-                  onOpen={() => setOpenItem(pairing.item)}
+                  onSave={() => {
+                    track("pairing_saved", { menuItemId: pairing.item.id });
+                    void savePick(pairing.item);
+                  }}
+                  onOpen={() => openDish(pairing.item)}
                   tint={palette.wash[0]}
                 />
               ) : null
@@ -510,7 +551,10 @@ export function GuestHome(props: {
 
       <BottomGuestNav
         active={navSlot}
-        onSelect={id => setTab(id === "more" ? "more" : (id as TabId))}
+        onSelect={id => {
+          if (id === "picks") track("table_picks_viewed");
+          setTab(id === "more" ? "more" : (id as TabId));
+        }}
         onService={() => setServiceOpen(true)}
         serverName={props.serverName}
         serviceEnabled={props.requestsEnabled}
@@ -785,12 +829,20 @@ function RevealCard({
   onExplore: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const track = useTrack();
+  // Shown is not the same as opened. A venue wants to know both: how
+  // many guests were offered tonight's special, and how many cared
+  // enough to tap it.
+  useTrackOnce("special_viewed", { promotionId: promo.id });
   return (
     <section>
       {!open ? (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            track("special_revealed", { promotionId: promo.id });
+            setOpen(true);
+          }}
           className="relative w-full overflow-hidden rounded-3xl p-6 text-left shadow-card transition-transform active:scale-[0.99]"
           style={{ background: `linear-gradient(135deg, ${accent}, ${accent}77)` }}
         >

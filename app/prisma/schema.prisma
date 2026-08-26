@@ -198,6 +198,7 @@ model Venue {
   promotions               Promotion[]
   wishlists                Wishlist[]
   menuItemPairings         MenuItemPairing[]
+  guestEvents              GuestEvent[]
   posSyncLogs              PosSyncLog[]
   venueBranding            VenueBranding?
   posIntegration           PosIntegration?
@@ -1152,6 +1153,42 @@ model MenuItemPairing {
   @@unique([menuItemId, suggestedId])
   @@index([venueId])
   @@index([menuItemId])
+}
+
+// One thing a guest did, for product analytics.
+//
+// NO PII, BY CONSTRUCTION. There is no column here that could hold a
+// name, a phone number, a device id or an IP — only a venue, a session,
+// a verb, and optionally which menu item or promotion it was about. That
+// is a schema-level guarantee rather than a discipline someone has to
+// remember at every call site.
+//
+// The session id is included so a funnel can be followed within one
+// visit ("scanned, browsed, saved nothing, asked for the check"). It is
+// already a random per-visit token that expires in eight hours and is
+// not linked to a person unless that guest chose to leave a number.
+//
+// Deliberately append-only and never updated. Aggregates are computed at
+// read time; there are no running counters to drift.
+model GuestEvent {
+  id          String   @id @default(cuid())
+  venueId     String
+  // Null for events raised before a session exists, e.g. a scan of a QR
+  // that turned out to be invalid.
+  sessionId   String?
+  type        String
+  // What it was about, when it was about something. Both nullable and
+  // both cleared rather than cascaded — deleting a dish shouldn't erase
+  // the history of guests having looked at it.
+  menuItemId  String?
+  promotionId String?
+  createdAt   DateTime @default(now())
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, type, createdAt])
+  @@index([venueId, createdAt])
+  @@index([sessionId])
 }
 
 model VenueBranding {
