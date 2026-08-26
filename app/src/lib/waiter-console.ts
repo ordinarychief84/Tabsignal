@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 // Re-exported so server callers keep one import; the implementation
 // lives outside this module because client components need it too.
 export { formatWait } from "@/lib/wait-format";
+import { serviceThresholdsFrom } from "@/lib/service-sla";
 
 /**
  * Everything the waiter console needs, in one server pass.
@@ -59,8 +60,6 @@ export type ShiftSummary = {
  */
 export type TablePick = { name: string; quantity: number };
 
-const SLA_ATTENTION_SECONDS = 90;
-
 /**
  * The floor, from this waiter's point of view.
  *
@@ -78,6 +77,15 @@ export async function waiterTables({
   staffId: string;
   now?: Date;
 }): Promise<WaiterTable[]> {
+  // The venue's own promise. Was a module constant, which meant the map
+  // could call a table late while the queue beside it still called it
+  // fine.
+  const venue = await db.venue.findUnique({
+    where: { id: venueId },
+    select: { enabledFeatures: true },
+  });
+  const thresholds = serviceThresholdsFrom(venue?.enabledFeatures);
+
   const [tables, openRequests, sessions, picks] = await Promise.all([
     db.table.findMany({
       where: { venueId },
@@ -138,7 +146,7 @@ export async function waiterTables({
     // "nobody has this", which outranks "somebody is on it".
     let state: TableState = "clear";
     if (agg) {
-      if (agg.oldest >= SLA_ATTENTION_SECONDS && agg.unclaimed > 0) {
+      if (agg.oldest >= thresholds.attentionSeconds && agg.unclaimed > 0) {
         state = "needs_attention";
       } else if (agg.unclaimed > 0) {
         state = "new_request";

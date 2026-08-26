@@ -203,7 +203,7 @@ describe("table state ranking", () => {
     // long the guest has been waiting — flagging it sends a second
     // server to a table that already has one coming.
     const fn = SRC.split("export async function waiterTables")[1]?.split("\nexport ")[0] ?? "";
-    expect(fn).toContain("agg.oldest >= SLA_ATTENTION_SECONDS && agg.unclaimed > 0");
+    expect(fn).toContain("agg.oldest >= thresholds.attentionSeconds && agg.unclaimed > 0");
   });
 
   test("the waiter's own tables sort first", () => {

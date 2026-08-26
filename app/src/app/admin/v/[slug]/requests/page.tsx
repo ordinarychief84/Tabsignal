@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { serviceThresholdsFrom } from "@/lib/service-sla";
 import { getStaffSession } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
 import { emit } from "@/lib/realtime";
@@ -11,7 +12,6 @@ export const metadata = { title: "TabCall · live requests" };
 // Same threshold the live endpoint uses (PRD F6). Replicated here so the
 // server-rendered initial state already reflects escalations without
 // needing a second roundtrip to /requests/live.
-const ESCALATION_AGE_MS = 3 * 60_000;
 
 export default async function AdminLiveRequestsPage({
   params,
@@ -33,14 +33,15 @@ export default async function AdminLiveRequestsPage({
 
   const venue = await db.venue.findUnique({
     where: { slug: params.slug },
-    select: { id: true, name: true },
+    select: { id: true, name: true, enabledFeatures: true },
   });
   if (!venue || venue.id !== session.venueId) return null;
 
   // Inline lazy escalation — same logic as /api/venue/[venueId]/requests/live.
   // Flips PENDING rows older than 3min to ESCALATED so the initial render
   // shows them correctly bucketed without a client round-trip.
-  const cutoff = new Date(Date.now() - ESCALATION_AGE_MS);
+  const thresholds = serviceThresholdsFrom(venue.enabledFeatures);
+  const cutoff = new Date(Date.now() - thresholds.escalateSeconds * 1000);
   const escalation = await db.request.updateMany({
     where: {
       venueId: venue.id,
@@ -100,15 +101,17 @@ export default async function AdminLiveRequestsPage({
   // Bucket counts for the summary stat cards. Mirrors the client-side
   // bucketing so the header reflects the same numbers the tabs do.
   const now = Date.now();
-  const DELAYED_THRESHOLD_MS = 90_000;
   const counts = { pending: 0, active: 0, delayed: 0, completed: 0 };
   for (const r of initial) {
     if (r.status === "RESOLVED") counts.completed += 1;
     else if (r.status === "ESCALATED") counts.delayed += 1;
-    else if (r.status === "ACKNOWLEDGED") counts.active += 1;
+    // Claimed and walking-over are both active work. Without the second
+    // one an ON_MY_WAY request falls to the age check below and inflates
+    // the delayed count while somebody is mid-stride to the table.
+    else if (r.status === "ACKNOWLEDGED" || r.status === "ON_MY_WAY") counts.active += 1;
     else {
       const age = now - new Date(r.createdAt).getTime();
-      if (age >= DELAYED_THRESHOLD_MS) counts.delayed += 1;
+      if (age >= thresholds.attentionSeconds * 1000) counts.delayed += 1;
       else counts.pending += 1;
     }
   }
@@ -135,6 +138,7 @@ export default async function AdminLiveRequestsPage({
       </div>
 
       <RequestsList
+        thresholds={thresholds}
         slug={params.slug}
         venueId={venue.id}
         staffId={session.staffId}

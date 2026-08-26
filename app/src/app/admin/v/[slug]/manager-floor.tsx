@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSocket, joinRoom } from "@/lib/socket";
+import {
+  SERVICE_THRESHOLD_DEFAULTS,
+  type ServiceThresholds,
+} from "@/lib/service-sla";
 
 type Item = {
   id: string;
@@ -45,6 +49,12 @@ const REQUEST_LABEL: Record<Item["type"], string> = {
 };
 
 export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string }) {
+  // Same source as the staff queue — the live-requests payload carries
+  // the venue's thresholds, so both surfaces agree on what "late" means
+  // without either of them owning the number.
+  const [thresholds, setThresholds] = useState<ServiceThresholds>(
+    SERVICE_THRESHOLD_DEFAULTS,
+  );
   const [items, setItems] = useState<Item[]>([]);
   const [reconnecting, setReconnecting] = useState(false);
   const [arrivals, setArrivals] = useState<RegularArrival[]>([]);
@@ -65,6 +75,7 @@ export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string 
       if (!res.ok) return;
       const data = await res.json();
       setItems(data.items ?? []);
+      if (data.thresholds) setThresholds(data.thresholds);
     } catch {
       /* swallow */
     }
@@ -199,20 +210,22 @@ export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string 
       ) : null}
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map(it => (
-          <FloorCard key={it.id} item={it} />
+          <FloorCard key={it.id} item={it} thresholds={thresholds} />
         ))}
       </ul>
     </>
   );
 }
 
-function FloorCard({ item }: { item: Item }) {
+function FloorCard({ item, thresholds }: { item: Item; thresholds: ServiceThresholds }) {
   const seconds = useAge(item.createdAt);
   // A manager scanning the floor needs "somebody has this" — which both
   // post-ack states satisfy. Neither should keep ageing toward overdue.
   const acked = item.status === "ACKNOWLEDGED" || item.status === "ON_MY_WAY";
-  const delayed = !acked && seconds > 180;
-  const warn = !acked && !delayed && seconds > 60;
+  // Venue thresholds, passed down rather than compiled in — a manager
+  // and the servers below them must agree on what "late" means.
+  const delayed = !acked && seconds >= thresholds.escalateSeconds;
+  const warn = !acked && !delayed && seconds >= thresholds.warnSeconds;
 
   return (
     <li

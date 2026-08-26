@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { visitProgramFrom } from "@/lib/visit-progress";
+import { serviceThresholdsFrom } from "@/lib/service-sla";
 import { guestExperienceFrom } from "@/lib/guest-experience";
 import { CONSENT_TEXT_VERSION, consentText } from "@/lib/consent";
 import { messagingConfigured } from "@/lib/campaigns";
@@ -42,6 +43,7 @@ export default async function GuestExperiencePage({ params }: { params: { slug: 
         consentPreview={consentText(venue.name)}
         consentVersion={CONSENT_TEXT_VERSION}
         visitProgram={visitProgramFrom(venue.enabledFeatures)}
+      serviceThresholds={serviceThresholdsFrom(venue.enabledFeatures)}
       messagingConfigured={messagingConfigured()}
       />
     </>

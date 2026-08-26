@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { emit } from "@/lib/realtime";
+import { serviceThresholdsFrom } from "@/lib/service-sla";
 
 export const dynamic = "force-dynamic";
-
-const ESCALATION_AGE_MS = 3 * 60_000; // 3 minutes (PRD F6)
 
 export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
   const session = await getStaffSession();
@@ -24,7 +23,14 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
   // updateMany is idempotent: the WHERE clause specifies status=PENDING
   // and escalatedAt=null, so repeated calls won't re-flip already-escalated
   // rows or fire duplicate events.
-  const cutoff = new Date(Date.now() - ESCALATION_AGE_MS);
+  // This venue's own threshold, not a constant. An owner who set a
+  // tighter promise should see it honoured here as well as in the cron.
+  const venue = await db.venue.findUnique({
+    where: { id: ctx.params.venueId },
+    select: { enabledFeatures: true },
+  });
+  const thresholds = serviceThresholdsFrom(venue?.enabledFeatures);
+  const cutoff = new Date(Date.now() - thresholds.escalateSeconds * 1000);
   const escalation = await db.request.updateMany({
     where: {
       venueId: ctx.params.venueId,
@@ -67,6 +73,9 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
   });
 
   return NextResponse.json({
+    // Sent with the payload so the queue shades cards against the venue's
+    // own promise rather than a number compiled into the bundle.
+    thresholds,
     items: requests.map(r => ({
       id: r.id,
       tableId: r.tableId,

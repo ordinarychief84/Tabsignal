@@ -9,6 +9,11 @@ import {
   MIN_VISITS,
   type VisitProgramConfig,
 } from "@/lib/visit-progress";
+import {
+  MAX_THRESHOLD_SECONDS,
+  MIN_THRESHOLD_SECONDS,
+  type ServiceThresholds,
+} from "@/lib/service-sla";
 
 /**
  * Toggles for the guest journey.
@@ -47,6 +52,41 @@ const GROUPS: { heading: string; items: { key: keyof GuestExperienceConfig; labe
   },
 ];
 
+/**
+ * A seconds field. Number input rather than a slider: an owner setting a
+ * service promise has a number in mind, and a slider makes them hunt for
+ * it.
+ */
+function Seconds({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[11px] uppercase tracking-[0.16em] text-umber">{label}</span>
+      <span className="mt-1.5 flex items-center gap-2">
+        <input
+          type="number"
+          min={MIN_THRESHOLD_SECONDS}
+          max={MAX_THRESHOLD_SECONDS}
+          value={value}
+          onChange={e => onChange(Number(e.target.value) || MIN_THRESHOLD_SECONDS)}
+          className="min-h-[44px] w-full rounded-xl border border-umber-soft/40 bg-white px-3.5 text-sm outline-none focus:border-sea focus:ring-2 focus:ring-sea/25"
+        />
+        <span className="shrink-0 text-[12px] text-slate/55">sec</span>
+      </span>
+      <span className="mt-1 block text-[11px] text-slate/45">{hint}</span>
+    </label>
+  );
+}
+
 export function GuestExperienceForm({
   slug,
   config: initial,
@@ -55,6 +95,7 @@ export function GuestExperienceForm({
   consentVersion,
   messagingConfigured,
   visitProgram: initialProgram,
+  serviceThresholds: initialThresholds,
 }: {
   slug: string;
   config: GuestExperienceConfig;
@@ -63,10 +104,12 @@ export function GuestExperienceForm({
   consentVersion: string;
   messagingConfigured: boolean;
   visitProgram: VisitProgramConfig;
+  serviceThresholds: ServiceThresholds;
 }) {
   const [config, setConfig] = useState(initial);
   const [welcome, setWelcome] = useState(initialWelcome);
   const [program, setProgram] = useState(initialProgram);
+  const [thresholds, setThresholds] = useState(initialThresholds);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +126,7 @@ export function GuestExperienceForm({
           config,
           guestWelcomeMessage: welcome.trim() || null,
           visitProgram: program,
+          serviceThresholds: thresholds,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -147,6 +191,43 @@ export function GuestExperienceForm({
           </ul>
         </Panel>
       ))}
+
+      <Panel title="How long is too long">
+        <p className="text-[13px] leading-relaxed text-slate/65">
+          Your promise, in seconds. These drive the colours and words on the
+          staff queue, the table map and the manager floor, and the point at
+          which a request escalates &mdash; so a bar at midnight and a dining
+          room at eight can hold themselves to different standards.
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Seconds
+            label="Nudge at"
+            hint="Worth a glance"
+            value={thresholds.warnSeconds}
+            onChange={v => setThresholds(t => ({ ...t, warnSeconds: v }))}
+          />
+          <Seconds
+            label="Needs attention at"
+            hint="Nobody has picked it up"
+            value={thresholds.attentionSeconds}
+            onChange={v => setThresholds(t => ({ ...t, attentionSeconds: v }))}
+          />
+          <Seconds
+            label="Escalate at"
+            hint="A manager is told"
+            value={thresholds.escalateSeconds}
+            onChange={v => setThresholds(t => ({ ...t, escalateSeconds: v }))}
+          />
+        </div>
+
+        <p className="mt-3 text-[11px] leading-relaxed text-slate/45">
+          Saved in order, lowest first &mdash; if you set escalate below needs
+          attention we&rsquo;ll raise it to match, because a request that
+          reaches a manager before it has been flagged late reads as the app
+          being broken.
+        </p>
+      </Panel>
 
       <Panel title="Regulars">
         <p className="text-[13px] leading-relaxed text-slate/65">

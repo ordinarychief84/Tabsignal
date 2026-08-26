@@ -7,6 +7,11 @@ import { originGuard } from "@/lib/csrf";
 import { audit } from "@/lib/audit";
 import { mergeGuestExperience, GUEST_EXPERIENCE_KEYS } from "@/lib/guest-experience";
 import { mergeVisitProgram, MAX_LABEL, MAX_VISITS, MIN_VISITS } from "@/lib/visit-progress";
+import {
+  MAX_THRESHOLD_SECONDS,
+  MIN_THRESHOLD_SECONDS,
+  mergeServiceThresholds,
+} from "@/lib/service-sla";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -37,10 +42,26 @@ const VisitProgram = z.object({
   programName: z.string().max(MAX_LABEL).optional(),
 });
 
+/**
+ * How long is too long, at this venue.
+ *
+ * Bounds rather than free numbers: a threshold of 0 would mark every
+ * request overdue the instant it arrived, and one of a day would mean
+ * nothing ever escalates. The library also keeps the three in ascending
+ * order whatever gets typed, so a venue can't end up escalating a
+ * request to a manager before it has been flagged as late.
+ */
+const Thresholds = z.object({
+  warnSeconds: z.number().int().min(MIN_THRESHOLD_SECONDS).max(MAX_THRESHOLD_SECONDS).optional(),
+  attentionSeconds: z.number().int().min(MIN_THRESHOLD_SECONDS).max(MAX_THRESHOLD_SECONDS).optional(),
+  escalateSeconds: z.number().int().min(MIN_THRESHOLD_SECONDS).max(MAX_THRESHOLD_SECONDS).optional(),
+});
+
 const Body = z.object({
   config: Config,
   guestWelcomeMessage: z.string().max(500).nullable().optional(),
   visitProgram: VisitProgram.optional(),
+  serviceThresholds: Thresholds.optional(),
 });
 
 export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
@@ -82,9 +103,15 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
       // Two merges over the same free-form column, both preserving keys
       // other parts of the app own. Sequenced rather than combined so
       // neither helper has to know about the other's shape.
-      enabledFeatures: mergeVisitProgram(
-        mergeGuestExperience(venue.enabledFeatures, parsed.config),
-        parsed.visitProgram ?? {},
+      // Three merges over the same free-form column, each preserving keys
+      // the others own. Sequenced rather than combined so no helper has
+      // to know about another's shape.
+      enabledFeatures: mergeServiceThresholds(
+        mergeVisitProgram(
+          mergeGuestExperience(venue.enabledFeatures, parsed.config),
+          parsed.visitProgram ?? {},
+        ),
+        parsed.serviceThresholds ?? {},
       ) as Prisma.InputJsonValue,
       ...(parsed.guestWelcomeMessage !== undefined
         ? { guestWelcomeMessage: parsed.guestWelcomeMessage }
@@ -98,7 +125,11 @@ export async function PATCH(req: Request, ctx: { params: { slug: string } }) {
     action: "venue.guest_experience_updated",
     targetType: "Venue",
     targetId: venue.id,
-    metadata: { config: parsed.config, visitProgram: parsed.visitProgram ?? null },
+    metadata: {
+      config: parsed.config,
+      visitProgram: parsed.visitProgram ?? null,
+      serviceThresholds: parsed.serviceThresholds ?? null,
+    },
   });
 
   return NextResponse.json({ ok: true });
