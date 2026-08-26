@@ -52,7 +52,7 @@ export type Permission =
   // Regulars, tip pools and the session export all count from. Replaces
   // the orphaned "preorders.manage" — pre-orders went with guest payments.
   | "tabs.settle"
-  | "reservations.manage"
+  | "waitlist.manage"
   | "reviews.view"
   | "reviews.respond"
   | "regulars.view"
@@ -99,7 +99,7 @@ const ALL_PERMS = new Set<Permission>([
   "promotions.manage",
   "tip_pools.manage",
   "tabs.settle",
-  "reservations.manage",
+  "waitlist.manage",
   "reviews.view",
   "reviews.respond",
   "regulars.view",
@@ -144,7 +144,7 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
     "promotions.manage",
     "tip_pools.manage",
     "tabs.settle",
-    "reservations.manage",
+    "waitlist.manage",
     "reviews.view",
     "reviews.respond",
     "regulars.view",
@@ -162,16 +162,16 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
   // Servers + Bartenders (mapped to SERVER) live on the floor app.
   SERVER: new Set<Permission>([
     "tabs.settle",
-    "reservations.manage", // can mark ARRIVED/SEATED, not create
+    "waitlist.manage", // can mark ARRIVED/SEATED, not create
     "regulars.view",
     "requests.acknowledge",
     "requests.handoff",
     "requests.resolve",
   ]),
 
-  // Hosts focus on door + reservations.
+  // Hosts focus on the door and the waitlist.
   HOST: new Set<Permission>([
-    "reservations.manage",
+    "waitlist.manage",
     "regulars.view",
     "requests.acknowledge",
   ]),
@@ -191,7 +191,7 @@ const MATRIX: Record<EffectiveRole, Set<Permission>> = {
   STAFF: new Set<Permission>([
     "staff.list",
     "tabs.settle",
-    "reservations.manage",
+    "waitlist.manage",
     "regulars.view",
     "requests.acknowledge",
     "requests.handoff",

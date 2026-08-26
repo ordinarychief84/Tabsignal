@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  // Live venue microsites (public menu + reservations) — local-SEO value
+  // Live venue microsites (public menu) — local-SEO value
   // for the venues themselves. Only venues that finished onboarding.
   // DB unavailable (cold build, CI) → ship the marketing routes alone.
   let venuePages: MetadataRoute.Sitemap = [];
@@ -38,7 +38,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     venuePages = venues.flatMap(v => [
       { url: `${SITE_URL}/v/${v.slug}`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.4 },
       { url: `${SITE_URL}/v/${v.slug}/menu`, lastModified: now, changeFrequency: "daily" as const, priority: 0.5 },
-      { url: `${SITE_URL}/v/${v.slug}/reservations`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.4 },
     ]);
   } catch {
     // Best-effort: a sitemap without venue pages is still a valid sitemap.

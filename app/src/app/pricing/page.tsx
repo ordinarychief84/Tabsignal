@@ -123,7 +123,7 @@ const PRICING_TIERS: PricingTier[] = [
     inheritsFrom: "Growth",
     features: [
       "Regulars: recognise a returning guest and their history",
-      "Reservations and waitlist",
+      "Waitlist with SMS when the table is ready",
       "Campaigns: compose and schedule guest messaging",
       "Branding: logo, banner, brand colors, welcome message",
       "Multi-location operator console",

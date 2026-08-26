@@ -1,7 +1,7 @@
 import "server-only";
 /**
  * SMS adapter. Twilio is the production backend; in dev we no-op and log
- * so reservations / OTP flows are testable without burning Twilio credits.
+ * so waitlist / OTP flows are testable without burning Twilio credits.
  *
  * Anything that sends an SMS goes through this module so we have one place
  * to swap providers and one place to add rate limiting.

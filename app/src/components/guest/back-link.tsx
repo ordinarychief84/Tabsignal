@@ -2,7 +2,7 @@ import Link from "next/link";
 
 /**
  * Back navigation for the light guest pages (menu, waitlist,
- * reservations, order confirmation).
+ * waitlist).
  *
  * These were one-way trips: a guest who tapped into the menu could only
  * leave via the browser's back gesture, which plenty of people never use

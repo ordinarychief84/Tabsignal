@@ -65,7 +65,7 @@ const Optional = z.object({
   // Operator
   OPERATOR_EMAILS: optionalString,
 
-  // Twilio (reservations + waitlist + loyalty OTP). Optional in dev — the
+  // Twilio (waitlist + guest OTP). Optional in dev — the
   // SMS adapter mocks when these are absent.
   TWILIO_ACCOUNT_SID: optionalString,
   TWILIO_AUTH_TOKEN: optionalString,

@@ -63,6 +63,8 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     db.feedbackReport.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.request.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.guestSession.deleteMany({ where: { venueId: { in: venueIds } } }),
+    // Reservations were removed as a feature; the table is kept until
+    // production is confirmed empty, so a venue delete still clears it.
     db.reservation.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.waitlist.deleteMany({ where: { venueId: { in: venueIds } } }),
     db.menuItem.deleteMany({ where: { venueId: { in: venueIds } } }),

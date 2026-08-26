@@ -16,7 +16,7 @@ import { db } from "@/lib/db";
  * is most likely to look at the tab and wonder where they are.
  *
  * Pages with their own metadata (the public venue page, menu, waitlist,
- * reservations) still override this, which is right: they are indexable
+ * waitlist) still override this, which is right: they are indexable
  * marketing surfaces for the venue and want fuller titles.
  */
 export async function generateMetadata({
