@@ -6,6 +6,7 @@ import { StaffQueue } from "./queue";
 import { LiveClock } from "./live-clock";
 import { FcmRegister } from "./fcm-register";
 import { OpenTabs } from "./open-tabs";
+import { ShiftControl } from "./shift-control";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,16 @@ export default async function StaffPage() {
               </p>
               <p className="text-sm font-medium text-slate">Live queue</p>
             </div>
-            <LiveClock />
+            <div className="flex shrink-0 items-center gap-2">
+              {/* Where they are right now, next to the time. Requests route
+                  around this — see lib/shift for why availability is a
+                  preference rather than a gate. */}
+              <ShiftControl
+                initial={staff.shiftStatus}
+                initialStartedAt={staff.shiftStartedAt?.toISOString() ?? null}
+              />
+              <LiveClock />
+            </div>
           </div>
 
           <nav aria-label="Staff" className="mt-2.5 flex items-center gap-1.5 overflow-x-auto">

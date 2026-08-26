@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { rateLimitAsync } from "@/lib/rate-limit";
 import { events } from "@/lib/realtime";
 import { sendPushToStaff } from "@/lib/fcm";
+import { routeTo } from "@/lib/shift";
 
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -96,13 +97,35 @@ export async function POST(req: Request) {
       table: {
         select: {
           label: true,
-          assignments: { select: { staffMemberId: true } },
+          assignments: {
+            select: {
+              staff: { select: { id: true, shiftStatus: true, status: true } },
+            },
+          },
         },
       },
     },
   });
 
-  const assignedStaffIds = request.table.assignments.map(a => a.staffMemberId);
+  // Who is actually around. Availability is a PREFERENCE, not a gate:
+  // a table whose only server stepped outside must still reach someone,
+  // because silence is the one outcome this product exists to prevent.
+  // See lib/shift for the full order of preference.
+  const assignedStaff = request.table.assignments
+    .map(a => a.staff)
+    .filter(s => s.status === "ACTIVE");
+  const assignedIds = new Set(assignedStaff.map(s => s.id));
+  const othersAtVenue = await db.staffMember.findMany({
+    where: {
+      venueId: session.venueId,
+      status: "ACTIVE",
+      id: { notIn: assignedStaff.length > 0 ? [...assignedIds] : ["__none__"] },
+    },
+    select: { id: true, shiftStatus: true },
+  });
+
+  const routed = routeTo(assignedStaff, othersAtVenue);
+  const assignedStaffIds = routed.staffIds;
 
   // Realtime push: venue room (everyone) + per-staff rooms for whoever covers
   // this table. Fire-and-forget — DB write is the source of truth.

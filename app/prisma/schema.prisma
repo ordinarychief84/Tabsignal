@@ -54,6 +54,27 @@ enum StaffStatus {
   // sessionsValidAfter bump. Audit history + completed requests stay.
 }
 
+// Where a staff member is RIGHT NOW, as opposed to whether they still
+// work here. StaffStatus answers "are they employed and able to sign
+// in"; this answers "should the next request at their table go to them".
+//
+// Deliberately separate. Suspending someone is an HR action with an
+// audit trail; stepping outside for ten minutes is not, and conflating
+// them would mean a server on a smoke break looks fired.
+enum ShiftStatus {
+  ON_SHIFT
+  // Short break. Still on the floor plan, still reachable — routing
+  // treats them as a last resort rather than skipping them, because a
+  // table with nobody else assigned must not go silent.
+  BREAK
+  // Longer, and someone should genuinely cover. Same routing posture as
+  // BREAK; the distinction is for the manager reading the floor, not
+  // for the router.
+  MEAL_BREAK
+  // Not working. Requests route past them entirely.
+  OFF_SHIFT
+}
+
 enum RequestType {
   DRINK
   // BILL is "ready for the check" — a signal to the server that the table
@@ -335,6 +356,14 @@ model StaffMember {
   // timestamp gets rejected at verifySessionToken. Nullable: rows
   // pre-dating the feature retain unrestricted token TTL.
   sessionsValidAfter DateTime?
+  // Where they are right now. Defaults to OFF_SHIFT: a row created by an
+  // invite has not started a shift, and defaulting to ON_SHIFT would
+  // route live guest requests to somebody who has never opened the app.
+  shiftStatus        ShiftStatus   @default(OFF_SHIFT)
+  // When the current shift began. Null when off. Drives "Completed
+  // today" and the shift clock in the header, and is what makes those
+  // numbers about THIS shift rather than about the calendar day.
+  shiftStartedAt     DateTime?
   // Free-text section assignment (e.g. "Patio", "Bar", "Floor 2"). Used
   // alongside TableAssignment for venues that group staff by zone rather
   // than per-table. Pure metadata — display + filter only.
