@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * "Need Sarah?" — the one control that stays reachable everywhere.
+ * "Need Sarah?" — the sheet behind the one control that stays reachable
+ * everywhere.
  *
- * A guest raising a hand is the whole product, so this is deliberately the
- * only persistently docked thing in the experience. It names the server
- * when the table has one, because "Need Sarah?" reads like asking a person
- * and "Call waiter" reads like operating a machine.
+ * A guest raising a hand is the whole product. The button that opens this
+ * now lives raised out of the middle of the bottom navigation, so the
+ * sheet no longer carries a dock of its own; it names the server when the
+ * table has one, because "Need Sarah?" reads like asking a person and
+ * "Call waiter" reads like operating a machine.
  *
  * The confirmation afterwards is careful about what it claims. Sending a
  * request means the server was NOTIFIED. It does not mean they're walking
@@ -49,8 +51,10 @@ export function ServiceSheet({
   sessionId,
   venueSlug,
   autoOpen = false,
-  showDock = true,
   feedbackHref,
+  open: controlledOpen,
+  onOpenChange,
+  onSent,
 }: {
   /** Null when the table has no assigned server. */
   serverName: string | null;
@@ -68,13 +72,33 @@ export function ServiceSheet({
    */
   feedbackHref?: string;
   /**
-   * Whether to render the docked button. False on the welcome screen,
-   * which has its own "Need Sarah now?" action — two of the same control
-   * on one screen, with the dock covering the other, is worse than one.
+   * Controlled mode. The bottom navigation owns the service button now,
+   * so the sheet has to open from outside itself. Left undefined the
+   * sheet stays self-managed, which is what the welcome screen wants.
    */
-  showDock?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /**
+   * Fires once a request is actually accepted by the API. The guest home
+   * uses it to raise the status card immediately rather than waiting for
+   * the next poll — the guest pressed a button, so something should
+   * change on screen now, not in five seconds.
+   */
+  onSent?: (request: {
+    id: string;
+    type: ServiceOption["type"];
+    note: string | null;
+  }) => void;
 }) {
-  const [open, setOpen] = useState(autoOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(autoOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (controlledOpen === undefined) setUncontrolledOpen(next);
+      onOpenChange?.(next);
+    },
+    [controlledOpen, onOpenChange],
+  );
   const [status, setStatus] = useState<Status>("idle");
   const [chosen, setChosen] = useState<ServiceOption | null>(null);
   const [note, setNote] = useState("");
@@ -141,6 +165,9 @@ export function ServiceSheet({
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       setRequestId(body?.id ?? null);
       setStatus("sent");
+      if (body?.id) {
+        onSent?.({ id: body.id, type: option.type, note: note.trim() || null });
+      }
     } catch (e) {
       setStatus("error");
       setError(e instanceof Error ? e.message : "Couldn't send that");
@@ -161,20 +188,6 @@ export function ServiceSheet({
 
   return (
     <>
-      {/* Docked, thumb-height, clear of the iOS home indicator. */}
-      {showDock ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 [background:linear-gradient(to_top,var(--guest-bg,#FBF8F2)_55%,transparent)]">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="pointer-events-auto flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-saffron text-[16px] font-semibold text-plum shadow-soft transition-all hover:brightness-[0.97] active:scale-[0.99]"
-          >
-            <span aria-hidden>🔔</span>
-            {cta}
-          </button>
-        </div>
-      ) : null}
-
       {open ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate/40 backdrop-blur-sm"

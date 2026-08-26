@@ -20,11 +20,6 @@ const HOME = readFileSync(
   "utf8",
 );
 const SHEET_PATH = join(import.meta.dir, "../../components/guest/item-sheet.tsx");
-const DOCK = readFileSync(
-  join(import.meta.dir, "../../components/guest/service-sheet.tsx"),
-  "utf8",
-);
-
 describe("a guest can open a dish", () => {
   test("the item sheet exists", () => {
     expect(existsSync(SHEET_PATH)).toBe(true);
@@ -86,15 +81,12 @@ describe("a long menu is navigable", () => {
   });
 });
 
-describe("the docked control doesn't eat the last row", () => {
+describe("the bottom bar doesn't eat the last row", () => {
   test("the page reserves room below the fold", () => {
-    expect(HOME).toMatch(/pb-36/);
-  });
-
-  test("the dock has a scrim so rows fade instead of being sliced", () => {
-    // Its container was fully transparent, so a row scrolled under a
-    // solid pill and appeared cut in half.
-    expect(DOCK).toContain("linear-gradient");
+    // Was pb-36, sized for a full-width docked pill plus its scrim. The
+    // bar that replaced it is 64px tall, so pb-28 clears it with room to
+    // spare — the number changed because the furniture did.
+    expect(HOME).toMatch(/pb-28/);
   });
 
   test("the toast clears the dock", () => {

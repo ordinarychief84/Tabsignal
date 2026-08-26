@@ -55,7 +55,6 @@ export function GuestEntry(props: {
           sessionId={props.sessionId}
           venueSlug={props.venueSlug}
           autoOpen={sheetSignal > 0}
-          showDock={false}
           feedbackHref={props.feedbackHref}
         />
       ) : null}
