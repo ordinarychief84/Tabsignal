@@ -6,6 +6,8 @@ import { serverForTable } from "@/lib/server-identity";
 import { guestExperienceFrom } from "@/lib/guest-experience";
 import { availablePrompts } from "@/lib/menu-discovery";
 import { chefsPickRound } from "@/lib/chefs-pick";
+import { returningGuestFor } from "@/lib/returning-guest";
+import { progressFor, redeemHint, visitProgramFrom } from "@/lib/visit-progress";
 import { GuestHome } from "./guest-home";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +117,24 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
         })
       : Promise.resolve([]),
   ]);
+
+  // Someone who has been here before, and only if they told us so — the
+  // profile cookie is issued after a phone verification the guest chose
+  // to complete. No fingerprinting, no IP matching. See lib/returning-guest.
+  const returning = await returningGuestFor({
+    venueId: resolved.venueId,
+    sessionId: resolved.sessionId,
+  });
+
+  // A count of visits against a reward the VENUE wrote down. Null when
+  // the scheme is off, when the venue never said what the reward is, or
+  // when this guest hasn't been here before.
+  const visitProgress = returning
+    ? progressFor({
+        visits: returning.previousVisits,
+        config: visitProgramFrom(venue.enabledFeatures),
+      })
+    : null;
 
   // Venue-authored pairings. Loaded whole — a menu is a few hundred rows
   // at most and this saves a round trip from a phone on venue wifi every
@@ -233,6 +253,14 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
           : undefined
       }
       pairings={pairings}
+      visitProgress={
+        visitProgress
+          ? {
+              progress: visitProgress,
+              hint: redeemHint(visitProgress, resolved.venueName),
+            }
+          : null
+      }
       initialTab={searchParams.tab ?? "for-you"}
       activeRequest={
         activeRequest
