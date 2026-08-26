@@ -233,6 +233,7 @@ export function WaiterConsole({
             <div className="mt-2 grid grid-cols-2 gap-2">
               <QuickAction href={`/v/${venueSlug}/menu`} label="View menu" />
               {canManage ? <QuickAction href={adminHref} label="Dashboard" /> : null}
+              <QuickAction href="/staff/profile" label="Your profile" />
               <QuickAction href="/staff/watch" label="Pair a watch" />
               <QuickAction href="/staff/account/password" label="Password" />
             </div>
