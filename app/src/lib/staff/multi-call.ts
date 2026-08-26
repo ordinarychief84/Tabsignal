@@ -18,7 +18,7 @@ export type MultiCallItem = {
   tableId?: string | null;
   tableLabel: string;
   type: string;
-  status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
+  status: "PENDING" | "ACKNOWLEDGED" | "ON_MY_WAY" | "RESOLVED" | "ESCALATED";
   createdAt: string;
 };
 
@@ -48,8 +48,8 @@ export type MultiCallState = {
 /**
  * Decide which open requests are "calling for the waiter's attention":
  * either still PENDING (no one acknowledged) or ESCALATED (past the
- * 3-minute timer and re-routed). ACKNOWLEDGED ones are off the
- * urgent list — someone is actively handling them.
+ * 3-minute timer and re-routed). ACKNOWLEDGED and ON_MY_WAY are both off
+ * the urgent list — somebody is actively handling those.
  */
 function isOpen(status: MultiCallItem["status"]): boolean {
   return status === "PENDING" || status === "ESCALATED";

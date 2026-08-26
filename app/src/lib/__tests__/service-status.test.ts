@@ -29,8 +29,15 @@ describe("stageFor", () => {
     expect(stageFor("PENDING")).toBe("notified");
   });
 
-  test("ACKNOWLEDGED is the only stage that means someone is coming", () => {
-    expect(stageFor("ACKNOWLEDGED")).toBe("coming");
+  test("ACKNOWLEDGED means claimed, NOT coming", () => {
+    // This is the split. A server carrying three plates who taps Got it
+    // has seen the request; they are not crossing the room. Telling the
+    // guest otherwise made them stop watching the door.
+    expect(stageFor("ACKNOWLEDGED")).toBe("seen");
+  });
+
+  test("ON_MY_WAY is the only stage that means someone is coming", () => {
+    expect(stageFor("ON_MY_WAY")).toBe("coming");
   });
 
   test("RESOLVED is done", () => {
@@ -55,9 +62,12 @@ describe("statusHeadline", () => {
     expect(statusHeadline("coming", null)).toBe("Someone is on the way");
   });
 
-  test("no un-acknowledged status ever claims someone is on the way", () => {
-    const unacknowledged: GuestRequestStatus[] = ["PENDING", "ESCALATED"];
-    for (const status of unacknowledged) {
+  test("only ON_MY_WAY ever claims someone is on the way", () => {
+    // ACKNOWLEDGED is in this list on purpose: being claimed is not
+    // being under way, and the whole point of the split is that nothing
+    // before ON_MY_WAY may imply movement.
+    const notMoving: GuestRequestStatus[] = ["PENDING", "ACKNOWLEDGED", "ESCALATED"];
+    for (const status of notMoving) {
       for (const name of ["Sarah", null]) {
         const line = statusHeadline(stageFor(status), name);
         expect(line.toLowerCase()).not.toContain("on the way");
@@ -69,12 +79,39 @@ describe("statusHeadline", () => {
   test("the detail line makes the same promise as the headline", () => {
     // A headline that says "notified" over a detail that says "heading
     // over" is the same lie in smaller type.
-    for (const name of ["Sarah", null]) {
-      const detail = statusDetail("notified", name).toLowerCase();
-      expect(detail).not.toContain("on the way");
-      expect(detail).not.toContain("heading over");
+    for (const stage of ["notified", "seen"] as const) {
+      for (const name of ["Sarah", null]) {
+        const detail = statusDetail(stage, name).toLowerCase();
+        expect(detail).not.toContain("on the way");
+        expect(detail).not.toContain("heading over");
+      }
     }
     expect(statusDetail("coming", "Sarah").toLowerCase()).toContain("heading over");
+  });
+
+  test("'seen' says somebody has it without promising a moment", () => {
+    // The honest middle: claimed, and no estimate anybody can stand
+    // behind. It must not invent a time either.
+    for (const name of ["Sarah", null]) {
+      const line = statusHeadline("seen", name).toLowerCase();
+      expect(line).not.toContain("on the way");
+      expect(line).not.toMatch(/\d/);
+      const detail = statusDetail("seen", name).toLowerCase();
+      expect(detail).toContain("picked this up");
+      expect(detail).not.toMatch(/\d+\s*(min|second)/);
+    }
+  });
+
+  test("every stored status maps to a stage, and each stage has copy", () => {
+    // A new enum member that nobody wired up renders a blank card.
+    const all: GuestRequestStatus[] = [
+      "PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "RESOLVED", "ESCALATED",
+    ];
+    for (const status of all) {
+      const stage = stageFor(status);
+      expect(statusHeadline(stage, "Sarah").length).toBeGreaterThan(0);
+      expect(statusDetail(stage, "Sarah").length).toBeGreaterThan(0);
+    }
   });
 
   test("waiting copy tells the guest what happens next", () => {

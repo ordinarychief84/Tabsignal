@@ -8,7 +8,7 @@ type Item = {
   tableLabel: string;
   type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION" | "CLEAN" | "SUPPLIES";
   note: string | null;
-  status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
+  status: "PENDING" | "ACKNOWLEDGED" | "ON_MY_WAY" | "RESOLVED" | "ESCALATED";
   createdAt: string;
   acknowledgedAt: string | null;
   acknowledgedBy: { id: string; name: string } | null;
@@ -208,7 +208,9 @@ export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string 
 
 function FloorCard({ item }: { item: Item }) {
   const seconds = useAge(item.createdAt);
-  const acked = item.status === "ACKNOWLEDGED";
+  // A manager scanning the floor needs "somebody has this" — which both
+  // post-ack states satisfy. Neither should keep ageing toward overdue.
+  const acked = item.status === "ACKNOWLEDGED" || item.status === "ON_MY_WAY";
   const delayed = !acked && seconds > 180;
   const warn = !acked && !delayed && seconds > 60;
 

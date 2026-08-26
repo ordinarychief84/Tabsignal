@@ -76,6 +76,20 @@ export const events = {
       emit({ kind: "guest", id: sessionId, event: "request_acknowledged", payload: { request } }),
     ]).then(() => undefined),
 
+  /**
+   * Staff have left what they were doing and are walking over.
+   *
+   * Fans out to the venue room (so a shared tablet stops showing the
+   * request as merely claimed) AND to the guest's own room, because this
+   * is the moment the guest-facing line is allowed to change from "we've
+   * got you" to "someone is on their way".
+   */
+  requestOnMyWay: (venueId: string, sessionId: string, request: unknown) =>
+    Promise.all([
+      emit({ kind: "venue", id: venueId, event: "request_on_my_way", payload: { request } }),
+      emit({ kind: "guest", id: sessionId, event: "request_on_my_way", payload: { request } }),
+    ]).then(() => undefined),
+
   requestResolved: (venueId: string, request: unknown) =>
     emit({ kind: "venue", id: venueId, event: "request_resolved", payload: { request } }),
 

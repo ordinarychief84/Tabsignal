@@ -110,9 +110,9 @@ describe("GET /api/v/[slug]/requests/active", () => {
     expect(body.request?.status).toBe("PENDING");
   });
 
-  test("ACKNOWLEDGED and ESCALATED are still open", async () => {
+  test("ACKNOWLEDGED, ON_MY_WAY and ESCALATED are all still open", async () => {
     const { GET } = await import("../../app/api/v/[slug]/requests/active/route");
-    for (const status of ["ACKNOWLEDGED", "ESCALATED"]) {
+    for (const status of ["ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"]) {
       state.requests = [req("r1", status, 1000)];
       const res = await GET(new Request(url({ session: "gs_1", token: TOKEN })), ctx);
       const body = (await res.json()) as { request: { status: string } | null };
@@ -128,7 +128,7 @@ describe("GET /api/v/[slug]/requests/active", () => {
     expect(((await res.json()) as { request: unknown }).request).toBeNull();
     // And the exclusion is done in the query, not by filtering after.
     expect(state.lastRequestWhere?.status).toEqual({
-      in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"],
+      in: ["PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"],
     });
   });
 

@@ -136,7 +136,9 @@ describe("the service status card is reachable and survives a refresh", () => {
     const page = code(HOME_PAGE);
     expect(page).toContain("db.request.findFirst");
     expect(page).toContain("activeRequest={");
-    expect(page).toMatch(/status:\s*\{\s*in:\s*\["PENDING",\s*"ACKNOWLEDGED",\s*"ESCALATED"\]/);
+    expect(page).toMatch(
+      /status:\s*\{\s*in:\s*\["PENDING",\s*"ACKNOWLEDGED",\s*"ON_MY_WAY",\s*"ESCALATED"\]/,
+    );
   });
 
   test("the sheet tells the page when a request actually lands", () => {

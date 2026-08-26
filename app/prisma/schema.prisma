@@ -78,7 +78,16 @@ enum RequestType {
 
 enum RequestStatus {
   PENDING
+  // A member of staff has SEEN it and taken it. Not the same as coming
+  // over — see ON_MY_WAY.
   ACKNOWLEDGED
+  // They have left whatever they were doing and are walking to the table.
+  // Split from ACKNOWLEDGED because the two are different promises to the
+  // guest: "we've got you" and "someone is crossing the room right now".
+  // Collapsing them meant a guest was told a server was on their way the
+  // instant anyone tapped Got it — which is how a table sits patiently
+  // for four minutes while the server finishes another section.
+  ON_MY_WAY
   RESOLVED
   ESCALATED
 }
@@ -527,6 +536,10 @@ model Request {
   idCheckRequired  Boolean           @default(false)
   acknowledgedById String?
   acknowledgedAt   DateTime?
+  // Stamped when staff say they are walking over. Never overwrites
+  // acknowledgedAt — the gap between the two is the number that tells a
+  // manager whether requests are being claimed and then sat on.
+  onMyWayAt        DateTime?
   resolvedAt       DateTime?
   // What the staff member actually did, captured at resolve-time. Null
   // for requests that were resolved by older versions of the app

@@ -1,18 +1,24 @@
 /**
  * What a guest is allowed to be told about their own service request.
  *
- * The vocabulary here is the whole point. A request moves through three
- * states that mean genuinely different things, and the product has been
- * careful from the start not to collapse them:
+ * The vocabulary here is the whole point. A request moves through states
+ * that mean genuinely different things, and the product must not collapse
+ * them:
  *
  *   PENDING       we passed it on — a screen somewhere is showing it
- *   ACKNOWLEDGED  a person pressed "Got it" — someone is actually coming
+ *   ACKNOWLEDGED  a person pressed "Got it" — it is claimed, and theirs
+ *   ON_MY_WAY     they put down what they were doing and are walking over
  *   RESOLVED      they came
  *
- * "Sarah is on her way" is only true in the second state. Saying it in
- * the first is a promise the product cannot keep, and a guest who
- * believes it waits longer before asking again — which makes the service
- * worse than if TabCall had said nothing.
+ * ACKNOWLEDGED AND ON_MY_WAY WERE ONE STATE UNTIL THIS SPLIT, and the
+ * guest was told "Sarah is on the way" the instant anyone tapped Got it.
+ * A server carrying three plates who taps Got it has SEEN the request;
+ * they are not crossing the room. The guest, believing otherwise, stops
+ * watching the door and waits longer before asking again — which makes
+ * the service worse than if TabCall had said nothing at all.
+ *
+ * So "on the way" is now earned by a second, deliberate action, and
+ * nothing before it may imply movement.
  *
  * ESCALATED is deliberately NOT surfaced as its own guest-facing state.
  * It means the venue's internal clock ran out and the request was pushed
@@ -21,14 +27,20 @@
  * announces the venue is struggling.
  */
 
-export type GuestRequestStatus = "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
+export type GuestRequestStatus =
+  | "PENDING"
+  | "ACKNOWLEDGED"
+  | "ON_MY_WAY"
+  | "RESOLVED"
+  | "ESCALATED";
 
-/** The three states a guest is shown, collapsed from the five stored. */
-export type GuestServiceStage = "notified" | "coming" | "done";
+/** The four states a guest is shown, collapsed from the five stored. */
+export type GuestServiceStage = "notified" | "seen" | "coming" | "done";
 
 export function stageFor(status: GuestRequestStatus): GuestServiceStage {
   if (status === "RESOLVED") return "done";
-  if (status === "ACKNOWLEDGED") return "coming";
+  if (status === "ON_MY_WAY") return "coming";
+  if (status === "ACKNOWLEDGED") return "seen";
   // PENDING and ESCALATED both read as "notified" — see the note above.
   return "notified";
 }
@@ -47,6 +59,10 @@ export function statusHeadline(
   switch (stage) {
     case "notified":
       return serverName ? `${who} has been notified` : "The team has been notified";
+    case "seen":
+      // Claimed, not moving. Deliberately says nothing about distance or
+      // direction — there is no honest estimate to give.
+      return serverName ? `${who} has got you` : "Someone has got you";
     case "coming":
       return serverName ? `${who} is on the way` : "Someone is on the way";
     case "done":
@@ -67,6 +83,10 @@ export function statusDetail(
       return serverName
         ? `We've let ${serverName} know. You'll see this update the moment they pick it up.`
         : "We've let the floor know. You'll see this update the moment someone picks it up.";
+    case "seen":
+      return serverName
+        ? `${serverName} has picked this up and will be over as soon as they can.`
+        : "Someone has picked this up and will be over as soon as they can.";
     case "coming":
       return serverName
         ? `${serverName} has your request and is heading over.`

@@ -111,12 +111,17 @@ export function ServiceStatusCard({
   const headline = statusHeadline(stage, serverName);
   const detail = statusDetail(stage, serverName);
 
+  // Four tones for four meanings. "Seen" sits between waiting and
+  // arriving: warmer than pending so the guest can tell something
+  // changed, but not the mint that says somebody is crossing the room.
   const tone =
     stage === "coming"
       ? { bg: "bg-mint", border: "border-mint-deep/25", text: "text-mint-deep" }
       : stage === "done"
         ? { bg: "bg-service-completed", border: "border-mint-deep/20", text: "text-mint-deep" }
-        : { bg: "bg-saffron-soft", border: "border-saffron-deep/25", text: "text-saffron-deep" };
+        : stage === "seen"
+          ? { bg: "bg-apricot/25", border: "border-apricot-deep/25", text: "text-apricot-deep" }
+          : { bg: "bg-saffron-soft", border: "border-saffron-deep/25", text: "text-saffron-deep" };
 
   return (
     <section
@@ -126,8 +131,12 @@ export function ServiceStatusCard({
       <div className="flex items-start gap-3 p-4">
         {/* Shape as well as colour: a tick and a clock read differently to
             someone who can't tell mint from saffron. */}
+        {/* Shape as well as colour, and a distinct shape per meaning: a
+            clock for waiting, an eye for seen, a tick for moving or
+            done. Someone who can't tell saffron from apricot still reads
+            three different states. */}
         <span aria-hidden className={`mt-0.5 shrink-0 ${tone.text}`}>
-          {stage === "notified" ? <ClockIcon /> : <CheckIcon />}
+          {stage === "notified" ? <ClockIcon /> : stage === "seen" ? <EyeIcon /> : <CheckIcon />}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold leading-tight text-plum">{headline}</p>
@@ -148,6 +157,15 @@ export function ServiceStatusCard({
         <div className="border-t border-black/5 bg-surface/70 p-4">{children}</div>
       ) : null}
     </section>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </svg>
   );
 }
 

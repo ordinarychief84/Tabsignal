@@ -116,6 +116,131 @@ export async function acknowledgeRequest(actor: Actor, requestId: string): Promi
   };
 }
 
+/* ----------------------------- on my way ------------------------------ */
+
+export type OnMyWayResult =
+  | { ok: false; error: "NOT_FOUND" | "FORBIDDEN" | "NOT_ACKNOWLEDGED" | "ALREADY_RESOLVED" }
+  | {
+      ok: true;
+      alreadyOnMyWay: boolean;
+      request: {
+        id: string;
+        status: GuestRequest["status"];
+        onMyWayAt: string | null;
+      };
+    };
+
+/**
+ * "I'm walking over."
+ *
+ * The step that makes the guest-facing promise honest. Acknowledging
+ * means a server has SEEN the request and taken it; this means they have
+ * left what they were doing. Before the split, tapping Got it while
+ * carrying three plates told the guest someone was crossing the room —
+ * so they stopped watching the door and waited longer before asking
+ * again.
+ *
+ * ONLY THE PERSON WHO ACKNOWLEDGED IT MAY SAY THIS. Otherwise a second
+ * server glancing at a shared tablet can tell a table that somebody is
+ * coming when nobody has moved, and the request still belongs to whoever
+ * claimed it. A manager wanting to take it over uses handoff, which
+ * transfers ownership explicitly and logs it.
+ *
+ * Idempotent: pressing it twice is a no-op rather than a second
+ * timestamp, because a double-tap on a phone in a loud room is expected
+ * input, not an error.
+ */
+export async function markOnMyWay(actor: Actor, requestId: string): Promise<OnMyWayResult> {
+  const existing = await db.request.findUnique({
+    where: { id: requestId },
+    select: {
+      id: true,
+      venueId: true,
+      sessionId: true,
+      status: true,
+      acknowledgedById: true,
+      onMyWayAt: true,
+      type: true,
+      table: { select: { label: true } },
+    },
+  });
+  if (!existing) return { ok: false, error: "NOT_FOUND" };
+  if (existing.venueId !== actor.venueId) return { ok: false, error: "FORBIDDEN" };
+  if (existing.status === "RESOLVED") return { ok: false, error: "ALREADY_RESOLVED" };
+
+  if (existing.status === "ON_MY_WAY") {
+    return {
+      ok: true,
+      alreadyOnMyWay: true,
+      request: {
+        id: existing.id,
+        status: existing.status,
+        onMyWayAt: existing.onMyWayAt?.toISOString() ?? null,
+      },
+    };
+  }
+
+  // Must be claimed first, and claimed by this person.
+  if (existing.status !== "ACKNOWLEDGED" || !existing.acknowledgedById) {
+    return { ok: false, error: "NOT_ACKNOWLEDGED" };
+  }
+  if (existing.acknowledgedById !== actor.staffId) {
+    return { ok: false, error: "FORBIDDEN" };
+  }
+
+  // CAS on the status so two taps racing each other produce one stamp.
+  const cas = await db.request.updateMany({
+    where: { id: existing.id, status: "ACKNOWLEDGED", acknowledgedById: actor.staffId },
+    data: { status: "ON_MY_WAY", onMyWayAt: new Date() },
+  });
+  if (cas.count === 0) {
+    const cur = await db.request.findUnique({
+      where: { id: existing.id },
+      select: { id: true, status: true, onMyWayAt: true },
+    });
+    return {
+      ok: true,
+      alreadyOnMyWay: true,
+      request: {
+        id: cur?.id ?? existing.id,
+        status: (cur?.status ?? existing.status) as GuestRequest["status"],
+        onMyWayAt: cur?.onMyWayAt?.toISOString() ?? null,
+      },
+    };
+  }
+
+  const updated = await db.request.findUnique({
+    where: { id: existing.id },
+    select: {
+      id: true,
+      status: true,
+      onMyWayAt: true,
+      acknowledgedBy: { select: { displayName: true, name: true } },
+    },
+  });
+
+  void events.requestOnMyWay(existing.venueId, existing.sessionId, {
+    id: existing.id,
+    status: "ON_MY_WAY",
+    onMyWayAt: updated?.onMyWayAt?.toISOString() ?? null,
+    tableLabel: existing.table.label,
+    type: existing.type,
+    // The name a GUEST may see. `name` can be a legal name; displayName is
+    // what the server actually goes by on the floor.
+    serverName: updated?.acknowledgedBy?.displayName ?? null,
+  });
+
+  return {
+    ok: true,
+    alreadyOnMyWay: false,
+    request: {
+      id: existing.id,
+      status: "ON_MY_WAY",
+      onMyWayAt: updated?.onMyWayAt?.toISOString() ?? null,
+    },
+  };
+}
+
 /* ------------------------------- resolve ------------------------------- */
 
 export type ResolveResult =

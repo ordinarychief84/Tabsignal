@@ -160,7 +160,7 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
     ? await db.request.findFirst({
         where: {
           sessionId: resolved.sessionId,
-          status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] },
+          status: { in: ["PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"] },
         },
         orderBy: { createdAt: "desc" },
         select: {
