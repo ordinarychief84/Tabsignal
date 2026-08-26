@@ -27,9 +27,17 @@ export function WelcomeScreen({
   homeHref,
   onNeedServer,
   brandColor,
+  welcomeBack,
 }: {
   venueName: string;
   tableLabel: string;
+  /**
+   * Replaces "Welcome to" for someone who has been here before and told
+   * us so. Says nothing about what they did last time — a guest greeted
+   * with their own order history is being told the venue keeps notes on
+   * them, which is a conversation nobody asked them to have.
+   */
+  welcomeBack: string | null;
   server: { displayName: string; photoUrl: string | null; welcomeMessage: string } | null;
   homeHref: string;
   onNeedServer: () => void;
@@ -67,7 +75,7 @@ export function WelcomeScreen({
           {/* Small decorative Saffron accent, per §9. */}
           <span aria-hidden className="mb-4 block h-1 w-10 rounded-full bg-saffron" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-graphite">
-            Welcome to
+            {welcomeBack ?? "Welcome to"}
           </p>
           <h1 className="mt-2 text-[40px] font-semibold leading-[1.05] tracking-tight text-plum">
             {venueName}

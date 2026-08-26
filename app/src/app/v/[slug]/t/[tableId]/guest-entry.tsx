@@ -28,6 +28,11 @@ type GuestEntryProps = {
   showWelcome: boolean;
   requestsEnabled: boolean;
   feedbackHref?: string;
+  /**
+   * "Welcome back, Sam" — null unless this guest identified themselves
+   * on a previous visit and has been here before.
+   */
+  welcomeBack: string | null;
 };
 
 /**
@@ -56,6 +61,9 @@ function GuestEntryInner(props: GuestEntryProps) {
   // that every other rate is measured against.
   useTrackOnce("guest_qr_scanned");
   useTrackOnce(props.showWelcome ? "welcome_viewed" : "menu_explored");
+  // Counted so a venue can see whether the scheme is bringing anyone
+  // back. The event carries no identity — only that one happened.
+  useTrackOnce(props.welcomeBack ? "return_visit_detected" : "guest_qr_scanned");
 
   useEffect(() => {
     if (!props.showWelcome) router.replace(props.homeHref);
@@ -71,6 +79,7 @@ function GuestEntryInner(props: GuestEntryProps) {
         server={props.server}
         homeHref={props.homeHref}
         brandColor={props.brandColor}
+        welcomeBack={props.welcomeBack}
         onNeedServer={() => setSheetSignal(n => n + 1)}
       />
       {props.requestsEnabled ? (

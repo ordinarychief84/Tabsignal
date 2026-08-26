@@ -17,6 +17,8 @@ import {
 import { WaitingRecommendation } from "@/components/guest/waiting-recommendation";
 import { PairingSuggestion } from "@/components/guest/pairing-suggestion";
 import { TrackProvider, useTrack, useTrackOnce } from "@/components/guest/track";
+import { VisitProgressCard } from "@/components/guest/visit-progress-card";
+import type { VisitProgress } from "@/lib/visit-progress";
 import { pairingLabel, suggestionFor, type PairingRelationship } from "@/lib/pairings";
 import { MOOD_PROMPTS, itemsForPrompt, type MoodPrompt } from "@/lib/menu-discovery";
 import { ChefsPick } from "./chefs-pick";
@@ -134,6 +136,11 @@ type GuestHomeProps = {
     relationship: PairingRelationship;
     sortOrder: number;
   }[];
+  /**
+   * Where a returning, self-identified guest stands against the venue's
+   * own scheme. Null in every other case — which is most of them.
+   */
+  visitProgress: { progress: VisitProgress; hint: string } | null;
 };
 
 /**
@@ -407,6 +414,18 @@ function GuestHomeInner(props: GuestHomeProps) {
               />
             ) : null}
           </ServiceStatusCard>
+        ) : null}
+
+        {/* Above the sections, on For You only: it's a greeting, not a
+            control, and repeating it on every tab would turn it into
+            furniture. */}
+        {tab === "for-you" && props.visitProgress ? (
+          <VisitProgressCard
+            progress={props.visitProgress.progress}
+            venueName={props.venueName}
+            hint={props.visitProgress.hint}
+            accent={palette.base}
+          />
         ) : null}
 
         {tab === "for-you" ? (

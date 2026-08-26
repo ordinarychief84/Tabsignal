@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { resolveGuestSession } from "@/domain/sessions/resolve";
 import { getVenueBranding, resolveBrandingWithFallback } from "@/lib/branding";
 import { serverForTable } from "@/lib/server-identity";
+import { returningGuestFor, welcomeBackLine } from "@/lib/returning-guest";
 import { guestExperienceFrom } from "@/lib/guest-experience";
 import { GuestEntry } from "./guest-entry";
 
@@ -66,8 +67,16 @@ export default async function GuestPage({ params, searchParams }: PageProps) {
     venueWelcomeMessage: branding.welcomeMessage ?? venue.guestWelcomeMessage,
   });
 
+  // Only for a guest who verified a phone number at some point and still
+  // carries the cookie from it. No fingerprinting — see lib/returning-guest.
+  const returning = await returningGuestFor({
+    venueId: resolved.venueId,
+    sessionId: resolved.sessionId,
+  });
+
   return (
     <GuestEntry
+      welcomeBack={returning ? welcomeBackLine(returning, resolved.venueName) : null}
       venueName={resolved.venueName}
       tableLabel={resolved.tableLabel}
       server={
