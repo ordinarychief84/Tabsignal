@@ -25,7 +25,7 @@ import { organizationLd, webSiteLd, softwareApplicationLd, pageMetadata, SITE_UR
 // root layout is bypassed here (brand already in the string).
 export const metadata: Metadata = {
   ...pageMetadata({
-    title: "QR Ordering, Waiter Calls & Live Service for Restaurants | TabCall",
+    title: "Call Your Server, Rate the Night — Guest Service for Restaurants | TabCall",
     description:
       "TabCall turns every table into a service point: QR code ordering, a call-waiter button and live staff alerts on top of your POS. Free at up to 5 tables — live tonight.",
     path: "/",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     ],
   }),
   // Prevent the "%s | TabCall" template from double-branding this one.
-  title: { absolute: "QR Ordering, Waiter Calls & Live Service for Restaurants | TabCall" },
+  title: { absolute: "Call Your Server, Rate the Night — Guest Service for Restaurants | TabCall" },
 };
 
 /** Resolve a feature image from /public/landing/features/ if a file was saved
@@ -118,9 +118,9 @@ function Hero() {
 
           <ul className="grid grid-cols-2 gap-4 border-t border-outline-variant/40 pt-8 sm:grid-cols-4 sm:gap-6 md:pt-10">
             <ShortcutTile icon="person_raised_hand" label="Call Waiter" href="/features/call-waiter" />
-            <ShortcutTile icon="restaurant_menu" label="Digital Order" href="/features/qr-orders" />
-            <ShortcutTile icon="payments" label="Fast Pay" href="/features/qr-payments" />
-            <ShortcutTile icon="grade" label="Reviews" href="/features/reviews" />
+            <ShortcutTile icon="restaurant_menu" label="Digital Menu" href="/features/digital-menu" />
+            <ShortcutTile icon="bookmark" label="My Picks" href="/features/wishlist" />
+            <ShortcutTile icon="grade" label="Feedback" href="/features/reviews" />
           </ul>
         </div>
 
@@ -299,8 +299,8 @@ function HeroPhone() {
           {[
             { icon: "person_raised_hand", label: "Call Waiter", active: true },
             { icon: "restaurant_menu", label: "View Menu" },
-            { icon: "receipt_long", label: "Request Bill" },
-            { icon: "payments", label: "Pay Bill" },
+            { icon: "menu_book", label: "Ready to Order" },
+            { icon: "receipt_long", label: "Ready for the Check" },
           ].map((r) => (
             <li
               key={r.label}
@@ -449,9 +449,9 @@ const HOW_STEPS = [
   },
   {
     n: "2",
-    title: "Order, Call or Pay",
+    title: "Explore and ask",
     body:
-      "Guests can send orders directly to the kitchen, request a waiter for personalized service, or pay instantly.",
+      "Guests browse the menu, save what catches their eye, and call their server by name when they need something \u2014 all without flagging anyone down.",
   },
   {
     n: "3",
@@ -625,7 +625,7 @@ const TESTIMONIALS = [
   },
   {
     quote:
-      "Guests love the convenience of paying at their table. It frees up our staff to focus on genuine guest engagement instead of terminal hunting.",
+      "Guests tell us what they need before we have to ask, and the ones who had a bad night say so while they're still sitting there. That's the part we could never see.",
     name: "David Rossi",
     role: "General Manager, Nightfall",
     initials: "DR",

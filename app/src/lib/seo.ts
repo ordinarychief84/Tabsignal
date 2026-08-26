@@ -33,9 +33,12 @@ import { FEATURES, type FeatureSlug } from "@/lib/features-data";
 export const SITE_URL = "https://www.tab-call.com";
 export const SITE_NAME = "TabCall";
 
-const DEFAULT_TITLE = "QR Ordering, Waiter Calls & Live Service for Restaurants | TabCall";
+// "QR Ordering" was the old positioning, from when TabCall took the order
+// and the payment. It does neither now — the POS keeps both — so leading
+// with it sends prospects looking for a product we don't sell.
+const DEFAULT_TITLE = "Call Your Server, Rate the Night — Guest Service for Restaurants | TabCall";
 const DEFAULT_DESCRIPTION =
-  "TabCall turns every table into a service point: QR code ordering, a waiter call button, live staff alerts and analytics — on top of your POS, live tonight.";
+  "TabCall turns every table into a service point: guests call their server by name, explore the menu, and tell you how it went. Live staff alerts, service recovery and guest insight — alongside your POS, live tonight.";
 
 /** Site-wide keyword pool. Pages pick from + extend this. */
 export const CORE_KEYWORDS = [
@@ -57,7 +60,7 @@ export const FEATURE_SEO: Record<
   { title: string; description: string; keywords: string[] }
 > = {
   "qr-orders": {
-    title: "QR Code Ordering System — Guests Order From the Table",
+    title: "Ready to Order — Guests Call You When They're Ready",
     description:
       "Self-ordering by QR: guests browse, customize and order without flagging a server. Orders land in the live queue and your POS. Setup in minutes, no hardware.",
     keywords: [
@@ -79,7 +82,7 @@ export const FEATURE_SEO: Record<
     ],
   },
   wishlist: {
-    title: "Guest Wishlist — Pre-Selected Orders Before the Server Arrives",
+    title: "My Picks — Guests Shortlist Before You Reach the Table",
     description:
       "Guests build a wishlist from the menu while they decide, then convert it to an order in one tap. Faster first rounds, bigger tickets, fewer menu re-visits.",
     keywords: ["restaurant pre-order", "guest wishlist app", "faster first round"],
@@ -95,7 +98,7 @@ export const FEATURE_SEO: Record<
     ],
   },
   "pos-integration": {
-    title: "POS Integration — QR Ordering for Toast, Square & Clover",
+    title: "Works Alongside Your POS — Nothing to Rip Out",
     description:
       "TabCall sits on top of your POS: orders and payments sync to Toast, Square or Clover automatically. No rip-and-replace, no double entry, live tonight.",
     keywords: [

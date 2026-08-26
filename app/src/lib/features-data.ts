@@ -38,23 +38,23 @@ export type FeatureCard = {
 export const FEATURES: FeatureCard[] = [
   {
     slug: "qr-orders",
-    title: "QR Orders from the Table",
-    tagline: "Browse the menu, order without flagging a server.",
+    title: "Ready to Order",
+    tagline: "Guests decide at their own pace, then call you when they're ready.",
     body:
-      "Let guests browse the digital menu and place orders directly from their table.",
+      "Guests browse, shortlist what they like, and signal when they want you \u2014 no hovering, no flagging anyone down.",
     tone: "sage",
     highlights: [
-      "Categorised menu (Starters, Mains, Drinks, Desserts) with photos",
-      "Featured items at the top so the kitchen-favourable items move",
-      "Add-ons, modifiers, allergen flags",
-      "Pre-order from QR before the guest is seated — pickup code on confirm",
+      "Categorised menu with photos, tags and descriptions",
+      "Featured items surface first, so what you want to move gets seen",
+      "My Picks: a shortlist the guest shows you when you arrive",
+      "\u201cReady to order\u201d lands in the live queue with the table and how long they\u2019ve waited",
     ],
     detailLead:
-      "Guests open the menu, pick what they want, send the order straight to the kitchen. Servers stay out of the order loop and run the floor instead. The order appears in the live queue with a 3-minute escalation timer so nothing stalls.",
+      "TabCall does not take the order \u2014 your POS does, the way it always has. What it changes is the ten minutes before that: guests read the menu properly, save what they want, and tell you when they\u2019re ready instead of trying to catch your eye. You arrive at a table that already knows what it wants.",
     outcomes: [
-      "Average order entry time drops from 4 minutes to under 60 seconds",
-      "Bar covers per server increase because servers stop transcribing",
-      "Pre-orders let a 7pm reservation walk in to drinks already on the way",
+      "Servers stop circling tables guessing who\u2019s ready",
+      "Guests order from a shortlist instead of re-reading the menu at the table",
+      "Every request carries the table and the wait, so nothing sits unnoticed",
     ],
   },
   {
@@ -80,7 +80,7 @@ export const FEATURES: FeatureCard[] = [
   },
   {
     slug: "wishlist",
-    title: "Wishlist",
+    title: "My Picks",
     tagline: "Guests save and share favourites with the waiter.",
     body:
       "Guests can save their favourite dishes and share with the waiter in one tap.",
@@ -122,23 +122,23 @@ export const FEATURES: FeatureCard[] = [
   },
   {
     slug: "pos-integration",
-    title: "Seamless POS Integration",
-    tagline: "Orders sync in real time. No double entry.",
+    title: "Works Alongside Your POS",
+    tagline: "Nothing to rip out. Nothing to double-key.",
     body:
-      "All orders sync in real-time with your POS. No double entry. No missed orders.",
+      "Your POS keeps taking the order, holding the bill and settling the payment. TabCall handles everything around it.",
     tone: "sage",
     highlights: [
-      "Toast, Square, and Clover providers (preview)",
-      "Two-way sync: TabCall orders land in your POS, POS price changes land in TabCall",
-      "Menu price updates flow automatically — change in one place, both update",
-      "No POS? Run TabCall standalone, no integration needed",
+      "No migration \u2014 your POS, printers, prep stations and reports are untouched",
+      "TabCall never processes a payment, so your card rates stay exactly as they are",
+      "Menu lives in TabCall for guests; pricing on the bill stays with your POS",
+      "Direct Toast, Square and Clover connectors are in development \u2014 not available yet",
     ],
     detailLead:
-      "TabCall sits on top of your existing POS, not next to it. Orders go in the POS the way they always did, so your kitchen printer, your prep stations, your tax setup, and your closing reports keep working. We never touch your menu hierarchy or your tax setup.",
+      "TabCall deliberately stops where your POS starts. It is the layer between a guest sitting down and a server arriving \u2014 how they call for help, what they discover, and how they tell you it went. The order, the bill and the money never leave the system you already run.",
     outcomes: [
-      "Servers stop double-keying orders into the POS after the guest pays",
-      "Closing-day reports stay accurate because every order lands in one place",
-      "Menu drift between POS and TabCall is eliminated",
+      "No rip-and-replace, and no second system for your staff to reconcile",
+      "Nothing changes about how you take money or close out a night",
+      "Rolling out takes an afternoon, not a quarter",
     ],
   },
   // The next three are referenced from the navbar dropdown but currently
