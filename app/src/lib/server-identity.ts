@@ -44,7 +44,7 @@ export function defaultWelcome(serverName: string, venueName: string): string {
  * displayName almost certainly doesn't mean to show a guest a surname, and
  * a server shouldn't have to know that to be safe.
  */
-function firstNameOf(value: string): string {
+export function firstNameOf(value: string): string {
   return value.trim().split(/\s+/)[0] ?? value.trim();
 }
 

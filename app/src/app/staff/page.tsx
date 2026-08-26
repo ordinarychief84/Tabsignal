@@ -1,117 +1,107 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
-import { StaffQueue } from "./queue";
-import { LiveClock } from "./live-clock";
 import { FcmRegister } from "./fcm-register";
-import { OpenTabs } from "./open-tabs";
-import { ShiftControl } from "./shift-control";
+import { WaiterConsole } from "./console/waiter-console";
+import { recentFeedback, shiftSummary, waiterTables } from "@/lib/waiter-console";
+import { firstNameOf } from "@/lib/server-identity";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The waiter console.
+ *
+ * Loaded in one server pass so a phone behind a bar paints once instead
+ * of waterfalling four fetches. Everything live after that arrives on
+ * the socket the queue already holds.
+ */
 export default async function StaffPage() {
   const session = await getStaffSession();
   if (!session) redirect("/staff/login");
 
   const staff = await db.staffMember.findUnique({
     where: { id: session.staffId },
-    include: {
-      venue: { select: { id: true, name: true, slug: true } },
-      assignments: { include: { table: { select: { id: true, label: true } } } },
+    select: {
+      id: true,
+      name: true,
+      displayName: true,
+      section: true,
+      shiftStatus: true,
+      shiftStartedAt: true,
+      venue: { select: { id: true, name: true, slug: true, timezone: true } },
+      assignments: { select: { tableId: true } },
     },
   });
   if (!staff) redirect("/staff/login?err=invalid");
-  const assignedTableIds = staff.assignments.map(a => a.table.id);
-  // Legacy STAFF rows were venue creators before RBAC landed, so they carry
-  // owner privileges — same mapping the onboarding route uses.
+
+  const assignedTableIds = staff.assignments.map(a => a.tableId);
+  // Legacy STAFF rows were venue creators before RBAC landed, so they
+  // carry owner privileges — same mapping the onboarding route uses.
   const canManage = ["OWNER", "MANAGER", "STAFF"].includes(session.role);
-  const assignedTableLabels = staff.assignments.map(a => a.table.label);
+
+  // One window for both the rating and the comments below it. When they
+  // differed, the summary could read "no ratings yet" directly above
+  // three guest comments — which makes the whole panel look broken.
+  const since = staff.shiftStartedAt ?? new Date(Date.now() - 12 * 60 * 60_000);
+
+  const [tables, summary, feedback] = await Promise.all([
+    waiterTables({ venueId: staff.venue.id, staffId: staff.id }),
+    shiftSummary({
+      venueId: staff.venue.id,
+      staffId: staff.id,
+      assignedTableIds,
+      shiftStartedAt: staff.shiftStartedAt,
+    }),
+    // Rating, comment and table only — see lib/waiter-console for what
+    // is withheld from a service screen and why.
+    recentFeedback({ venueId: staff.venue.id, limit: 3, since }),
+  ]);
 
   return (
-    <main className="min-h-screen bg-oat text-slate">
-      {/* Two rows on purpose. Venue name, clock, Watch and Sign out were
-          previously competing for one 375px line, which truncated the venue
-          name and wrapped "Sign out" onto two lines inside its own button.
-          Identity on top, actions underneath, each with room to breathe. */}
-      <header className="sticky top-0 z-10 border-b border-umber-soft/30 bg-oat/85 backdrop-blur">
-        <div className="mx-auto max-w-md px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-[10px] uppercase tracking-[0.18em] text-umber">
-                {staff.venue.name}
-              </p>
-              <p className="text-sm font-medium text-slate">Live queue</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {/* Where they are right now, next to the time. Requests route
-                  around this — see lib/shift for why availability is a
-                  preference rather than a gate. */}
-              <ShiftControl
-                initial={staff.shiftStatus}
-                initialStartedAt={staff.shiftStartedAt?.toISOString() ?? null}
-              />
-              <LiveClock />
-            </div>
-          </div>
-
-          <nav aria-label="Staff" className="mt-2.5 flex items-center gap-1.5 overflow-x-auto">
-            {/* Managers and owners land here after sign-in like everyone else,
-                and previously had no route to their own dashboard — they had
-                to type the URL. */}
-            {canManage ? (
-              <Link
-                href={`/admin/v/${staff.venue.slug}`}
-                className="shrink-0 whitespace-nowrap rounded-lg border border-slate/20 bg-slate px-3 py-1.5 text-[11px] font-medium text-oat hover:bg-slate/90"
-              >
-                Dashboard
-              </Link>
-            ) : null}
-            <Link
-              href="/staff/watch"
-              className="shrink-0 whitespace-nowrap rounded-lg border border-umber-soft/40 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-            >
-              ⌚ Watch
-            </Link>
-            <Link
-              href="/staff/account/password"
-              className="shrink-0 whitespace-nowrap rounded-lg border border-umber-soft/40 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-            >
-              Password
-            </Link>
-            <form action="/api/auth/logout" method="post" className="ml-auto shrink-0">
-              <button
-                type="submit"
-                className="whitespace-nowrap rounded-lg border border-umber-soft/40 px-3 py-1.5 text-[11px] font-medium text-slate/70 hover:text-slate"
-              >
-                Sign out
-              </button>
-            </form>
-          </nav>
-        </div>
-      </header>
-
+    <>
       <FcmRegister />
-
-      <section className="mx-auto max-w-md px-4 py-5">
-        <StaffQueue
-          venueId={staff.venue.id}
-          venueSlug={staff.venue.slug}
-          staffId={staff.id}
-          assignedTableIds={assignedTableIds}
-        />
-
-        {/* Below the queue on purpose — see the note in open-tabs.tsx for
-            why this isn't a fifth tab inside it. Renders nothing when no
-            table has anything on its tab. */}
-        <OpenTabs venueId={staff.venue.id} assignedTableIds={assignedTableIds} />
-        <p className="mt-8 text-center text-[10px] tracking-[0.16em] text-slate/40">
-          {staff.name}
-          {assignedTableLabels.length > 0
-            ? ` · covers ${assignedTableLabels.join(", ")}`
-            : ""}
-        </p>
-      </section>
-    </main>
+      <WaiterConsole
+        venueId={staff.venue.id}
+        venueSlug={staff.venue.slug}
+        venueName={staff.venue.name}
+        staffId={staff.id}
+        // First name, from the floor name where they set one. "Good
+        // afternoon, Maya Okafor" reads like a database greeting a record.
+        staffName={firstNameOf(staff.displayName || staff.name)}
+        section={staff.section}
+        greeting={greetingFor(new Date(), staff.venue.timezone)}
+        shiftStatus={staff.shiftStatus}
+        shiftStartedAt={staff.shiftStartedAt?.toISOString() ?? null}
+        assignedTableIds={assignedTableIds}
+        initialTables={tables}
+        initialSummary={summary}
+        feedback={feedback}
+        canManage={canManage}
+        adminHref={`/admin/v/${staff.venue.slug}`}
+      />
+    </>
   );
+}
+
+/**
+ * "Good evening" in the VENUE's timezone, not the device's. A server
+ * whose phone is still on another timezone should not be greeted with
+ * good morning at the start of a dinner shift.
+ */
+function greetingFor(now: Date, timezone: string): string {
+  let hour: number;
+  try {
+    hour = Number(
+      new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: timezone,
+      }).format(now),
+    );
+  } catch {
+    hour = now.getHours();
+  }
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
