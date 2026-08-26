@@ -40,7 +40,6 @@ export default async function VenueRootPage({ params }: { params: { slug: string
 
   const plan = planFromOrg(venue.org);
   const hasMenu = meetsAtLeast(plan, "growth");
-  const hasReservations = meetsAtLeast(plan, "pro");
 
   // VenueBranding overrides win; legacy Venue fields are the fallback
   // (restructure P3.3).
@@ -70,7 +69,7 @@ export default async function VenueRootPage({ params }: { params: { slug: string
           Scan the QR on your table to call your server or open your tab.
         </section>
 
-        {(hasMenu || hasReservations) ? (
+        {hasMenu ? (
           <section className="mt-6 space-y-3">
             {hasMenu ? (
               <Link
@@ -82,20 +81,6 @@ export default async function VenueRootPage({ params }: { params: { slug: string
                     Browse
                   </span>
                   <span className="mt-1 block font-medium text-slate">Menu</span>
-                </span>
-                <span aria-hidden className="text-slate/40">→</span>
-              </Link>
-            ) : null}
-            {hasReservations ? (
-              <Link
-                href={`/v/${params.slug}/reservations`}
-                className="flex items-center justify-between rounded-2xl border border-slate/10 bg-white px-5 py-4 text-sm transition-colors hover:border-slate/30"
-              >
-                <span>
-                  <span className="block text-[11px] uppercase tracking-[0.16em] text-umber">
-                    Book
-                  </span>
-                  <span className="mt-1 block font-medium text-slate">Reservations</span>
                 </span>
                 <span aria-hidden className="text-slate/40">→</span>
               </Link>

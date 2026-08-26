@@ -769,6 +769,14 @@ enum WaitlistStatus {
   ABANDONED
 }
 
+// DEPRECATED — reservations were removed from the product. Booking a table
+// weeks out is a different job from what TabCall does, which is the guest's
+// experience once they're sitting down.
+//
+// The table is intentionally still here: this environment points at a local
+// database, so production row counts could not be verified, and dropping a
+// table blind is not a trade worth making. Drop it in a follow-up once
+// production is confirmed empty.
 model Reservation {
   id         String            @id @default(cuid())
   venueId    String

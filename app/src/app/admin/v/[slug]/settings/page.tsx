@@ -173,8 +173,8 @@ export default async function SettingsPage({ params }: { params: { slug: string 
           <ToggleField
             slug={params.slug}
             field="reservationsEnabled"
-            label="Reservations + waitlist"
-            help="When off, the public reservations page returns 404. Existing bookings stay visible to staff."
+            label="Waitlist"
+            help="When off, guests can't join the waitlist. Anyone already on it stays visible to staff."
             initial={venue.reservationsEnabled}
           />
         </Card>

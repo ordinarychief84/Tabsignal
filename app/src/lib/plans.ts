@@ -73,7 +73,7 @@ export const PLANS: PlanDefinition[] = [
       "Multi-venue operator console",
       "Custom branding (logo and colour)",
       "Regulars — recognise returning guests",
-      "Reservations and waitlist",
+      "Waitlist with SMS when the table is ready",
       "Industry benchmarking",
       "Priority support",
     ],

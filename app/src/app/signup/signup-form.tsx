@@ -359,7 +359,7 @@ export function SignupForm({
           </p>
         ) : (
           <p className="mt-1.5 text-[11px] text-slate/55">
-            We&rsquo;ll text reservation confirmations to this number.
+            We&rsquo;ll use this to reach you about your account.
           </p>
         )}
       </div>

@@ -46,7 +46,6 @@ function venueNav(slug: string, paid: boolean, pro: boolean): NavGroup[] {
         // product is now built around, not an upsell.
         { href: `${base}/guests`, label: "Guestbook" },
         { href: `${base}/campaigns`, label: "Campaigns" },
-        { href: `${base}/reservations`, label: "Reservations", locked: proLock },
         { href: `${base}/regulars`, label: "Regulars", locked: proLock },
         { href: `${base}/reviews`, label: "Reviews" },
       ],

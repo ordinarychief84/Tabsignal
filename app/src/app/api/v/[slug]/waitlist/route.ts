@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { gateGuestVenuePlan } from "@/lib/plan-gate";
 import { rateLimitAsync } from "@/lib/rate-limit";
-import { quoteWait } from "@/lib/reservations";
+import { quoteWait } from "@/lib/waitlist";
 import { normalizePhone } from "@/lib/sms";
 
 const Body = z.object({

@@ -74,7 +74,7 @@ export default function TermsPage() {
         <Section title="Your data">
           <p>
             You own your venue&rsquo;s data: sessions, requests, reviews,
-            reservations, regulars. We process it to run the service. We
+            waitlist entries, regulars. We process it to run the service. We
             never sell guest data. Guests opt in by phone number only. Their
             loyalty record stays at the venue level (no cross-venue identity
             sharing without explicit consent).
