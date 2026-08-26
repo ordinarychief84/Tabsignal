@@ -98,13 +98,20 @@ export function WaiterConsole({
     const socket = getSocket();
     const leave = joinRoom({ venueId });
     const bump = () => void refreshFloor();
-    for (const e of ["new_request", "request_acknowledged", "request_on_my_way", "request_resolved"]) {
-      socket.on(e, bump);
-    }
+    // table_assignment_changed is in here for §41: a manager moving a
+    // section mid-shift must show up on the server's floor without them
+    // signing out. The 20-second refresh would catch it eventually; this
+    // makes it immediate, and costs nothing since the socket is open.
+    const EVENTS = [
+      "new_request",
+      "request_acknowledged",
+      "request_on_my_way",
+      "request_resolved",
+      "table_assignment_changed",
+    ];
+    for (const e of EVENTS) socket.on(e, bump);
     return () => {
-      for (const e of ["new_request", "request_acknowledged", "request_on_my_way", "request_resolved"]) {
-        socket.off(e, bump);
-      }
+      for (const e of EVENTS) socket.off(e, bump);
       leave();
     };
   }, [venueId, refreshFloor]);

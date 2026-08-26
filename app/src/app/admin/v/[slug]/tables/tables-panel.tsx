@@ -8,15 +8,62 @@ type TableRow = {
   label: string;
   zone: string | null;
   sessionCount: number;
+  /** Who covers this table. Floor names, for the chips below the label. */
+  staff: { id: string; name: string }[];
   requestCount: number;
 };
 
-export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow[] }) {
+export function TablesPanel({
+  slug,
+  initial,
+  staff,
+  canAssign,
+}: {
+  slug: string;
+  initial: TableRow[];
+  /** Every active member, for the assignment picker. */
+  staff: { id: string; name: string; role: string }[];
+  /** False for roles that may see the floor but not restaff it. */
+  canAssign: boolean;
+}) {
   const [tables, setTables] = useState<TableRow[]>(initial);
   const [adding, setAdding] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Who covers this table, saved from here rather than from People.
+   *
+   * The same TableAssignment rows the People page writes — one relation
+   * with two doors. An owner in front of a floor plan thinks "who has
+   * 12", and until now the only answer was to open each person in turn.
+   */
+  async function saveStaff(tableId: string, staffIds: string[]) {
+    const previous = tables;
+    // Optimistic: this is a picker somebody taps through quickly.
+    setTables(curr =>
+      curr.map(t =>
+        t.id === tableId
+          ? { ...t, staff: staff.filter(s => staffIds.includes(s.id)).map(s => ({ id: s.id, name: s.name })) }
+          : t,
+      ),
+    );
+    try {
+      const res = await fetch(`/api/admin/v/${slug}/tables/${tableId}/staff`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffIds }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
+    } catch (e) {
+      // Put it back. A floor plan that shows an assignment the server
+      // doesn't have is worse than one that shows the change failed.
+      setTables(previous);
+      setError(e instanceof Error ? e.message : "Couldn't change that");
+    }
+  }
 
   async function addOne(label: string, zone: string | null) {
     setPending("add");
@@ -31,7 +78,7 @@ export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       setTables(curr => [...curr, {
         id: body.id, label: body.label, zone: zone,
-        sessionCount: 0, requestCount: 0,
+        sessionCount: 0, requestCount: 0, staff: [],
       }].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })));
       setAdding(false);
     } catch (e) {
@@ -55,7 +102,7 @@ export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow
       const created: Array<{ id: string; label: string }> = body.created ?? [];
       setTables(curr => [
         ...curr,
-        ...created.map(c => ({ id: c.id, label: c.label, zone, sessionCount: 0, requestCount: 0 })),
+        ...created.map(c => ({ id: c.id, label: c.label, zone, sessionCount: 0, requestCount: 0, staff: [] })),
       ].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })));
       setBulkOpen(false);
     } catch (e) {
@@ -153,7 +200,7 @@ export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow
         ) : (
           <ul className="divide-y divide-slate/5">
             {tables.map(t => (
-              <Row key={t.id} t={t} onRename={rename} onDelete={remove} />
+              <Row key={t.id} t={t} staff={staff} canAssign={canAssign} onRename={rename} onDelete={remove} onSaveStaff={saveStaff} />
             ))}
           </ul>
         )}
@@ -164,16 +211,23 @@ export function TablesPanel({ slug, initial }: { slug: string; initial: TableRow
 
 function Row({
   t,
+  staff,
+  canAssign,
+  onSaveStaff,
   onRename,
   onDelete,
 }: {
   t: TableRow;
+  staff: { id: string; name: string; role: string }[];
+  canAssign: boolean;
+  onSaveStaff: (tableId: string, staffIds: string[]) => void;
   onRename: (id: string, label: string) => void;
   onDelete: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(t.label);
   const hasHistory = t.sessionCount > 0 || t.requestCount > 0;
+  const [assigning, setAssigning] = useState(false);
 
   if (editing) {
     return (
@@ -204,7 +258,8 @@ function Row({
   }
 
   return (
-    <li className="flex items-center justify-between gap-4 py-3">
+    <li className="py-3">
+    <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
         <p className="text-sm font-medium">{t.label}</p>
         <p className="font-mono text-[11px] text-slate/50">
@@ -241,6 +296,86 @@ function Row({
           </ConfirmButton>
         )}
       </div>
+    </div>
+
+    {/* Who covers this table.
+     *
+     * The relation always existed but was only editable per PERSON, from
+     * the People page, behind an overflow menu. An owner looking at a
+     * floor asks "who has 12" — and the only way to answer that was to
+     * open every server in turn. Same rows, second door. */}
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] text-slate/40">Covered by</span>
+      {t.staff.length === 0 ? (
+        <span className="text-[11px] text-slate/50">
+          nobody yet — requests still reach the whole floor
+        </span>
+      ) : (
+        t.staff.map(s => (
+          <span
+            key={s.id}
+            className="rounded-full bg-sea/30 px-2 py-0.5 text-[11px] text-slate/80"
+          >
+            {s.name}
+          </span>
+        ))
+      )}
+      {canAssign ? (
+        <button
+          type="button"
+          onClick={() => setAssigning(a => !a)}
+          className="rounded-full border border-slate/15 px-2.5 py-0.5 text-[11px] text-slate/60 hover:border-slate/40 hover:text-slate"
+        >
+          {assigning ? "Done" : "Change"}
+        </button>
+      ) : null}
+    </div>
+
+    {assigning && canAssign ? (
+      <div className="mt-2 rounded-xl border border-umber-soft/40 bg-oat/60 p-3">
+        <p className="text-[11px] text-slate/55">
+          Tap to add or remove. Saves as you go, and more than one person can
+          cover the same table.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {staff.length === 0 ? (
+            <span className="text-[12px] text-slate/50">
+              Nobody active to assign yet.
+            </span>
+          ) : (
+            staff.map(s => {
+              const on = t.staff.some(x => x.id === s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() =>
+                    onSaveStaff(
+                      t.id,
+                      on
+                        ? t.staff.filter(x => x.id !== s.id).map(x => x.id)
+                        : [...t.staff.map(x => x.id), s.id],
+                    )
+                  }
+                  aria-pressed={on}
+                  className={[
+                    "min-h-[36px] rounded-lg border px-3 text-[12px] transition-colors",
+                    on
+                      ? "border-slate bg-slate text-oat"
+                      : "border-slate/15 bg-white text-slate/70 hover:border-slate/30",
+                  ].join(" ")}
+                >
+                  {s.name}
+                  <span className="ml-1.5 text-[10px] opacity-60">
+                    {s.role.toLowerCase()}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+    ) : null}
     </li>
   );
 }

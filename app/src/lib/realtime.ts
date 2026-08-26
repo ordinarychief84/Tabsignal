@@ -84,6 +84,17 @@ export const events = {
    * is the moment the guest-facing line is allowed to change from "we've
    * got you" to "someone is on their way".
    */
+  /**
+   * A manager changed who covers a table.
+   *
+   * §41: a server whose section changes mid-shift must see it without
+   * signing out. Goes to the venue room rather than to the affected
+   * staff individually — the floor map on every open console shows the
+   * whole room, so everyone's view is now stale, not just theirs.
+   */
+  tableAssignmentChanged: (venueId: string, payload: unknown) =>
+    emit({ kind: "venue", id: venueId, event: "table_assignment_changed", payload }),
+
   requestOnMyWay: (venueId: string, sessionId: string, request: unknown) =>
     Promise.all([
       emit({ kind: "venue", id: venueId, event: "request_on_my_way", payload: { request } }),
