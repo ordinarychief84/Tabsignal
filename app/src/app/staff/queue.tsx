@@ -6,6 +6,12 @@ import { getSocket, joinRoom } from "@/lib/socket";
 // takes seconds and is used for the per-row timers. Aliased rather than
 // merged so neither caller has to think about which unit it is getting.
 import { computeMultiCall, formatAge as formatAgeMs } from "@/lib/staff/multi-call";
+import {
+  SERVICE_THRESHOLD_DEFAULTS,
+  URGENCY_LABEL,
+  urgencyFor,
+  type ServiceThresholds,
+} from "@/lib/service-sla";
 
 type Item = {
   id: string;
@@ -24,8 +30,6 @@ type Item = {
 };
 
 type Tab = "pending" | "active" | "completed" | "delayed";
-
-const DELAYED_THRESHOLD_MS = 90_000;
 
 // "Check", not "Bill": the guest is signalling they want to close out.
 // TabCall doesn't hold the money — the server takes it on the venue's own
@@ -74,6 +78,11 @@ export function StaffQueue({
   const [items, setItems] = useState<Item[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  // The venue's own promise, sent with every poll. Starts at the shipped
+  // defaults so the first paint isn't blank, then follows the venue.
+  const [thresholds, setThresholds] = useState<ServiceThresholds>(
+    SERVICE_THRESHOLD_DEFAULTS,
+  );
   // Per-row failure, so a retry sits next to the button that failed
   // rather than as a page-level banner the server has to hunt for.
   const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
@@ -153,6 +162,7 @@ export function StaffQueue({
       if (!res.ok) return;
       const data = await res.json();
       setItems(data.items ?? []);
+      if (data.thresholds) setThresholds(data.thresholds);
     } catch {
       // swallow — next event or poll will reconcile
     }
@@ -363,7 +373,7 @@ export function StaffQueue({
     // (the server-side cron flips status=ESCALATED at 3min; between 90s
     // and 3min the row stays PENDING but appears under Delayed too).
     const age = now - new Date(it.createdAt).getTime();
-    return age >= DELAYED_THRESHOLD_MS ? "delayed" : "pending";
+    return age >= thresholds.attentionSeconds * 1000 ? "delayed" : "pending";
   }
 
   const bucketCounts = { pending: 0, active: 0, completed: 0, delayed: 0 } as Record<Tab, number>;
@@ -742,6 +752,7 @@ export function StaffQueue({
               busy={pendingId === it.id}
               currentStaffId={staffId}
               staffMates={staffMates}
+              thresholds={thresholds}
               error={actionError?.id === it.id ? actionError.message : null}
               onDismissError={() => setActionError(null)}
               onAck={() => ack(it.id)}
@@ -797,6 +808,7 @@ function RequestCard({
   busy,
   currentStaffId,
   staffMates,
+  thresholds,
   error,
   onDismissError,
   onAck,
@@ -812,6 +824,7 @@ function RequestCard({
   /** Set when the last action on THIS row failed. §46: never silent. */
   error: string | null;
   onDismissError: () => void;
+  thresholds: ServiceThresholds;
   onAck: () => void;
   onOnMyWay: () => void;
   onResolve: (action: string, note?: string) => void;
@@ -825,8 +838,18 @@ function RequestCard({
   const ackedByMe =
     (acked || onMyWay) && !!currentStaffId && item.acknowledgedBy?.id === currentStaffId;
   const seconds = useAge(item.createdAt);
-  const delayed = seconds > 180;
-  const warning = !delayed && seconds > 60;
+  // Against the venue's own promise, not a number compiled in. §21 also
+  // requires the state to be readable without colour, so `urgency` drives
+  // a printed label as well as the border.
+  // Urgency describes an UNANSWERED request. Once somebody has claimed
+  // it the clock still runs — a manager wants the real number — but the
+  // card stops shouting: "Overdue" beside a card that says a named
+  // server is on their way is the product arguing with itself, and it
+  // sends a second server to a table that already has one coming.
+  const claimed = acked || onMyWay;
+  const urgency = claimed ? "waiting" : urgencyFor(seconds, thresholds);
+  const delayed = urgency === "overdue";
+  const warning = urgency === "warn" || urgency === "attention";
   const [showHandoff, setShowHandoff] = useState(false);
   const [showResolveActions, setShowResolveActions] = useState(false);
   const others = staffMates.filter(s => s.id !== currentStaffId);
@@ -862,11 +885,20 @@ function RequestCard({
         </div>
         <span
           className={[
-            "shrink-0 font-mono text-base tabular-nums",
+            "flex shrink-0 flex-col items-end",
             delayed ? "text-coral" : warning ? "text-slate" : "text-slate/60",
           ].join(" ")}
         >
-          {formatAge(seconds)}
+          <span className="font-mono text-base tabular-nums">{formatAge(seconds)}</span>
+          {/* §21: urgency in words as well as colour. A card shaded coral
+              means nothing to someone who can't see coral, and this gets
+              read in a dim room at speed. Hidden while a request is fresh
+              — "Waiting, 0:04" is noise. */}
+          {urgency !== "waiting" ? (
+            <span className="text-[10px] font-medium uppercase tracking-wider">
+              {URGENCY_LABEL[urgency]}
+            </span>
+          ) : null}
         </span>
       </div>
 
@@ -1006,8 +1038,19 @@ function useAge(iso: string): number {
   return Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
 }
 
+/**
+ * mm:ss, rolling over to h:mm past the hour.
+ *
+ * Without the rollover a request left open across a shift renders as
+ * "194:20", which reads as a broken counter rather than as three hours.
+ */
 function formatAge(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${String(m).padStart(2, "0")}m`;
 }

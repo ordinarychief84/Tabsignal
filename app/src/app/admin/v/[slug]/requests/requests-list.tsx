@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ServiceThresholds } from "@/lib/service-sla";
 
 // Mirror of the row shape returned by /api/venue/[venueId]/requests/live.
 // Kept in sync manually — if the endpoint adds fields, add them here too.
@@ -44,7 +45,6 @@ const REQUEST_LABEL: Record<LiveRequest["type"], string> = {
 };
 
 // Same threshold the floor app uses so the buckets line up.
-const DELAYED_THRESHOLD_MS = 90_000;
 
 // 5s polling — feels real-time without socket bookkeeping. Acceptable
 // because this is the admin desktop view, not the high-frequency floor
@@ -74,11 +74,14 @@ export function RequestsList({
   venueId,
   staffId,
   initial,
+  thresholds,
 }: {
   slug: string;
   venueId: string;
   staffId: string;
   initial: LiveRequest[];
+  /** The venue's own promise, resolved server-side. */
+  thresholds: ServiceThresholds;
 }) {
   void _slug;
   const [items, setItems] = useState<LiveRequest[]>(initial);
@@ -141,7 +144,7 @@ export function RequestsList({
     // below and gets flagged delayed while somebody is mid-stride.
     if (it.status === "ACKNOWLEDGED" || it.status === "ON_MY_WAY") return "active";
     const age = now - new Date(it.createdAt).getTime();
-    return age >= DELAYED_THRESHOLD_MS ? "delayed" : "pending";
+    return age >= thresholds.attentionSeconds * 1000 ? "delayed" : "pending";
   }
 
   // Distinct tables present in the current dataset — used to populate
@@ -429,6 +432,7 @@ export function RequestsList({
         <ul className="space-y-3">
           {sorted.map(it => (
             <RequestRow
+              thresholds={thresholds}
               key={it.id}
               item={it}
               busy={pendingId === it.id}
@@ -469,6 +473,7 @@ function EmptyState({ tab, hasFilters }: { tab: Tab; hasFilters: boolean }) {
 }
 
 function RequestRow({
+  thresholds,
   item,
   busy,
   currentStaffId,
@@ -477,6 +482,7 @@ function RequestRow({
   onResolve,
   onHandoff,
 }: {
+  thresholds: ServiceThresholds;
   item: LiveRequest;
   busy: boolean;
   currentStaffId: string;
@@ -487,11 +493,17 @@ function RequestRow({
 }) {
   const seconds = useAge(item.createdAt);
   const isResolved = item.status === "RESOLVED";
-  const isAcked = item.status === "ACKNOWLEDGED";
+  // Both post-ack states count as claimed: losing the handoff and
+  // resolve controls the moment somebody says they're walking over
+  // would strand the request.
+  const isAcked = item.status === "ACKNOWLEDGED" || item.status === "ON_MY_WAY";
   const isEscalated = item.status === "ESCALATED";
   const ackedByMe = isAcked && item.acknowledgedBy?.id === currentStaffId;
-  const delayed = !isResolved && (isEscalated || seconds > 90);
-  const warn = !isResolved && !delayed && seconds > 60;
+  // A claimed request stops ageing toward overdue. Somebody walking to
+  // the table is not a request that needs a manager.
+  const delayed =
+    !isResolved && !isAcked && (isEscalated || seconds >= thresholds.attentionSeconds);
+  const warn = !isResolved && !isAcked && !delayed && seconds >= thresholds.warnSeconds;
   const [showResolve, setShowResolve] = useState(false);
   const [showHandoff, setShowHandoff] = useState(false);
   const [resolveNote, setResolveNote] = useState("");
@@ -517,7 +529,7 @@ function RequestRow({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xl font-medium text-slate">{item.tableLabel}</p>
             <span className="text-sm text-slate/55">· {REQUEST_LABEL[item.type]}</span>
-            <StatusPill status={item.status} delayedByAge={!isResolved && seconds > 90 && item.status === "PENDING"} />
+            <StatusPill status={item.status} delayedByAge={!isResolved && seconds >= thresholds.attentionSeconds && item.status === "PENDING"} />
             {item.idCheckRequired && !isResolved ? (
               <span className="rounded-full bg-coral/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-coral">
                 ⚠ check ID
