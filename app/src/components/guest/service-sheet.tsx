@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTrack } from "@/components/guest/track";
 
 /**
  * "Need Sarah?" — the sheet behind the one control that stays reachable
@@ -105,6 +106,7 @@ export function ServiceSheet({
   const [requestId, setRequestId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const track = useTrack();
 
   const who = serverName ?? "a server";
   const cta = serverName ? `Need ${serverName}?` : "Need a server?";
@@ -165,6 +167,12 @@ export function ServiceSheet({
       if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       setRequestId(body?.id ?? null);
       setStatus("sent");
+      track("service_requested");
+      // "Ready for the check" is the one signal that says the visit is
+      // ending, which is what the feedback prompt keys off — so it's
+      // worth counting separately from every other kind of ask.
+      if (option.type === "BILL") track("check_requested");
+      if (option.type === "ORDER") track("ready_to_order_requested");
       if (body?.id) {
         onSent?.({ id: body.id, type: option.type, note: note.trim() || null });
       }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { WelcomeScreen } from "./welcome-screen";
 import { ServiceSheet } from "@/components/guest/service-sheet";
+import { TrackProvider, useTrackOnce } from "@/components/guest/track";
 
 /**
  * Client shell for the entry screen.
@@ -15,7 +16,7 @@ import { ServiceSheet } from "@/components/guest/service-sheet";
  * A venue that has turned the welcome off skips straight to the home
  * experience rather than seeing a stripped-down version of it.
  */
-export function GuestEntry(props: {
+type GuestEntryProps = {
   venueName: string;
   tableLabel: string;
   server: { displayName: string; photoUrl: string | null; welcomeMessage: string } | null;
@@ -27,9 +28,34 @@ export function GuestEntry(props: {
   showWelcome: boolean;
   requestsEnabled: boolean;
   feedbackHref?: string;
-}) {
+};
+
+/**
+ * Wraps the entry screen in the analytics provider. Mounted here as well
+ * as on the home because a scan that never gets past the welcome is a
+ * different — and more interesting — outcome than one that does, and
+ * without this the whole first screen would be invisible to the funnel.
+ */
+export function GuestEntry(props: GuestEntryProps) {
+  return (
+    <TrackProvider
+      venueSlug={props.venueSlug}
+      sessionId={props.sessionId}
+      sessionToken={props.sessionToken}
+    >
+      <GuestEntryInner {...props} />
+    </TrackProvider>
+  );
+}
+
+function GuestEntryInner(props: GuestEntryProps) {
   const router = useRouter();
   const [sheetSignal, setSheetSignal] = useState(0);
+
+  // Every arrival, welcome shown or not — this is the top of the funnel
+  // that every other rate is measured against.
+  useTrackOnce("guest_qr_scanned");
+  useTrackOnce(props.showWelcome ? "welcome_viewed" : "menu_explored");
 
   useEffect(() => {
     if (!props.showWelcome) router.replace(props.homeHref);

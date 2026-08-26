@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TrackProvider, useTrack, useTrackOnce } from "@/components/guest/track";
 import {
   RATING_CHOICES,
   POSITIVE_TAGS,
@@ -29,17 +30,7 @@ import {
 
 type Phase = "rating" | "tags" | "recovery" | "contact" | "thanks";
 
-export function FeedbackScreen({
-  venueName,
-  venueSlug,
-  sessionId,
-  sessionToken,
-  serverName,
-  consentText,
-  phoneCaptureEnabled,
-  marketingConsentEnabled,
-  serviceRecoveryEnabled,
-}: {
+type FeedbackScreenProps = {
   venueName: string;
   venueSlug: string;
   sessionId: string;
@@ -49,7 +40,43 @@ export function FeedbackScreen({
   phoneCaptureEnabled: boolean;
   marketingConsentEnabled: boolean;
   serviceRecoveryEnabled: boolean;
-}) {
+};
+
+/**
+ * Wrapped in the analytics provider so the feedback funnel is visible.
+ * How many guests started rating and didn't finish is the most useful
+ * number on this screen, and it's invisible from the feedback table
+ * alone — an abandoned rating writes no row.
+ */
+export function FeedbackScreen(props: FeedbackScreenProps) {
+  return (
+    <TrackProvider
+      venueSlug={props.venueSlug}
+      sessionId={props.sessionId}
+      sessionToken={props.sessionToken}
+    >
+      <FeedbackScreenInner {...props} />
+    </TrackProvider>
+  );
+}
+
+function FeedbackScreenInner({
+  venueName,
+  venueSlug,
+  sessionId,
+  sessionToken,
+  serverName,
+  consentText,
+  phoneCaptureEnabled,
+  marketingConsentEnabled,
+  serviceRecoveryEnabled,
+}: FeedbackScreenProps) {
+  const track = useTrack();
+  // Reaching this screen at all. The completion rate is measured against
+  // this rather than against scans, because a guest who never opened
+  // feedback never declined to give it.
+  useTrackOnce("feedback_started");
+
   const [phase, setPhase] = useState<Phase>("rating");
   const [rating, setRating] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -86,6 +113,9 @@ export function FeedbackScreen({
         throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
       }
       if (body?.reviewUrl) setReviewUrl(body.reviewUrl);
+      track("feedback_completed");
+      if (managerRecovery) track("manager_recovery_requested");
+      if (phoneCaptureEnabled) track("phone_capture_viewed");
       setPhase(phoneCaptureEnabled ? "contact" : "thanks");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't send that");
@@ -304,6 +334,7 @@ function ContactCapture({
   marketingConsentEnabled: boolean;
   onDone: () => void;
 }) {
+  const track = useTrack();
   const [phone, setPhone] = useState("");
   // Unticked. Always. Consent has to be something the guest did.
   const [consent, setConsent] = useState(false);
@@ -330,6 +361,12 @@ function ContactCapture({
         setBusy(false);
         return;
       }
+      // Counted separately, because they are separate decisions. A guest
+      // may leave a number for a booking-style follow-up and still not
+      // want marketing, and a product that conflates the two ends up
+      // messaging people who never agreed to it.
+      track("phone_provided");
+      if (marketingConsentEnabled && consent) track("marketing_opt_in");
       onDone();
     } catch {
       setError("Couldn't save that. You can skip — nothing is lost.");
