@@ -17,8 +17,8 @@ export default function TermsPage() {
           <Link href="/" className="inline-flex items-center gap-2">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate">
               <svg width="20" height="20" viewBox="0 0 24 24">
-                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F2E7B7" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+                <path d="M 6 11 Q 12 6, 18 11" fill="none" stroke="#F4C95D" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="16" r="2" fill="#F4C95D" />
               </svg>
             </span>
             <span className="text-lg font-medium tracking-tight">TabCall</span>

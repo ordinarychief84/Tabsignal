@@ -136,7 +136,7 @@ export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string 
       {arrivals.map(a => (
         <li
           key={a.preview.profileId}
-          className="flex items-start justify-between gap-3 rounded-2xl border border-chartreuse/40 bg-chartreuse/15 px-4 py-3"
+          className="flex items-start justify-between gap-3 rounded-2xl border border-saffron bg-service-pending px-4 py-3"
         >
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.18em] text-umber">Regular arrived</p>
@@ -165,7 +165,7 @@ export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string 
           </div>
           <button
             onClick={() => dismissArrival(a.preview.profileId)}
-            className="shrink-0 rounded-full border border-slate/15 bg-white px-2 py-0.5 text-[11px] text-slate/60 hover:border-slate/40"
+            className="shrink-0 rounded-full border border-sandstone bg-surface px-2 py-0.5 text-[11px] text-graphite hover:border-line-strong"
             aria-label="Dismiss"
           >
             ×
@@ -179,7 +179,7 @@ export function ManagerFloor({ venueId, slug }: { venueId: string; slug: string 
     return (
       <>
         {arrivalBanners}
-        <div className="rounded-2xl border border-slate/10 bg-white px-5 py-10 text-center">
+        <div className="rounded-2xl border border-sandstone bg-surface px-5 py-10 text-center">
           <p className="text-sm text-slate/55">Floor is quiet.</p>
           <p className="mt-1 text-[11px] tracking-wide text-slate/35">
             New requests appear here within 1 second.
@@ -214,44 +214,54 @@ function FloorCard({ item }: { item: Item }) {
 
   return (
     <li
+      // §22: the card carries its status as a surface, not just a border —
+      // new is soft Saffron, acknowledged Fresh Mint, overdue soft Rose
+      // Clay. Colour is never the only signal: every state also prints its
+      // own word below.
       className={[
-        "rounded-2xl border bg-white p-5 transition-colors",
-        acked ? "border-chartreuse/40" : delayed ? "border-coral ring-1 ring-coral/30" : warn ? "border-sea/60" : "border-slate/10",
+        "rounded-2xl border p-5 transition-colors",
+        acked
+          ? "border-mint bg-service-acknowledged"
+          : delayed
+            ? "border-clay bg-service-overdue"
+            : warn
+              ? "border-saffron bg-service-pending"
+              : "border-sandstone bg-surface",
       ].join(" ")}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xl font-medium text-slate">{item.tableLabel}</p>
-          <p className="text-sm text-slate/55">{REQUEST_LABEL[item.type]}</p>
+          <p className="text-xl font-medium text-plum">{item.tableLabel}</p>
+          <p className="text-sm text-graphite">{REQUEST_LABEL[item.type]}</p>
         </div>
         <span
           className={[
             "font-mono text-base tabular-nums",
-            delayed ? "text-coral" : warn ? "text-slate" : "text-slate/55",
+            delayed ? "text-clay-deep" : warn ? "text-saffron-deep" : "text-graphite",
           ].join(" ")}
         >
           {formatAge(seconds)}
         </span>
       </div>
       {item.note ? (
-        <p className="mt-3 text-sm italic leading-snug text-slate/55">
+        <p className="mt-3 text-sm italic leading-snug text-graphite">
           &ldquo;{item.note}&rdquo;
         </p>
       ) : null}
       <p className="mt-4 text-[11px] tracking-wide">
         {acked ? (
-          <span className="inline-flex items-center gap-2 text-umber">
-            <span className="h-1.5 w-1.5 rounded-full bg-chartreuse" />
+          <span className="inline-flex items-center gap-2 text-mint-deep">
+            <span className="h-1.5 w-1.5 rounded-full bg-mint-deep" />
             {item.acknowledgedBy?.name ? `${item.acknowledgedBy.name} on it` : "Acknowledged"}
           </span>
         ) : delayed ? (
-          <span className="inline-flex items-center gap-2 text-coral">
-            <span className="h-1.5 w-1.5 rounded-full bg-coral" />
+          <span className="inline-flex items-center gap-2 text-clay-deep">
+            <span className="h-1.5 w-1.5 rounded-full bg-clay" />
             Delayed · escalate
           </span>
         ) : (
-          <span className="inline-flex items-center gap-2 text-slate/45">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate/40" />
+          <span className="inline-flex items-center gap-2 text-graphite">
+            <span className="h-1.5 w-1.5 rounded-full bg-graphite/40" />
             Waiting
           </span>
         )}

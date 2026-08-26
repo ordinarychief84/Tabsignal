@@ -156,7 +156,7 @@ export async function GET(req: Request) {
     <meta http-equiv="refresh" content="0;url=${destUrl}" />
     <style>
       body { font: 14px system-ui, sans-serif; color: #2A2837;
-             background: #F7F5F2; margin: 0; min-height: 100vh;
+             background: #FBF8F2; margin: 0; min-height: 100vh;
              display: flex; align-items: center; justify-content: center; }
       .card { padding: 1.25rem 1.5rem; border-radius: 12px;
               background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }

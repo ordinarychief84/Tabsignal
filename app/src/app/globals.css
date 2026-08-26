@@ -4,6 +4,61 @@
 
 :root {
   color-scheme: light;
+
+  /* =====================================================================
+   * TabCall design tokens.
+   *
+   * Mirrors tailwind.config.ts. These exist for the places Tailwind can't
+   * reach — inline styles driven by venue branding, canvas/SVG fills, and
+   * third-party surfaces — so there is still ONE source of truth for a
+   * colour rather than a hex typed into a component.
+   * ===================================================================== */
+
+  /* brand */
+  --color-brand-primary: #34263F;   /* Deep Plum */
+  --color-brand-primary-soft: #4A3856;
+  --color-brand-accent: #F4C95D;    /* Saffron */
+  --color-brand-accent-deep: #8A6A17;
+  --color-brand-accent-soft: #FDF2D8;
+
+  /* surfaces */
+  --color-background: #FBF8F2;      /* Warm Ivory — dominant */
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F4EFE7;
+  --color-surface-hover: #F7F2EA;
+
+  /* typography */
+  --color-text-primary: #34263F;
+  --color-text-secondary: #403A43;  /* Graphite */
+  --color-text-muted: #7A7280;
+  --color-text-on-dark: #FBF8F2;
+
+  /* structure */
+  --color-border: #E8E0D7;          /* Sandstone */
+  --color-border-strong: #D6CABB;
+  --color-disabled: #B7AFA5;
+  --color-focus-ring: #34263F;
+  --color-selected: #FDF2D8;
+
+  /* meaning */
+  --color-success: #CFE3D8;         /* Fresh Mint */
+  --color-success-text: #3F6B54;
+  --color-promotion: #F2B38F;       /* Apricot */
+  --color-promotion-text: #8C4A26;
+  --color-danger: #D97878;          /* Rose Clay */
+  --color-danger-text: #8E3B3B;
+  --color-danger-soft: #F7E4E4;
+  --color-warning: #F4C95D;
+
+  /* service lifecycle */
+  --color-service-pending: #FDF2D8;
+  --color-service-acknowledged: #CFE3D8;
+  --color-service-completed: #E4EFE8;
+  --color-service-overdue: #F7E4E4;
+
+  /* The guest surface reads this for the dock scrim so the fade always
+     matches whatever the page is standing on. */
+  --guest-bg: #FBF8F2;
 }
 
 html, body {
@@ -86,15 +141,15 @@ button {
    A dark, venue-branded canvas. --brand is set inline per venue.
    ===================================================================== */
 
+/* Retired: the guest surface is light now (Warm Ivory canvas, white cards).
+   The class is kept as a no-op rather than deleted because a handful of
+   older guest routes still carry it, and silently un-styling them is worse
+   than having them inherit the light brand. */
 .guest-dark {
-  --brand: #f2e7b7;
-  background-color: #0b0a12;
-  color: #f4f2ee;
-  /* Layered ambience: brand glow up top, cool counter-glow bottom-left,
-     both intentionally dim so white text stays AA. */
-  background-image:
-    radial-gradient(ellipse 120% 60% at 50% -12%, color-mix(in srgb, var(--brand) 26%, transparent), transparent 60%),
-    radial-gradient(ellipse 80% 50% at 8% 110%, rgba(111, 149, 134, 0.12), transparent 55%);
+  --brand: #F4C95D;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  /* The dark ambience gradients went with the dark canvas. */
   background-attachment: fixed;
 }
 

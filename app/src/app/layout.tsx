@@ -1,11 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { defaultMetadata } from "@/lib/seo";
 import "./globals.css";
 
-const inter = Inter({
+/**
+ * Poppins — friendly geometric, per the brand direction.
+ *
+ * Four weights only. The brief warns against excessive Bold, and every
+ * extra weight is another font file on a guest's phone over restaurant
+ * wifi. The CSS variable keeps its old name so the Tailwind fontFamily
+ * entry and any inline references still resolve.
+ */
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
   display: "swap",
 });
 
@@ -19,12 +28,12 @@ export const metadata: Metadata = defaultMetadata;
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0d0b19",
+  themeColor: "#34263F",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={poppins.variable}>
       <head>
         {/* Material Symbols Outlined — variable icon font used by the
             landing redesign. preconnect is the next/font pattern for any

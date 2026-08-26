@@ -156,7 +156,7 @@ export function GuestHome(props: {
   return (
     // pb-36 clears the docked control plus its scrim, so the last row of a
     // menu is readable instead of half-hidden under it.
-    <div className="min-h-[100dvh] bg-oat pb-36 text-slate">
+    <div className="min-h-[100dvh] bg-ivory pb-36 text-plum">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-72"
@@ -173,7 +173,7 @@ export function GuestHome(props: {
           >
             {props.venueName}
           </p>
-          <h1 className="mt-1.5 text-[27px] font-semibold leading-tight tracking-tight">
+          <h1 className="mt-1.5 text-[27px] font-semibold leading-tight tracking-tight text-plum">
             {props.greeting}, {props.tableLabel}
           </h1>
         </div>
@@ -195,7 +195,7 @@ export function GuestHome(props: {
         ) : null}
       </header>
 
-      <nav className="sticky top-0 z-30 mt-5 overflow-x-auto border-b border-umber-soft/30 bg-oat/90 px-5 backdrop-blur">
+      <nav className="sticky top-0 z-30 mt-5 overflow-x-auto border-b border-sandstone bg-ivory/95 px-5 backdrop-blur">
         <ul className="flex gap-1">
           {tabs.filter(t => t.show).map(t => (
             <li key={t.id}>
@@ -203,10 +203,11 @@ export function GuestHome(props: {
                 type="button"
                 onClick={() => setTab(t.id)}
                 aria-current={tab === t.id ? "page" : undefined}
-                style={tab === t.id ? { borderColor: palette.deep, color: palette.deep } : undefined}
                 className={[
                   "-mb-px min-h-[44px] whitespace-nowrap border-b-2 px-3 text-[14px] transition-all",
-                  tab === t.id ? "font-semibold" : "border-transparent text-slate/50",
+                  tab === t.id
+                    ? "border-saffron font-semibold text-plum"
+                    : "border-transparent text-graphite/70",
                 ].join(" ")}
               >
                 {t.label}
@@ -306,7 +307,7 @@ export function GuestHome(props: {
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto w-fit rounded-full bg-slate px-4 py-2 text-[13px] text-oat shadow-lift"
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto w-fit rounded-full bg-plum px-4 py-2 text-[13px] text-ivory shadow-lift"
         >
           {toast}
         </div>
@@ -387,7 +388,7 @@ function ForYou({
 
       {config.menuDiscovery && prompts.length > 0 ? (
         <section>
-          <h2 className="text-[17px] font-semibold tracking-tight">
+          <h2 className="text-[17px] font-semibold tracking-tight text-plum">
             What are you in the mood for?
           </h2>
           <ul className="mt-3 flex flex-wrap gap-2">
@@ -436,7 +437,7 @@ function ForYou({
       ) : null}
 
       <section>
-        <h2 className="text-[17px] font-semibold tracking-tight">Featured tonight</h2>
+        <h2 className="text-[17px] font-semibold tracking-tight text-plum">Featured tonight</h2>
         <div className="mt-3 space-y-2">
           {items.filter(i => i.isFeatured).slice(0, 5).map(item => (
             <ItemRow
@@ -590,7 +591,7 @@ function MenuList({
 
       {grouped.map((group, i) => (
         <section key={group.id} id={`cat-${group.id}`} className="scroll-mt-28">
-          <h2 className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
+          <h2 className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight text-plum">
             <span
               aria-hidden
               className="h-5 w-1.5 rounded-full"
@@ -610,7 +611,7 @@ function MenuList({
       {uncategorised.length > 0 ? (
         <section>
           {grouped.length > 0 ? (
-            <h2 className="text-[17px] font-semibold tracking-tight">More</h2>
+            <h2 className="text-[17px] font-semibold tracking-tight text-plum">More</h2>
           ) : null}
           <div className="mt-3 space-y-2">
             {uncategorised.map(item => (
@@ -642,27 +643,27 @@ function ItemRow({
   const [pulse, setPulse] = useState(0);
 
   return (
-    <article className="flex items-stretch gap-1 rounded-2xl bg-white ring-1 ring-umber-soft/25">
+    <article className="flex items-stretch gap-1 rounded-2xl border border-sandstone bg-surface">
       {/* The whole row opens the dish. It used to be inert — the only
           interactive thing was the star — so a two-line description was
           all a guest could ever read. */}
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-[64px] flex-1 items-center gap-3 rounded-l-2xl p-3 text-left active:bg-oat/60"
+        className="flex min-h-[64px] flex-1 items-center gap-3 rounded-l-2xl p-3 text-left active:bg-surface-hover"
       >
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
         ) : null}
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-medium leading-snug text-slate">{item.name}</span>
+          <span className="block text-[15px] font-medium leading-snug text-plum">{item.name}</span>
           {item.description ? (
-            <span className="mt-0.5 line-clamp-1 block text-[13px] leading-snug text-slate/55">
+            <span className="mt-0.5 line-clamp-1 block text-[13px] leading-snug text-graphite/80">
               {item.description}
             </span>
           ) : null}
-          <span className="mt-1 block font-mono text-[13px] tabular-nums text-slate/70">
+          <span className="mt-1 block font-mono text-[13px] tabular-nums text-graphite">
             ${(item.priceCents / 100).toFixed(2)}
           </span>
         </span>
@@ -675,7 +676,7 @@ function ItemRow({
           aria-pressed={saved}
           aria-label={saved ? `Remove ${item.name} from My Picks` : `Save ${item.name} to My Picks`}
           style={saved ? { background: `${palette.wash[0]}` } : undefined}
-          className="flex w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-r-2xl border-l border-umber-soft/20 transition-colors active:bg-oat/60"
+          className="flex w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-r-2xl border-l border-sandstone transition-colors active:bg-surface-hover"
         >
           <Pop trigger={pulse}>
             <span
@@ -830,7 +831,7 @@ function MyPicks({
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="text-[17px] font-semibold tracking-tight">My Picks</h2>
+        <h2 className="text-[17px] font-semibold tracking-tight text-plum">My Picks</h2>
         <div className="mt-3 space-y-2">
           {picks.map(p => {
             const item = byId.get(p.menuItemId);
@@ -863,7 +864,7 @@ function MyPicks({
           type="button"
           onClick={show}
           disabled={busy || shared}
-          className="mt-4 min-h-[52px] w-full rounded-2xl bg-slate text-[15px] font-semibold text-oat disabled:opacity-70"
+          className="mt-4 min-h-[52px] w-full rounded-2xl bg-saffron text-[15px] font-semibold text-plum disabled:opacity-70"
         >
           {shared ? `${cap(who)} can see these` : busy ? "Sharing…" : `Show ${who}`}
         </button>
@@ -874,7 +875,7 @@ function MyPicks({
 
       {tablePicks.length > 0 ? (
         <section>
-          <h2 className="text-[17px] font-semibold tracking-tight">Your table is eyeing</h2>
+          <h2 className="text-[17px] font-semibold tracking-tight text-plum">Your table is eyeing</h2>
           <ul className="mt-3 space-y-1.5">
             {tablePicks
               .map(t => ({ item: byId.get(t.menuItemId), quantity: t.quantity }))

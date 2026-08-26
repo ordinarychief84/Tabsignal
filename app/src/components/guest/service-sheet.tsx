@@ -163,11 +163,11 @@ export function ServiceSheet({
     <>
       {/* Docked, thumb-height, clear of the iOS home indicator. */}
       {showDock ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 [background:linear-gradient(to_top,var(--guest-bg,#F7F5F2)_55%,transparent)]">
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-10 [background:linear-gradient(to_top,var(--guest-bg,#FBF8F2)_55%,transparent)]">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="pointer-events-auto flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-slate text-[16px] font-semibold text-oat shadow-lift transition-transform active:scale-[0.99]"
+            className="pointer-events-auto flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-saffron text-[16px] font-semibold text-plum shadow-soft transition-all hover:brightness-[0.97] active:scale-[0.99]"
           >
             <span aria-hidden>🔔</span>
             {cta}
@@ -187,9 +187,19 @@ export function ServiceSheet({
             role="dialog"
             aria-modal="true"
             aria-label={sheetTitle}
-            className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-card motion-safe:animate-[slideUp_220ms_cubic-bezier(0.16,1,0.3,1)]"
+            className="w-full max-w-md overflow-hidden rounded-t-3xl bg-surface pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-card motion-safe:animate-[slideUp_220ms_cubic-bezier(0.16,1,0.3,1)]"
           >
-            <div aria-hidden className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate/15" />
+            {/* §13: Deep Plum header gives the sheet its brand moment. */}
+            <div className="bg-plum px-5 pb-4 pt-3">
+              <div aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-ivory/25" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-saffron">
+                {cta}
+              </p>
+              <h2 className="mt-1 text-[20px] font-semibold tracking-tight text-ivory">
+                {sheetTitle}
+              </h2>
+            </div>
+            <div className="p-5">
 
             {status === "sent" || status === "acknowledged" ? (
               <Confirmation
@@ -204,18 +214,14 @@ export function ServiceSheet({
               />
             ) : (
               <>
-                <h2 className="text-[20px] font-semibold tracking-tight text-slate">
-                  {sheetTitle}
-                </h2>
-
-                <ul className="mt-4 space-y-2">
+                <ul className="space-y-2">
                   {SERVICE_OPTIONS.map(option => (
                     <li key={option.id}>
                       <button
                         type="button"
                         disabled={status === "sending"}
                         onClick={() => void send(option)}
-                        className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-umber-soft/40 bg-white px-4 text-left text-[15px] text-slate transition-colors hover:bg-oat active:bg-oat disabled:opacity-60"
+                        className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-sandstone bg-surface px-4 text-left text-[15px] text-graphite transition-colors hover:bg-surface-hover active:bg-surface-muted disabled:opacity-60"
                       >
                         <span aria-hidden className="text-lg">{option.emoji}</span>
                         <span className="flex-1">{option.label}</span>
@@ -228,7 +234,7 @@ export function ServiceSheet({
                 </ul>
 
                 <label className="mt-4 block">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-umber">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-graphite">
                     Anything to add?
                   </span>
                   <input
@@ -237,7 +243,7 @@ export function ServiceSheet({
                     onChange={e => setNote(e.target.value)}
                     maxLength={200}
                     placeholder="Optional"
-                    className="mt-1.5 min-h-[48px] w-full rounded-xl border border-umber-soft/40 bg-white px-3.5 text-[15px] text-slate placeholder-slate/35 outline-none focus:border-sea focus:ring-2 focus:ring-sea/30"
+                    className="mt-1.5 min-h-[48px] w-full rounded-xl border border-sandstone bg-surface px-3.5 text-[15px] text-plum placeholder-text-muted outline-none focus:border-plum focus:ring-2 focus:ring-saffron"
                   />
                 </label>
 
@@ -250,12 +256,13 @@ export function ServiceSheet({
                 <button
                   type="button"
                   onClick={reset}
-                  className="mt-4 min-h-[44px] w-full text-[14px] text-slate/55"
+                  className="mt-4 min-h-[44px] w-full text-[14px] text-graphite"
                 >
                   Not right now
                 </button>
               </>
             )}
+            </div>
           </div>
         </div>
       ) : null}
@@ -294,16 +301,16 @@ function Confirmation({
         aria-hidden
         className={[
           "mx-auto flex h-14 w-14 items-center justify-center rounded-full text-2xl transition-colors",
-          acknowledged ? "bg-chartreuse" : "bg-sea-soft",
+          acknowledged ? "bg-mint" : "bg-saffron-soft",
         ].join(" ")}
       >
         {acknowledged ? "🚶" : "✓"}
       </span>
 
-      <h2 className="mt-4 text-[20px] font-semibold tracking-tight text-slate">
+      <h2 className="mt-4 text-[20px] font-semibold tracking-tight text-plum">
         {acknowledged ? `${cap(who)} is on the way.` : `${cap(who)} has been notified.`}
       </h2>
-      <p className="mt-2 text-[14px] leading-relaxed text-slate/65">
+      <p className="mt-2 text-[14px] leading-relaxed text-graphite">
         {acknowledged
           ? "They've seen it and they're heading over."
           : `We've passed on "${label}". You'll see it here the moment they pick it up.`}
@@ -313,7 +320,7 @@ function Confirmation({
         <>
           <a
             href={feedbackHref}
-            className="mt-5 flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-chartreuse text-[15px] font-semibold text-slate"
+            className="mt-5 flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-saffron text-[15px] font-semibold text-plum"
           >
             How was tonight?
           </a>
@@ -329,7 +336,7 @@ function Confirmation({
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 min-h-[48px] w-full rounded-2xl bg-slate text-[15px] font-semibold text-oat"
+          className="mt-5 min-h-[48px] w-full rounded-2xl border border-sandstone bg-surface text-[15px] font-semibold text-plum"
         >
           Back to the menu
         </button>

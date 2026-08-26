@@ -25,12 +25,12 @@ export async function sendMagicLinkEmail(opts: {
     `${link}\n\n` +
     `If you didn't request this, you can ignore this email.`;
   const html = `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #232130; background:#F7F5F2;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #34263F; background:#FBF8F2;">
       <tr><td style="padding: 24px;">
         <h2 style="margin: 0 0 12px; font-weight: 500;">Confirm your email</h2>
         <p style="margin: 0 0 16px;">Hi ${escapeHtml(staffName || "there")}, tap the button below to confirm this address for <strong>${escapeHtml(venueName)}</strong>. After that you sign in with your email and password.</p>
         <p style="margin: 24px 0;">
-          <a href="${link}" style="background:#F2E7B7;color:#232130;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Confirm my email</a>
+          <a href="${link}" style="background:#F4C95D;color:#34263F;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Confirm my email</a>
         </p>
         <p style="margin: 0 0 8px;font-size:13px;color:#8B6F4E;">Or paste this link into your browser:</p>
         <p style="margin: 0 0 24px;font-size:13px;color:#8B6F4E;word-break:break-all;">${link}</p>
@@ -67,12 +67,12 @@ export async function sendStaffInviteEmail(opts: {
     `${link}\n\n` +
     `If you weren't expecting this, you can ignore this email.`;
   const html = `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #232130; background:#F7F5F2;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #34263F; background:#FBF8F2;">
       <tr><td style="padding: 24px;">
         <h2 style="margin: 0 0 12px; font-weight: 500;">Join ${escapeHtml(venueName)} on TabCall</h2>
         <p style="margin: 0 0 16px;">Hi ${escapeHtml(staffName || "there")}, ${escapeHtml(invitedBy.toLowerCase())} to the <strong>${escapeHtml(venueName)}</strong> team${escapeHtml(roleLine)}.</p>
         <p style="margin: 24px 0;">
-          <a href="${link}" style="background:#F2E7B7;color:#232130;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Accept invite &amp; set a password</a>
+          <a href="${link}" style="background:#F4C95D;color:#34263F;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Accept invite &amp; set a password</a>
         </p>
         <p style="margin: 0 0 8px;font-size:13px;color:#8B6F4E;">Or paste this link into your browser:</p>
         <p style="margin: 0 0 24px;font-size:13px;color:#8B6F4E;word-break:break-all;">${link}</p>
@@ -114,12 +114,12 @@ export async function sendPasswordResetEmail(opts: {
     `${link}\n\n` +
     `If you didn't ask for this, you can safely ignore this email — your password won't change.`;
   const html = `
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #232130; background:#F7F5F2;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: #34263F; background:#FBF8F2;">
       <tr><td style="padding: 24px;">
         <h2 style="margin: 0 0 12px; font-weight: 500;">Reset your TabCall password</h2>
         <p style="margin: 0 0 16px;">Hi ${escapeHtml(staffName || "there")}, someone asked to reset the password on your TabCall account for <strong>${escapeHtml(venueName)}</strong>.</p>
         <p style="margin: 24px 0;">
-          <a href="${link}" style="background:#F2E7B7;color:#232130;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Choose a new password</a>
+          <a href="${link}" style="background:#F4C95D;color:#34263F;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:500;display:inline-block;">Choose a new password</a>
         </p>
         <p style="margin: 0 0 8px;font-size:13px;color:#8B6F4E;">Or paste this link into your browser:</p>
         <p style="margin: 0 0 24px;font-size:13px;color:#8B6F4E;word-break:break-all;">${link}</p>
