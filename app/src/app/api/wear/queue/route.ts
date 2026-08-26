@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   const open = await db.request.findMany({
     where: {
       venueId: auth.venueId,
-      status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] },
+      status: { in: ["PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"] },
     },
     orderBy: { createdAt: "asc" },
     take: 50,

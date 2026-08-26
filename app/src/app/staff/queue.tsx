@@ -13,7 +13,7 @@ type Item = {
   tableLabel: string;
   type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION" | "CLEAN" | "SUPPLIES";
   note: string | null;
-  status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
+  status: "PENDING" | "ACKNOWLEDGED" | "ON_MY_WAY" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
   createdAt: string;
   acknowledgedAt: string | null;
@@ -74,6 +74,9 @@ export function StaffQueue({
   const [items, setItems] = useState<Item[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  // Per-row failure, so a retry sits next to the button that failed
+  // rather than as a page-level banner the server has to hunt for.
+  const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
   const [filter, setFilter] = useState<"yours" | "all">(
     assignedTableIds.length > 0 ? "yours" : "all"
   );
@@ -185,6 +188,16 @@ export function StaffQueue({
       );
     }
 
+    // Another device — a shared tablet, this server's watch — said they
+    // are walking over. Repaint rather than leave the card claimed.
+    function onOnMyWayEvent({ request }: { request: { id: string; onMyWayAt?: string | null } }) {
+      setItems(prev =>
+        prev.map(it =>
+          it.id === request.id ? { ...it, status: "ON_MY_WAY" as const } : it,
+        ),
+      );
+    }
+
     function onResolved({ request }: { request: { id: string; resolvedAt?: string; resolutionAction?: string | null } }) {
       if (!request) return;
       // Keep RESOLVED items in state for the Completed tab — drop only
@@ -289,6 +302,7 @@ export function StaffQueue({
 
     socket.on("new_request", onNew);
     socket.on("request_acknowledged", onAck);
+    socket.on("request_on_my_way", onOnMyWayEvent);
     socket.on("request_resolved", onResolved);
     socket.on("request_escalated", onEscalated);
     socket.on("request_handed_off_to_you", onHandedOffToYou);
@@ -304,6 +318,7 @@ export function StaffQueue({
       leave();
       socket.off("new_request", onNew);
       socket.off("request_acknowledged", onAck);
+      socket.off("request_on_my_way", onOnMyWayEvent);
       socket.off("request_resolved", onResolved);
       socket.off("request_escalated", onEscalated);
       socket.off("request_handed_off_to_you", onHandedOffToYou);
@@ -340,7 +355,10 @@ export function StaffQueue({
   function bucketFor(it: Item): Tab {
     if (it.status === "RESOLVED") return "completed";
     if (it.status === "ESCALATED") return "delayed";
-    if (it.status === "ACKNOWLEDGED") return "active";
+    // Claimed and walking-over are both active work. Without the second
+    // one an ON_MY_WAY request falls through to the age check and gets
+    // flagged delayed while somebody is mid-stride toward the table.
+    if (it.status === "ACKNOWLEDGED" || it.status === "ON_MY_WAY") return "active";
     // PENDING — promote to "delayed" tab visually if it's older than 90s
     // (the server-side cron flips status=ESCALATED at 3min; between 90s
     // and 3min the row stays PENDING but appears under Delayed too).
@@ -355,11 +373,23 @@ export function StaffQueue({
 
   async function ack(id: string) {
     setPendingId(id);
+    setActionError(null);
     try {
       const res = await fetch(`/api/requests/${id}/acknowledge`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
       });
+      // A failed response used to fall through and set the row to
+      // ACKNOWLEDGED anyway, so a server on bad wifi saw a card that
+      // looked claimed while the guest was still waiting on nobody.
+      // `alreadyAcked` is not a failure — someone else got there first,
+      // and the body carries who.
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (!err?.alreadyAcked) {
+          throw new Error(err?.detail ?? err?.error ?? `HTTP ${res.status}`);
+        }
+      }
       // Server returns the actual ack state — including `alreadyAcked: true`
       // with `acknowledgedBy.name` if another staff beat us to it. Use
       // server truth instead of optimistic-only so the loser shows the
@@ -379,6 +409,54 @@ export function StaffQueue({
             : it
         )
       );
+    } catch (e) {
+      setActionError({
+        id,
+        message: e instanceof Error && /Failed to fetch/i.test(e.message)
+          ? "No connection. Try again."
+          : "Couldn't update that. Try again.",
+      });
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  /**
+   * "I'm walking over."
+   *
+   * The step that earns the guest-facing line. Acknowledging claims the
+   * request; this is what changes the guest's screen from "has got you"
+   * to "is on the way", so it must never be fired automatically or
+   * merged into Got it.
+   */
+  async function onMyWay(id: string) {
+    setPendingId(id);
+    setActionError(null);
+    // Optimistic, because this is pressed mid-stride and the server
+    // should not have to watch a spinner. Rolled back on failure below.
+    const previous = items;
+    setItems(prev =>
+      prev.map(it => (it.id === id ? { ...it, status: "ON_MY_WAY" as const } : it)),
+    );
+    try {
+      const res = await fetch(`/api/requests/${id}/on-my-way`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`);
+      setItems(prev =>
+        prev.map(it =>
+          it.id === id
+            ? { ...it, status: (body.status as Item["status"]) ?? "ON_MY_WAY" }
+            : it,
+        ),
+      );
+    } catch {
+      // Put it back. Leaving it green would tell this server the guest
+      // has been told something the guest was never told.
+      setItems(previous);
+      setActionError({ id, message: "Couldn't tell them you're coming. Try again." });
     } finally {
       setPendingId(null);
     }
@@ -650,7 +728,10 @@ export function StaffQueue({
               busy={pendingId === it.id}
               currentStaffId={staffId}
               staffMates={staffMates}
+              error={actionError?.id === it.id ? actionError.message : null}
+              onDismissError={() => setActionError(null)}
               onAck={() => ack(it.id)}
+              onOnMyWay={() => onMyWay(it.id)}
               onResolve={(action, note) => resolve(it.id, action, note)}
               onHandoff={(toStaffId) => handoff(it.id, toStaffId)}
             />
@@ -702,7 +783,10 @@ function RequestCard({
   busy,
   currentStaffId,
   staffMates,
+  error,
+  onDismissError,
   onAck,
+  onOnMyWay,
   onResolve,
   onHandoff,
 }: {
@@ -711,12 +795,21 @@ function RequestCard({
   busy: boolean;
   currentStaffId?: string;
   staffMates: StaffMate[];
+  /** Set when the last action on THIS row failed. §46: never silent. */
+  error: string | null;
+  onDismissError: () => void;
   onAck: () => void;
+  onOnMyWay: () => void;
   onResolve: (action: string, note?: string) => void;
   onHandoff: (toStaffId: string) => void;
 }) {
   const acked = item.status === "ACKNOWLEDGED";
-  const ackedByMe = acked && !!currentStaffId && item.acknowledgedBy?.id === currentStaffId;
+  const onMyWay = item.status === "ON_MY_WAY";
+  // "Claimed by me" covers both post-ack states — losing the handoff and
+  // resolve controls the moment someone says they're walking over would
+  // strand the request.
+  const ackedByMe =
+    (acked || onMyWay) && !!currentStaffId && item.acknowledgedBy?.id === currentStaffId;
   const seconds = useAge(item.createdAt);
   const delayed = seconds > 180;
   const warning = !delayed && seconds > 60;
@@ -763,10 +856,47 @@ function RequestCard({
         </span>
       </div>
 
+      {/* §46: a failed action must say so and offer another go. The
+          state was rolled back before this rendered, so the buttons
+          below are already showing the real, unchanged status. */}
+      {error ? (
+        <p
+          role="alert"
+          className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-clay/40 bg-clay-soft px-3 py-2 text-[13px] text-clay-deep"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={onDismissError}
+            className="shrink-0 rounded px-2 py-1 text-[12px] font-medium underline-offset-2 hover:underline"
+          >
+            Dismiss
+          </button>
+        </p>
+      ) : null}
+
       <div className="mt-4 flex gap-2">
-        {acked ? (
+        {/* Three states, one slot. Unclaimed offers Got it; claimed by ME
+            offers the step that actually tells the guest somebody is
+            coming; claimed by someone else is a status, not a control —
+            pressing another server's request is how two people end up
+            walking to the same table. */}
+        {onMyWay ? (
+          <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-mint py-3 text-sm font-medium text-mint-deep">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-mint-deep" />
+            {item.acknowledgedBy?.name ? `${item.acknowledgedBy.name} on the way` : "On the way"}
+          </span>
+        ) : acked && ackedByMe ? (
+          <button
+            disabled={busy}
+            onClick={onOnMyWay}
+            className="flex-1 rounded-lg bg-saffron py-3 text-sm font-semibold text-plum disabled:opacity-60"
+          >
+            On my way
+          </button>
+        ) : acked ? (
           <span className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-sea-soft/50 py-3 text-sm font-medium text-sea">
-            <span className="h-1.5 w-1.5 rounded-full bg-sea" />
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-sea" />
             {item.acknowledgedBy?.name ? `${item.acknowledgedBy.name} on it` : "Acknowledged"}
           </span>
         ) : (

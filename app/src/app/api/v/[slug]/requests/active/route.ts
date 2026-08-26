@@ -75,7 +75,7 @@ export async function GET(req: Request, ctx: { params: { slug: string } }) {
       sessionId,
       // PENDING, ACKNOWLEDGED and ESCALATED are all still open from the
       // guest's chair. RESOLVED is finished — see the note above.
-      status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] },
+      status: { in: ["PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"] },
     },
     orderBy: { createdAt: "desc" },
     select: {

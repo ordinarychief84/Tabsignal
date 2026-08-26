@@ -67,7 +67,7 @@ export default async function AdminLiveRequestsPage({
     where: {
       venueId: venue.id,
       OR: [
-        { status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] } },
+        { status: { in: ["PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"] } },
         { status: "RESOLVED", resolvedAt: { gte: oneHourAgo } },
       ],
     },
@@ -85,7 +85,7 @@ export default async function AdminLiveRequestsPage({
     tableLabel: r.table.label,
     type: r.type as "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION" | "CLEAN" | "SUPPLIES",
     note: r.note,
-    status: r.status as "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED",
+    status: r.status as "PENDING" | "ACKNOWLEDGED" | "ON_MY_WAY" | "RESOLVED" | "ESCALATED",
     idCheckRequired: r.idCheckRequired,
     createdAt: r.createdAt.toISOString(),
     acknowledgedAt: r.acknowledgedAt?.toISOString() ?? null,

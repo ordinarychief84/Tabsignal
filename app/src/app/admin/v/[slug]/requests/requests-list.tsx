@@ -10,7 +10,7 @@ export type LiveRequest = {
   tableLabel: string;
   type: "DRINK" | "BILL" | "HELP" | "REFILL" | "ORDER" | "CELEBRATION" | "CLEAN" | "SUPPLIES";
   note: string | null;
-  status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED" | "ESCALATED";
+  status: "PENDING" | "ACKNOWLEDGED" | "ON_MY_WAY" | "RESOLVED" | "ESCALATED";
   idCheckRequired?: boolean;
   createdAt: string;
   acknowledgedAt: string | null;
@@ -136,7 +136,10 @@ export function RequestsList({
   function bucketFor(it: LiveRequest): Exclude<Tab, "all"> {
     if (it.status === "RESOLVED") return "completed";
     if (it.status === "ESCALATED") return "delayed";
-    if (it.status === "ACKNOWLEDGED") return "active";
+    // Both "claimed" and "walking over" are active work. Without the
+    // second one, an ON_MY_WAY request falls through to the age check
+    // below and gets flagged delayed while somebody is mid-stride.
+    if (it.status === "ACKNOWLEDGED" || it.status === "ON_MY_WAY") return "active";
     const age = now - new Date(it.createdAt).getTime();
     return age >= DELAYED_THRESHOLD_MS ? "delayed" : "pending";
   }
@@ -171,8 +174,11 @@ export function RequestsList({
   // Sort: delayed first, then pending, then active, then completed.
   // Within a status, newer first for live work and most-recent-resolved
   // first for the completed tab.
+  // ON_MY_WAY sits after ACKNOWLEDGED: somebody is already walking to
+  // that table, so it needs a manager's attention less than a request
+  // that has merely been claimed.
   const STATUS_RANK: Record<LiveRequest["status"], number> = {
-    ESCALATED: 0, PENDING: 1, ACKNOWLEDGED: 2, RESOLVED: 3,
+    ESCALATED: 0, PENDING: 1, ACKNOWLEDGED: 2, ON_MY_WAY: 3, RESOLVED: 4,
   };
   const sorted = [...visible].sort((a, b) => {
     const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];

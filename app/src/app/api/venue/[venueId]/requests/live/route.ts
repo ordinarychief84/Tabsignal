@@ -54,7 +54,7 @@ export async function GET(_req: Request, ctx: { params: { venueId: string } }) {
     where: {
       venueId: ctx.params.venueId,
       OR: [
-        { status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] } },
+        { status: { in: ["PENDING", "ACKNOWLEDGED", "ON_MY_WAY", "ESCALATED"] } },
         { status: "RESOLVED", resolvedAt: { gte: oneHourAgo } },
       ],
     },
