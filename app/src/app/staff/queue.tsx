@@ -515,12 +515,24 @@ export function StaffQueue({
 
   const showFilter = assignedTableIds.length > 0;
 
-  // Filter-aware empty copy — see the note at the render site below.
-  // `items` (not the filtered set) decides "Floor is quiet": that phrasing
-  // is a claim about the venue, so it must only appear when the venue
-  // really has nothing open.
+  // Empty copy has to describe what is actually empty — see the note at
+  // the render site. Two axes, and both have caught this out:
+  //
+  //   FILTER: "Floor is quiet" is a claim about the venue, so it needs
+  //           `items`, not the filtered set.
+  //   TAB:    "Nothing on your tables" is a claim about ALL your work,
+  //           so it needs every open request of yours, not just the ones
+  //           in the selected bucket. Without this the Pending tab said
+  //           nothing needed you while the Active tab held a live
+  //           request — which sends a server away from a waiting table.
+  const yoursOpen = items.filter(
+    it =>
+      it.status !== "RESOLVED" &&
+      (!showFilter || !it.tableId || assignedTableIds.includes(it.tableId)),
+  ).length;
+
   const emptyMessage =
-    showFilter && filter === "yours"
+    showFilter && filter === "yours" && yoursOpen === 0
       ? "Nothing on your tables right now."
       : items.length === 0
         ? "Floor is quiet."
@@ -655,7 +667,7 @@ export function StaffQueue({
             type="button"
             onClick={() => setFilter("yours")}
             className={[
-              "rounded-lg px-3 py-1.5 font-medium transition-colors",
+              "min-h-[40px] rounded-lg px-3.5 font-medium transition-colors",
               filter === "yours" ? "bg-chartreuse text-slate" : "text-slate/60 hover:text-slate",
             ].join(" ")}
           >
@@ -665,7 +677,7 @@ export function StaffQueue({
             type="button"
             onClick={() => setFilter("all")}
             className={[
-              "rounded-lg px-3 py-1.5 font-medium transition-colors",
+              "min-h-[40px] rounded-lg px-3.5 font-medium transition-colors",
               filter === "all" ? "bg-chartreuse text-slate" : "text-slate/60 hover:text-slate",
             ].join(" ")}
           >
@@ -695,7 +707,9 @@ export function StaffQueue({
               type="button"
               onClick={() => setTab(t.id)}
               className={[
-                "rounded-lg border px-3 py-1.5 font-medium transition-colors",
+                // 40px minimum. These are tapped mid-service, often with
+                // wet hands; 29px was a target sized for a mouse.
+                "min-h-[40px] rounded-lg border px-3.5 font-medium transition-colors",
                 isActive
                   ? (isDelayed ? "border-coral bg-coral text-slate" : "border-chartreuse bg-chartreuse text-slate")
                   : (isDelayed ? "border-coral/40 text-coral hover:border-coral" : "border-umber-soft/40 text-slate/60 hover:text-slate"),
