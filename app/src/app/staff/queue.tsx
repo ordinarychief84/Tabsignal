@@ -6,6 +6,7 @@ import { getSocket, joinRoom } from "@/lib/socket";
 // takes seconds and is used for the per-row timers. Aliased rather than
 // merged so neither caller has to think about which unit it is getting.
 import { computeMultiCall, formatAge as formatAgeMs } from "@/lib/staff/multi-call";
+import { alertForRequest, seedAnnounced } from "@/lib/staff/alert";
 import {
   SERVICE_THRESHOLD_DEFAULTS,
   URGENCY_LABEL,
@@ -78,6 +79,9 @@ export function StaffQueue({
   const [items, setItems] = useState<Item[]>([]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  // False until the first successful load. Stops the queue announcing
+  // every request that was already open when the app opened.
+  const seeded = useRef(false);
   // The venue's own promise, sent with every poll. Starts at the shipped
   // defaults so the first paint isn't blank, then follows the venue.
   const [thresholds, setThresholds] = useState<ServiceThresholds>(
@@ -161,8 +165,22 @@ export function StaffQueue({
       });
       if (!res.ok) return;
       const data = await res.json();
-      setItems(data.items ?? []);
+      const incoming: Item[] = data.items ?? [];
+      setItems(incoming);
       if (data.thresholds) setThresholds(data.thresholds);
+
+      // The poll is the safety net for when the socket is down, so it
+      // has to alert too — otherwise a venue with flaky wifi gets silent
+      // requests. But the FIRST load must not announce a queue that was
+      // already there, so it seeds the dedupe set instead of firing.
+      if (!seeded.current) {
+        seedAnnounced(incoming.map(i => i.id));
+        seeded.current = true;
+      } else {
+        for (const item of incoming) {
+          if (item.status === "PENDING") alertForRequest(item.id);
+        }
+      }
     } catch {
       // swallow — next event or poll will reconcile
     }
@@ -180,6 +198,12 @@ export function StaffQueue({
         if (prev.some(i => i.id === request.id)) return prev;
         return [request, ...prev];
       });
+      // A server is not looking at the screen — that is the premise of
+      // the whole product. A request that only changes some pixels has
+      // not really arrived. alertForRequest dedupes by id, so the socket
+      // event and the poll below can both call it for the same request
+      // without buzzing twice.
+      alertForRequest(request.id);
     }
 
     function onAck({ request }: { request: Partial<Item> & { id: string } }) {
