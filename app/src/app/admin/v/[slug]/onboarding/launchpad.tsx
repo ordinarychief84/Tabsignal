@@ -26,7 +26,7 @@ const VENUE_TYPES = [
 ] as const;
 
 const BRAND_SWATCHES = [
-  "#C8634F", "#8A6F2E", "#6F9586", "#4E6E8E", "#7B5C46", "#232130", "#A34E68", "#527A5C",
+  "#D97878", "#8A6F2E", "#3F6B54", "#4E6E8E", "#7B5C46", "#34263F", "#A34E68", "#527A5C",
 ];
 
 type Props = {
@@ -206,7 +206,7 @@ export function Launchpad(props: Props) {
               <label className="ml-1 inline-flex cursor-pointer items-center gap-2 text-xs text-slate/60">
                 <input
                   type="color"
-                  value={brandColor ?? "#C8634F"}
+                  value={brandColor ?? "#D97878"}
                   onChange={e => setBrandColor(e.target.value)}
                   className="h-9 w-9 cursor-pointer rounded-full border border-slate/20 bg-white p-0.5"
                 />

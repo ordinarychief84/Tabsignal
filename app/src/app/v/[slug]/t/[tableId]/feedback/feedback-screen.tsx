@@ -98,7 +98,7 @@ export function FeedbackScreen({
   if (phase === "rating") {
     return (
       <Shell>
-        <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+        <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-plum">
           How was your experience tonight?
         </h1>
         <ul className="mt-8 space-y-2.5">
@@ -111,10 +111,10 @@ export function FeedbackScreen({
                   setTags([]);
                   setPhase("tags");
                 }}
-                className="flex min-h-[64px] w-full items-center gap-4 rounded-2xl bg-white px-5 text-left ring-1 ring-umber-soft/30 transition-transform active:scale-[0.99]"
+                className="flex min-h-[64px] w-full items-center gap-4 rounded-2xl border border-sandstone bg-surface px-5 text-left transition-all hover:border-saffron hover:bg-surface-hover active:scale-[0.99]"
               >
                 <span aria-hidden className="text-[30px]">{choice.face}</span>
-                <span className="text-[17px] font-medium">{choice.label}</span>
+                <span className="text-[17px] font-medium text-plum">{choice.label}</span>
               </button>
             </li>
           ))}
@@ -128,10 +128,10 @@ export function FeedbackScreen({
   if (phase === "tags") {
     return (
       <Shell>
-        <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+        <h1 className="text-[24px] font-semibold leading-tight tracking-tight text-plum">
           {positive ? "Glad to hear it!" : "We're sorry we missed the mark."}
         </h1>
-        <p className="mt-2 text-[15px] text-slate/65">
+        <p className="mt-2 text-[15px] text-graphite">
           {positive ? "What stood out?" : "What could we have done better?"}
         </p>
 
@@ -147,10 +147,15 @@ export function FeedbackScreen({
                   onClick={() => toggleTag(tag.id)}
                   aria-pressed={selected}
                   className={[
-                    "min-h-[44px] rounded-full border px-4 text-[14px] transition-all",
+                    "min-h-[44px] rounded-full border px-4 text-[14px] transition-all active:scale-95",
                     selected
-                      ? "border-transparent bg-slate font-medium text-oat"
-                      : "border-umber-soft/50 bg-white text-slate",
+                      ? positive
+                        // §14: positive selections read as Fresh Mint.
+                        ? "border-mint bg-mint font-medium text-mint-deep"
+                        // §15: negative uses Rose Clay softly — an
+                        // indicator, never a punishment.
+                        : "border-clay-soft bg-clay-soft font-medium text-clay-deep"
+                      : "border-sandstone bg-surface text-graphite hover:border-line-strong",
                   ].join(" ")}
                 >
                   {label}
@@ -167,7 +172,7 @@ export function FeedbackScreen({
             onChange={e => setNote(e.target.value)}
             maxLength={400}
             rows={3}
-            className="mt-1.5 w-full rounded-2xl border border-umber-soft/40 bg-white p-3.5 text-[15px] outline-none focus:border-sea focus:ring-2 focus:ring-sea/30"
+            className="mt-1.5 w-full rounded-2xl border border-sandstone bg-surface p-3.5 text-[15px] text-plum outline-none focus:border-plum focus:ring-2 focus:ring-saffron"
           />
         </label>
 
@@ -186,7 +191,7 @@ export function FeedbackScreen({
             if (!positive && serviceRecoveryEnabled) setPhase("recovery");
             else void submit(false);
           }}
-          className="mt-7 min-h-[56px] w-full rounded-2xl bg-slate text-[16px] font-semibold text-oat disabled:opacity-60"
+          className="mt-7 min-h-[56px] w-full rounded-2xl bg-saffron text-[16px] font-semibold text-plum transition-all hover:brightness-[0.97] disabled:opacity-60"
         >
           {busy ? "Sending…" : "Continue"}
         </button>
@@ -199,10 +204,10 @@ export function FeedbackScreen({
   if (phase === "recovery") {
     return (
       <Shell>
-        <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+        <h1 className="text-[24px] font-semibold leading-tight tracking-tight text-plum">
           Would you like a manager to check in before you leave?
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-slate/65">
+        <p className="mt-2 text-[15px] leading-relaxed text-graphite">
           Only if you&rsquo;d like to — either answer is completely fine.
         </p>
 
@@ -217,7 +222,7 @@ export function FeedbackScreen({
             type="button"
             disabled={busy}
             onClick={() => void submit(true)}
-            className="min-h-[56px] w-full rounded-2xl bg-slate text-[16px] font-semibold text-oat disabled:opacity-60"
+            className="min-h-[56px] w-full rounded-2xl bg-saffron text-[16px] font-semibold text-plum transition-all hover:brightness-[0.97] disabled:opacity-60"
           >
             {busy ? "Sending…" : "Yes, please"}
           </button>
@@ -226,7 +231,7 @@ export function FeedbackScreen({
             type="button"
             disabled={busy}
             onClick={() => void submit(false)}
-            className="min-h-[56px] w-full rounded-2xl bg-white text-[16px] font-medium text-slate ring-1 ring-umber-soft/40 disabled:opacity-60"
+            className="min-h-[56px] w-full rounded-2xl border border-sandstone bg-surface text-[16px] font-medium text-plum disabled:opacity-60"
           >
             No, thank you
           </button>
@@ -257,14 +262,14 @@ export function FeedbackScreen({
       <div className="text-center">
         <span
           aria-hidden
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-chartreuse text-3xl"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mint text-3xl text-mint-deep"
         >
           ✓
         </span>
         <h1 className="mt-6 text-[26px] font-semibold leading-tight tracking-tight">
           Thanks for visiting {venueName}.
         </h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-slate/65">
+        <p className="mt-3 text-[15px] leading-relaxed text-graphite">
           We hope to see you again soon.
         </p>
         {reviewUrl ? (
@@ -334,10 +339,10 @@ function ContactCapture({
 
   return (
     <Shell>
-      <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+      <h1 className="text-[24px] font-semibold leading-tight tracking-tight text-plum">
         Want to stay connected with {venueName}?
       </h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-slate/65">
+      <p className="mt-2 text-[15px] leading-relaxed text-graphite">
         Get occasional updates about special events, new menus and offers.
       </p>
 
@@ -350,7 +355,7 @@ function ContactCapture({
           value={phone}
           onChange={e => setPhone(e.target.value)}
           placeholder="(555) 123-4567"
-          className="mt-1.5 min-h-[52px] w-full rounded-2xl border border-umber-soft/40 bg-white px-4 text-[16px] outline-none focus:border-sea focus:ring-2 focus:ring-sea/30"
+          className="mt-1.5 min-h-[52px] w-full rounded-2xl border border-sandstone bg-surface px-4 text-[16px] text-plum outline-none focus:border-plum focus:ring-2 focus:ring-saffron"
         />
       </label>
 
@@ -376,7 +381,7 @@ function ContactCapture({
         type="button"
         disabled={busy || !phone.trim()}
         onClick={save}
-        className="mt-6 min-h-[56px] w-full rounded-2xl bg-slate text-[16px] font-semibold text-oat disabled:opacity-50"
+        className="mt-6 min-h-[56px] w-full rounded-2xl bg-saffron text-[16px] font-semibold text-plum transition-all hover:brightness-[0.97] disabled:opacity-50"
       >
         {busy ? "Saving…" : "Keep me in the loop"}
       </button>
@@ -386,7 +391,7 @@ function ContactCapture({
       <button
         type="button"
         onClick={onDone}
-        className="mt-3 min-h-[52px] w-full rounded-2xl bg-white text-[15px] font-medium text-slate ring-1 ring-umber-soft/40"
+        className="mt-3 min-h-[52px] w-full rounded-2xl border border-sandstone bg-surface text-[15px] font-medium text-plum"
       >
         No thanks
       </button>
@@ -396,7 +401,7 @@ function ContactCapture({
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-[100dvh] bg-oat px-6 text-slate">
+    <main className="min-h-[100dvh] bg-ivory px-6 text-plum">
       <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center py-12">
         {children}
       </div>

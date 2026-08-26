@@ -225,7 +225,7 @@ function Field({
 /** Tiny client-side strength estimate. Purely for UI feedback — server
  *  enforces 12–128 chars regardless of label. */
 function scorePassword(pw: string): { pct: number; color: string; label: string } {
-  if (pw.length === 0) return { pct: 0, color: "#E8B8B8", label: "" };
+  if (pw.length === 0) return { pct: 0, color: "#F7E4E4", label: "" };
   const len = Math.min(pw.length / 18, 1);
   const variety =
     (/[a-z]/.test(pw) ? 1 : 0) +
@@ -233,7 +233,7 @@ function scorePassword(pw: string): { pct: number; color: string; label: string 
     (/\d/.test(pw) ? 1 : 0) +
     (/[^a-zA-Z0-9]/.test(pw) ? 1 : 0);
   const score = len * 0.55 + (variety / 4) * 0.45;
-  if (score < 0.4) return { pct: Math.max(15, score * 100), color: "#E8B8B8", label: "Weak — add length or symbols" };
-  if (score < 0.7) return { pct: score * 100, color: "#B7A39A", label: "OK — could be stronger" };
-  return { pct: Math.min(100, score * 100), color: "#C7D6CF", label: "Strong" };
+  if (score < 0.4) return { pct: Math.max(15, score * 100), color: "#F7E4E4", label: "Weak — add length or symbols" };
+  if (score < 0.7) return { pct: score * 100, color: "#E8E0D7", label: "OK — could be stronger" };
+  return { pct: Math.min(100, score * 100), color: "#CFE3D8", label: "Strong" };
 }

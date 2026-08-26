@@ -89,14 +89,14 @@ export function RecoveryQueue({ venueId, canResolve }: { venueId: string; canRes
   return (
     <section
       aria-live="assertive"
-      className="mb-6 overflow-hidden rounded-2xl border-2 border-coral bg-coral/[0.06]"
+      className="mb-6 overflow-hidden rounded-2xl border border-clay bg-service-overdue"
     >
-      <header className="flex items-center justify-between border-b border-coral/25 px-5 py-3">
+      <header className="flex items-center justify-between border-b border-clay/30 px-5 py-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-coral">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-clay-deep">
             Someone wants a word
           </p>
-          <p className="mt-0.5 text-[12px] text-slate/65">
+          <p className="mt-0.5 text-[12px] text-graphite">
             {items.length === 1
               ? "A guest asked for a manager and is still here."
               : `${items.length} guests asked for a manager and are still here.`}
@@ -104,24 +104,24 @@ export function RecoveryQueue({ venueId, canResolve }: { venueId: string; canRes
         </div>
       </header>
 
-      <ul className="divide-y divide-coral/15">
+      <ul className="divide-y divide-clay/20">
         {items.map(item => (
           <li key={item.id} className="flex flex-wrap items-start gap-4 px-5 py-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-base font-semibold text-slate">{item.tableLabel}</span>
-                <span className="font-mono text-[12px] tabular-nums text-coral">
+                <span className="text-base font-semibold text-plum">{item.tableLabel}</span>
+                <span className="font-mono text-[12px] tabular-nums text-clay-deep">
                   {item.rating}/5
                 </span>
                 {item.serverName ? (
-                  <span className="text-[12px] text-slate/55">served by {item.serverName}</span>
+                  <span className="text-[12px] text-graphite">served by {item.serverName}</span>
                 ) : null}
               </div>
 
               {item.tags.length > 0 ? (
                 <ul className="mt-1.5 flex flex-wrap gap-1.5">
                   {item.tags.map(t => (
-                    <li key={t} className="rounded-full bg-white px-2.5 py-0.5 text-[11px] text-slate/70">
+                    <li key={t} className="rounded-full bg-surface px-2.5 py-0.5 text-[11px] text-graphite">
                       {t}
                     </li>
                   ))}
@@ -131,7 +131,7 @@ export function RecoveryQueue({ venueId, canResolve }: { venueId: string; canRes
               {/* Their own words. "The wait" and "the steak was cold" need
                   completely different responses. */}
               {item.note ? (
-                <p className="mt-2 text-[13px] leading-relaxed text-slate/75">
+                <p className="mt-2 text-[13px] leading-relaxed text-graphite">
                   &ldquo;{item.note}&rdquo;
                 </p>
               ) : null}
@@ -139,7 +139,7 @@ export function RecoveryQueue({ venueId, canResolve }: { venueId: string; canRes
 
             <div className="flex shrink-0 items-center gap-3">
               <span
-                className="font-mono text-[13px] tabular-nums text-coral"
+                className="font-mono text-[13px] tabular-nums text-clay-deep"
                 title="How long they've been waiting"
               >
                 {waitingFor(now, item.createdAt)}
@@ -149,12 +149,12 @@ export function RecoveryQueue({ venueId, canResolve }: { venueId: string; canRes
                   type="button"
                   disabled={busy === item.id}
                   onClick={() => void resolve(item.id)}
-                  className="min-h-[40px] rounded-xl bg-slate px-4 text-[13px] font-medium text-oat disabled:opacity-60"
+                  className="min-h-[40px] rounded-xl bg-mint px-4 text-[13px] font-medium text-mint-deep transition-all hover:brightness-95 disabled:opacity-60"
                 >
                   {busy === item.id ? "…" : "I've spoken to them"}
                 </button>
               ) : (
-                <span className="text-[12px] text-slate/50">Needs a manager</span>
+                <span className="text-[12px] text-graphite">Needs a manager</span>
               )}
             </div>
           </li>

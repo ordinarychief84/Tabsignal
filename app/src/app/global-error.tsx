@@ -47,7 +47,7 @@ export default function GlobalError({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F3EFE7",
+          background: "#FBF8F2",
           color: "#25303A",
           fontFamily:
             "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
@@ -69,7 +69,7 @@ export default function GlobalError({
               borderRadius: "9999px",
               border: "none",
               background: "#25303A",
-              color: "#F3EFE7",
+              color: "#FBF8F2",
               padding: "0.5rem 1.25rem",
               fontSize: "0.875rem",
               cursor: "pointer",

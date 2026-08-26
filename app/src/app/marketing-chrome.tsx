@@ -26,7 +26,7 @@ import { MarketingMobileNav } from "./marketing-mobile-nav";
  * a short detour using a Material `restaurant` glyph.
  */
 export function Logo({ variant = "dark" }: { variant?: "dark" | "light" }) {
-  const wordColor = variant === "light" ? "#FFFFFF" : "#0d0b19";
+  const wordColor = variant === "light" ? "#FFFFFF" : "#34263F";
   return (
     <Link href="/" aria-label="TabCall home" className="inline-flex items-center gap-2 leading-none">
       <span
@@ -37,11 +37,11 @@ export function Logo({ variant = "dark" }: { variant?: "dark" | "light" }) {
           <path
             d="M 6 11 Q 12 6, 18 11"
             fill="none"
-            stroke="#F2E7B7"
+            stroke="#F4C95D"
             strokeWidth="2"
             strokeLinecap="round"
           />
-          <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+          <circle cx="12" cy="16" r="2" fill="#F4C95D" />
         </svg>
       </span>
       <span className="text-2xl font-bold tracking-tight" style={{ color: wordColor }}>

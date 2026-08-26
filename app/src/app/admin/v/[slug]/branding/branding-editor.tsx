@@ -44,9 +44,9 @@ export function BrandingEditor({ slug, venueName, initial, legacy }: Props) {
   const effective = {
     logoUrl: state.logoUrl ?? legacy.logoUrl,
     bannerImageUrl: state.bannerImageUrl,
-    primaryColor: state.primaryColor ?? legacy.brandColor ?? "#6F9586",
-    secondaryColor: state.secondaryColor ?? "#0B1722",
-    accentColor: state.accentColor ?? "#D7FF3C",
+    primaryColor: state.primaryColor ?? legacy.brandColor ?? "#3F6B54",
+    secondaryColor: state.secondaryColor ?? "#34263F",
+    accentColor: state.accentColor ?? "#F4C95D",
     fontFamily: state.fontFamily ?? "Inter",
     welcomeMessage:
       state.welcomeMessage ?? legacy.guestWelcomeMessage ?? `Welcome to ${venueName}.`,
@@ -111,21 +111,21 @@ export function BrandingEditor({ slug, venueName, initial, legacy }: Props) {
             label="Primary"
             help="Main brand color. Used for headers + primary buttons in the guest UI."
             value={state.primaryColor}
-            placeholder={legacy.brandColor ?? "#6F9586"}
+            placeholder={legacy.brandColor ?? "#3F6B54"}
             onSave={v => patch({ primaryColor: v })}
           />
           <ColorRow
             label="Secondary"
             help="Supporting color for body sections and secondary buttons."
             value={state.secondaryColor}
-            placeholder="#0B1722"
+            placeholder="#34263F"
             onSave={v => patch({ secondaryColor: v })}
           />
           <ColorRow
             label="Accent"
             help="Highlight color for badges, hover, and 'featured' callouts."
             value={state.accentColor}
-            placeholder="#D7FF3C"
+            placeholder="#F4C95D"
             onSave={v => patch({ accentColor: v })}
           />
         </Card>
@@ -538,12 +538,12 @@ function GuestPreview({
 // the preview readable when the manager picks a pastel or near-black.
 function contrastingText(hex: string): string {
   const v = hex.replace("#", "");
-  if (v.length !== 6) return "#0B1722";
+  if (v.length !== 6) return "#34263F";
   const r = parseInt(v.slice(0, 2), 16);
   const g = parseInt(v.slice(2, 4), 16);
   const b = parseInt(v.slice(4, 6), 16);
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? "#0B1722" : "#FAF6EE";
+  return lum > 0.6 ? "#34263F" : "#FAF6EE";
 }
 
 function timeSince(ts: number): string {

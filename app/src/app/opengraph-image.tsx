@@ -21,10 +21,10 @@ export default function OpenGraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 72,
-          backgroundColor: "#0d0b19",
+          backgroundColor: "#34263F",
           backgroundImage:
             "radial-gradient(60% 60% at 85% 10%, rgba(214,243,78,0.18) 0%, rgba(13,11,25,0) 60%)",
-          color: "#f7f5f2",
+          color: "#FBF8F2",
           fontFamily: "sans-serif",
         }}
       >

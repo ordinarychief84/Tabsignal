@@ -33,15 +33,15 @@ describe("text stays readable on any brand colour", () => {
     ]) {
       const p = guestPalette(brand);
       const chosen = contrast(p.base, p.on);
-      const other = contrast(p.base, p.on === "#ffffff" ? "#232130" : "#ffffff");
+      const other = contrast(p.base, p.on === "#ffffff" ? "#34263f" : "#ffffff");
       expect(chosen).toBeGreaterThanOrEqual(other);
     }
   });
 
-  test("a bright yellow gets dark text, not white", () => {
+  test("a bright yellow gets Deep Plum text, not white", () => {
     // The classic failure: yellow is "light" so white text looks right in
     // a spec and is invisible on a phone.
-    expect(guestPalette("#ffd60a").on).toBe("#232130");
+    expect(guestPalette("#ffd60a").on).toBe("#34263f");
   });
 
   test("a deep navy gets white text", () => {
@@ -63,7 +63,7 @@ describe("input tolerance", () => {
 
   test("falls back rather than throwing on junk", () => {
     for (const bad of [null, undefined, "", "not a colour", "#12345", "rgb(1,2,3)"]) {
-      expect(guestPalette(bad).base).toBe("#f2e7b7");
+      expect(guestPalette(bad).base).toBe("#f4c95d");
     }
   });
 });

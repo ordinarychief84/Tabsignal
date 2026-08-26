@@ -31,7 +31,11 @@ export type GuestPalette = {
 };
 
 // Lowercase so it matches what normalizeHex returns for real input.
-const FALLBACK = "#f2e7b7";
+// Saffron — the brand accent, so a venue that never sets a colour
+// still reads as TabCall rather than as nothing.
+const FALLBACK = "#f4c95d";
+/** Deep Plum — the brand's text colour on light surfaces. */
+const TEXT_ON_LIGHT = "#34263f";
 
 export function guestPalette(brandColor: string | null | undefined): GuestPalette {
   const base = normalizeHex(brandColor) ?? FALLBACK;
@@ -128,16 +132,38 @@ function hslToHex(h: number, s: number, l: number): string {
  * be "light" in HSL and still need white text.
  */
 function readableOn(hex: string): string {
+  // Compare against the ACTUAL candidates. This used to assume the dark
+  // option was pure black (luminance 0) while returning Deep Plum, so for
+  // some brand colours it confidently picked the LOWER-contrast option —
+  // caught by the test that checks the choice really is the better one.
+  const candidates = [TEXT_ON_LIGHT, "#ffffff"];
+  let best = candidates[0]!;
+  let bestRatio = -1;
+  for (const candidate of candidates) {
+    const ratio = contrastRatio(hex, candidate);
+    if (ratio > bestRatio) {
+      bestRatio = ratio;
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+/** Relative luminance, per WCAG. */
+function luminance(hex: string): number {
   const [r, g, b] = hexToRgb(hex).map(v => {
     const c = v / 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   }) as [number, number, number];
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  // Contrast against white vs against near-black.
-  const onWhite = 1.05 / (luminance + 0.05);
-  const onDark = (luminance + 0.05) / 0.05;
-  return onDark >= onWhite ? "#232130" : "#ffffff";
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
+
+function contrastRatio(a: string, b: string): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));

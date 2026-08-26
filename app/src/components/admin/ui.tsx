@@ -31,7 +31,7 @@ export function PageHeader({
   subtitle?: string;
   actions?: ReactNode;
 }) {
-  const eyebrowClass = "text-[11px] font-semibold uppercase tracking-[0.18em] text-umber";
+  const eyebrowClass = "text-[11px] font-semibold uppercase tracking-[0.18em] text-graphite";
   return (
     <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
@@ -47,7 +47,7 @@ export function PageHeader({
           <p className={eyebrowClass}>{eyebrow}</p>
         ) : null}
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate md:text-[28px]">{title}</h1>
-        {subtitle ? <p className="mt-1.5 max-w-2xl text-sm text-slate/60">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-1.5 max-w-2xl text-sm text-graphite">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
     </header>
@@ -68,17 +68,17 @@ export function StatCard({
   trend?: { dir: "up" | "down" | "flat"; text: string };
 }) {
   const trendColor =
-    trend?.dir === "up" ? "text-sea" : trend?.dir === "down" ? "text-coral" : "text-slate/45";
+    trend?.dir === "up" ? "text-sea" : trend?.dir === "down" ? "text-coral" : "text-text-muted";
   const trendGlyph = trend?.dir === "up" ? "↑" : trend?.dir === "down" ? "↓" : "→";
   return (
-    <div className="rounded-2xl border border-slate/10 bg-white px-5 py-4 shadow-card">
-      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate/50">{label}</p>
+    <div className="rounded-2xl border border-sandstone bg-surface px-5 py-4 shadow-card">
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">{label}</p>
       <p className="mt-2 text-[28px] font-semibold leading-none tracking-tight text-slate tabular-nums">
         {value}
       </p>
       <div className="mt-1.5 flex items-center gap-1.5">
         {trend ? <span className={`text-[11px] font-medium ${trendColor}`}>{trendGlyph} {trend.text}</span> : null}
-        {hint ? <span className="text-[11px] text-slate/45">{hint}</span> : null}
+        {hint ? <span className="text-[11px] text-text-muted">{hint}</span> : null}
       </div>
     </div>
   );
@@ -103,9 +103,9 @@ export function Panel({
   padded?: boolean;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate/10 bg-white shadow-card">
+    <section className="overflow-hidden rounded-2xl border border-sandstone bg-surface shadow-card">
       {title || action ? (
-        <header className="flex items-center justify-between gap-3 border-b border-slate/10 px-5 py-3.5">
+        <header className="flex items-center justify-between gap-3 border-b border-sandstone px-5 py-3.5">
           {title ? <h2 className="text-sm font-semibold text-slate">{title}</h2> : <span />}
           {action}
         </header>
@@ -122,7 +122,7 @@ export function DataTable({ head, children }: { head: ReactNode; children: React
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left text-sm">
         <thead>
-          <tr className="border-b border-slate/10 text-[11px] font-semibold uppercase tracking-wider text-slate/45">
+          <tr className="border-b border-sandstone text-[11px] font-semibold uppercase tracking-wider text-text-muted">
             {head}
           </tr>
         </thead>
@@ -153,7 +153,7 @@ export function Td({
         "px-5 py-3 align-middle",
         right ? "text-right" : "",
         mono ? "font-mono text-[12px]" : "",
-        muted ? "text-slate/50" : "text-slate",
+        muted ? "text-text-muted" : "text-slate",
       ].join(" ")}
     >
       {children}
@@ -183,14 +183,27 @@ const BADGE_TONE: Record<Tone, string> = {
 };
 
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: Tone }) {
+  // §22: colour alone is never the status. Every badge carries its word.
+  const tones: Record<Tone, string> = {
+    neutral: "bg-surface-muted text-graphite",
+    green:   "bg-mint text-mint-deep",          // acknowledged / completed
+    sea:     "bg-mint text-mint-deep",
+    amber:   "bg-saffron-soft text-saffron-deep", // pending / attention
+    coral:   "bg-clay-soft text-clay-deep",     // overdue / failed
+    slate:   "bg-plum text-ivory",
+  };
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${BADGE_TONE[tone]}`}
+      className={[
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+        tones[tone],
+      ].join(" ")}
     >
       {children}
     </span>
   );
 }
+
 
 /* ------------------------------ EmptyState ----------------------------- */
 
@@ -206,7 +219,7 @@ export function EmptyState({
   return (
     <div className="rounded-2xl border border-dashed border-slate/15 bg-white/50 px-6 py-14 text-center">
       <p className="text-sm font-medium text-slate">{title}</p>
-      {body ? <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate/50">{body}</p> : null}
+      {body ? <p className="mx-auto mt-1.5 max-w-sm text-sm text-text-muted">{body}</p> : null}
       {action ? (
         <Link
           href={action.href}
@@ -228,14 +241,22 @@ export function ButtonLink({
 }: {
   href: string;
   children: ReactNode;
-  variant?: "primary" | "ghost";
+  variant?: "primary" | "ghost" | "danger";
 }) {
+  // §31: Saffron is the primary CTA, with Deep Plum text. Deep Plum is
+  // reserved for surfaces and typography rather than being the default
+  // button, so the accent stays recognisable as "this is the action".
   const cls =
     variant === "primary"
-      ? "bg-slate text-oat hover:bg-slate/90"
-      : "border border-slate/15 bg-white text-slate hover:border-slate/30";
+      ? "bg-saffron text-plum hover:brightness-[0.97]"
+      : variant === "danger"
+        ? "bg-clay text-white hover:brightness-[0.95]"
+        : "border border-sandstone bg-surface text-plum hover:border-line-strong";
   return (
-    <Link href={href} className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium ${cls}`}>
+    <Link
+      href={href}
+      className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum ${cls}`}
+    >
       {children}
     </Link>
   );
@@ -271,7 +292,7 @@ export function PageSkeleton({ rows = 5 }: { rows?: number }) {
         <Skeleton className="mt-2.5 h-7 w-56" />
         <Skeleton className="mt-2.5 h-4 w-80 max-w-full" />
       </div>
-      <div className="overflow-hidden rounded-2xl border border-slate/10 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-sandstone bg-surface">
         {Array.from({ length: rows }, (_, i) => (
           <div
             key={i}

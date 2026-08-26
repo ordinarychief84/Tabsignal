@@ -200,7 +200,7 @@ function HeroCssScene() {
       className="relative h-[480px] w-full md:h-[560px]"
       style={{
         background:
-          "linear-gradient(180deg, #fff8f6 0%, #fff1eb 60%, #fae4da 100%)",
+          "linear-gradient(180deg, #FBF8F2 0%, #fff1eb 60%, #fae4da 100%)",
       }}
     >
       <span
@@ -228,7 +228,7 @@ const heroQrDataUrl = QRCode.toDataURL(HERO_QR_URL, {
   errorCorrectionLevel: "M",
   margin: 2, // quiet zone baked in — the white card alone is too thin at this render size
   width: 480,
-  color: { dark: "#0d0b19", light: "#ffffff" }, // primary-deep on white
+  color: { dark: "#34263F", light: "#ffffff" }, // primary-deep on white
 });
 
 async function HeroQRTent() {
@@ -244,11 +244,11 @@ async function HeroQRTent() {
               <path
                 d="M 6 11 Q 12 6, 18 11"
                 fill="none"
-                stroke="#F2E7B7"
+                stroke="#F4C95D"
                 strokeWidth="2.2"
                 strokeLinecap="round"
               />
-              <circle cx="12" cy="16" r="2" fill="#F2E7B7" />
+              <circle cx="12" cy="16" r="2" fill="#F4C95D" />
             </svg>
           </span>
           <span className="text-[11px] font-bold text-primary-deep">TabCall</span>
@@ -706,7 +706,7 @@ function FinalCta() {
             className="h-full w-full opacity-25"
             style={{
               background:
-                "radial-gradient(60% 60% at 30% 30%, #7B5C46 0%, #2F2D3E 70%), radial-gradient(50% 50% at 80% 70%, #c8634f 0%, transparent 70%)",
+                "radial-gradient(60% 60% at 30% 30%, #7B5C46 0%, #2F2D3E 70%), radial-gradient(50% 50% at 80% 70%, #D97878 0%, transparent 70%)",
             }}
           />
         )}
