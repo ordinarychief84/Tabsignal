@@ -65,14 +65,18 @@ describe("the save control explains itself", () => {
 });
 
 describe("a long menu is navigable", () => {
-  test("categories get a jump strip", () => {
+  test("a guest can jump to any section", () => {
+    // Was a horizontal chip strip, now a browse sheet — the strip
+    // worked at four categories and hid the last six at eleven, which
+    // is the shape of a real bar menu. The requirement is unchanged:
+    // reaching the wine list must not mean scrolling every cocktail.
     expect(HOME).toContain("scrollIntoView");
-    expect(HOME).toMatch(/#cat-\$\{group\.id\}/);
+    expect(HOME).toContain("<MenuBrowser");
   });
 
-  test("the strip only appears when there's more than one category", () => {
+  test("the jump control only appears when there's more than one section", () => {
     // One category doesn't need navigating.
-    expect(HOME).toMatch(/grouped\.length > 1 \?/);
+    expect(HOME).toMatch(/sections\.length > 1 \?/);
   });
 
   test("sections offset for the sticky chrome above them", () => {

@@ -8,6 +8,8 @@ import { ImportPanel } from "./import-panel";
 type Category = {
   id: string;
   name: string;
+  /** Heading above this category, e.g. "Bar". Null when it stands alone. */
+  groupName: string | null;
   sortOrder: number;
   isActive: boolean;
 };
@@ -46,7 +48,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
   const [editing, setEditing] = useState<EditableItem | null>(null);
   const [importing, setImporting] = useState(false);
   // Inline category naming: { id } for a rename, null for a new one.
-  const [namingCategory, setNamingCategory] = useState<{ id: string | null; value: string } | null>(null);
+  const [namingCategory, setNamingCategory] = useState<{ id: string | null; value: string; group: string } | null>(null);
 
   const itemsByCategory = useMemo(() => {
     const map = new Map<string | null, Item[]>();
@@ -85,23 +87,33 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
     const name = pending.value.trim();
     if (!name) { setNamingCategory(null); return; }
 
+    // Empty means "no heading", not a blank one — the guest menu would
+    // otherwise render " · Cocktails".
+    const groupName = pending.group.trim() || null;
+
     try {
       if (pending.id) {
-        await api("PATCH", `/menu/categories/${pending.id}`, { name });
-        setCategories(prev => prev.map(x => (x.id === pending.id ? { ...x, name } : x)));
+        await api("PATCH", `/menu/categories/${pending.id}`, { name, groupName });
+        setCategories(prev =>
+          prev.map(x => (x.id === pending.id ? { ...x, name, groupName } : x)),
+        );
       } else {
         const res = await api<{ id: string }>("POST", `/menu/categories`, {
           name,
+          groupName,
           sortOrder: categories.length,
         });
-        setCategories(prev => [...prev, { id: res.id, name, sortOrder: prev.length, isActive: true }]);
+        setCategories(prev => [
+          ...prev,
+          { id: res.id, name, groupName, sortOrder: prev.length, isActive: true },
+        ]);
       }
       setNamingCategory(null);
     } catch { /* api() already surfaced it */ }
   }
 
   async function renameCategory(c: Category) {
-    setNamingCategory({ id: c.id, value: c.name });
+    setNamingCategory({ id: c.id, value: c.name, group: c.groupName ?? "" });
   }
 
 
@@ -234,7 +246,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
             + New item
           </button>
           <button
-            onClick={() => setNamingCategory({ id: null, value: "" })}
+            onClick={() => setNamingCategory({ id: null, value: "", group: "" })}
             className="rounded-full border border-slate/20 px-4 py-2 text-sm text-slate hover:bg-slate/5"
           >
             + Category
@@ -260,6 +272,37 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
               placeholder="Cocktails"
               className="mt-1.5 min-h-[44px] w-full rounded-xl border border-umber-soft/40 px-3.5 text-sm outline-none focus:border-sea focus:ring-2 focus:ring-sea/25"
             />
+          </label>
+
+          {/* The heading above this category. A bar with eleven drink
+              categories wants them under one "Bar" so a guest can tell
+              which half of the menu they're in — the guest sees
+              "BAR · CRAFT COCKTAILS". Leave it empty and the category
+              stands on its own, which is right for a short menu. */}
+          <label className="mt-3 block">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-umber">
+              Grouped under
+            </span>
+            <span className="ml-2 text-[11px] text-slate/45">optional</span>
+            <input
+              list="menu-groups"
+              value={namingCategory.group}
+              onChange={e => setNamingCategory(n => (n ? { ...n, group: e.target.value } : n))}
+              onKeyDown={e => {
+                if (e.key === "Enter") void commitCategoryName();
+                if (e.key === "Escape") setNamingCategory(null);
+              }}
+              maxLength={60}
+              placeholder="Bar"
+              className="mt-1.5 min-h-[44px] w-full rounded-xl border border-umber-soft/40 px-3.5 text-sm outline-none focus:border-sea focus:ring-2 focus:ring-sea/25"
+            />
+            {/* Existing groups offered back, so a venue doesn't end up
+                with "Bar", "bar" and "BAR" as three headings. */}
+            <datalist id="menu-groups">
+              {[...new Set(categories.map(c => c.groupName).filter(Boolean))].map(g => (
+                <option key={g as string} value={g as string} />
+              ))}
+            </datalist>
           </label>
           <div className="mt-3 flex gap-2">
             <button
@@ -295,7 +338,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
       ))}
 
       <CategoryBlock
-        category={{ id: "_uncat_", name: "Uncategorized", sortOrder: 9999, isActive: true }}
+        category={{ id: "_uncat_", name: "Uncategorized", groupName: null, sortOrder: 9999, isActive: true }}
         items={itemsByCategory.get(null) ?? []}
         hideCategoryActions
         onAddItem={() => addItem(null)}

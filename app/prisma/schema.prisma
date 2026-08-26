@@ -271,10 +271,21 @@ model VenueSpecial {
 // GuestSession (kept for flexibility — comps, custom drinks, etc.) but the
 // menu drives the staff "add to tab" picker and the guest browse/pre-order
 // experience.
+// A level above category, so a long menu reads the way a printed one
+// does: "Bar → Craft Cocktails", "Food → Appetizers".
+//
+// Free text on the category rather than a MenuGroup table. A venue with
+// eleven categories needs one heading above them, not a third model with
+// its own ordering, editor and cascade rules — and the guest surface
+// only ever renders the string. Same call as Table.zone.
 model MenuCategory {
   id        String     @id @default(cuid())
   venueId   String
   name      String
+  // Optional heading above this category — "Bar", "Food", "Non-alc".
+  // Null means the category stands on its own, which is every existing
+  // row and every small menu that doesn't need the extra level.
+  groupName String?
   sortOrder Int        @default(0)
   isActive  Boolean    @default(true)
   createdAt DateTime   @default(now())

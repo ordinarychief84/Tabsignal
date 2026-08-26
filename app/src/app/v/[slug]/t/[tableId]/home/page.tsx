@@ -67,8 +67,11 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
     }),
     db.menuCategory.findMany({
       where: { venueId: resolved.venueId },
-      select: { id: true, name: true },
-      orderBy: { sortOrder: "asc" },
+      // groupName gives the guest menu its second level — "Bar ·
+      // Craft Cocktails" — and orders sections by group so a menu reads
+      // the way a printed one does.
+      select: { id: true, name: true, groupName: true },
+      orderBy: [{ groupName: "asc" }, { sortOrder: "asc" }],
     }),
     config.specials
       ? db.promotion.findMany({

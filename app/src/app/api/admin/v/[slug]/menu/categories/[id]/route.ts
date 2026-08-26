@@ -13,6 +13,9 @@ async function gateCategory(slug: string, categoryId: string) {
 
 const PatchBody = z.object({
   name: z.string().min(1).max(120).optional(),
+  // The heading above this category — "Bar", "Food". Empty string clears
+  // it, which is how a venue un-groups a category without deleting it.
+  groupName: z.string().max(60).nullable().optional(),
   sortOrder: z.number().int().min(0).max(10000).optional(),
   isActive: z.boolean().optional(),
 });
@@ -27,7 +30,14 @@ export async function PATCH(req: Request, ctx: { params: { slug: string; id: str
 
   await db.menuCategory.update({
     where: { id: ctx.params.id },
-    data: parsed,
+    data: {
+      ...parsed,
+      // Empty string means "no heading", not a heading that is blank —
+      // otherwise the guest menu renders " · Cocktails".
+      ...(parsed.groupName !== undefined
+        ? { groupName: parsed.groupName?.trim() || null }
+        : {}),
+    },
   });
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ServiceSheet } from "@/components/guest/service-sheet";
 import {
   BottomGuestNav,
@@ -16,6 +16,7 @@ import {
 } from "@/components/guest/service-status-card";
 import { WaitingRecommendation } from "@/components/guest/waiting-recommendation";
 import { PairingSuggestion } from "@/components/guest/pairing-suggestion";
+import { MenuBrowser, type BrowseGroup } from "@/components/guest/menu-browser";
 import { TrackProvider, useTrack, useTrackOnce } from "@/components/guest/track";
 import { VisitProgressCard } from "@/components/guest/visit-progress-card";
 import type { VisitProgress } from "@/lib/visit-progress";
@@ -97,7 +98,7 @@ type GuestHomeProps = {
   brandColor: string | null;
   greeting: string;
   items: Item[];
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; groupName: string | null }[];
   prompts: MoodPrompt[];
   chefsPick: {
     answerId: string;
@@ -920,84 +921,213 @@ function MenuList({
   palette,
 }: {
   items: Item[];
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; groupName: string | null }[];
   pickedIds: Set<string>;
   onSave: (item: Item) => void;
   onOpen: (item: Item) => void;
   canSave: boolean;
   palette: ReturnType<typeof guestPalette>;
 }) {
+  const [browsing, setBrowsing] = useState(false);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+
+  const sections = useMemo(
+    () =>
+      categories
+        .map(c => ({ ...c, items: items.filter(i => i.categoryId === c.id) }))
+        .filter(g => g.items.length > 0),
+    [categories, items],
+  );
+  const uncategorised = useMemo(
+    () => items.filter(i => !i.categoryId || !categories.some(c => c.id === i.categoryId)),
+    [items, categories],
+  );
+
+  /**
+   * Which section the guest is actually looking at.
+   *
+   * Drives the label on the sticky bar, so "Appetizers" up there is a
+   * fact rather than the last thing they tapped — a guest who scrolled
+   * from cocktails into food should see the bar say food.
+   */
+  useEffect(() => {
+    if (sections.length === 0) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        // At the very bottom of the document the last sections can never
+        // reach the band near the top — there is no scroll left to give
+        // them. Without this the label sticks on whatever IS up there
+        // while the guest looks at the end of the menu, and a guest who
+        // just tapped "Pasta" watches the bar say "Snacks".
+        const atBottom =
+          window.innerHeight + window.scrollY >= document.body.scrollHeight - 4;
+        if (atBottom) {
+          const last = sections[sections.length - 1];
+          if (last) setCurrentId(last.id);
+          return;
+        }
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (visible) setCurrentId(visible.target.id.replace("cat-", ""));
+      },
+      // A band near the top of the viewport: a heading counts as "where
+      // you are" once it reaches the sticky bar, not when it first peeks
+      // in at the bottom.
+      { rootMargin: "-88px 0px -70% 0px", threshold: 0 },
+    );
+    for (const s of sections) {
+      const el = document.getElementById(`cat-${s.id}`);
+      if (el) observer.observe(el);
+    }
+
+    // The observer only fires when a boundary is crossed, and reaching
+    // the bottom of the page often crosses none — so the bottom case
+    // needs its own listener or it never runs.
+    function onScroll() {
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) {
+        const last = sections[sections.length - 1];
+        if (last) setCurrentId(last.id);
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [sections]);
+
   if (items.length === 0) {
     return <p className="text-[15px] text-slate/55">The menu isn&rsquo;t up yet — ask your server.</p>;
   }
-  const grouped = categories
-    .map(c => ({ ...c, items: items.filter(i => i.categoryId === c.id) }))
-    .filter(g => g.items.length > 0);
-  const uncategorised = items.filter(i => !i.categoryId || !categories.some(c => c.id === i.categoryId));
+
+  /** Categories under their headings, for the browse sheet. */
+  const browseGroups: BrowseGroup[] = [];
+  for (const s of sections) {
+    const key = s.groupName?.trim() || null;
+    const last = browseGroups[browseGroups.length - 1];
+    const row = { id: s.id, name: s.name, count: s.items.length };
+    if (last && last.name === key) last.categories.push(row);
+    else browseGroups.push({ name: key, categories: [row] });
+  }
+
+  const current = sections.find(s => s.id === currentId) ?? sections[0];
+
+  function jumpTo(categoryId: string) {
+    setBrowsing(false);
+    setCurrentId(categoryId);
+    // Wait for the sheet to unmount and the body scroll lock to lift,
+    // or the scroll lands nowhere.
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`cat-${categoryId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Jump to a section. A real menu is sixty items deep, and scrolling
-          past every cocktail to reach the food is the thing that makes a
-          guest give up and put the phone down. */}
-      {grouped.length > 1 ? (
-        <nav className="sticky top-[52px] z-20 -mx-5 overflow-x-auto bg-oat/95 px-5 py-2 backdrop-blur">
-          <ul className="flex gap-1.5">
-            {grouped.map((group, i) => (
-              <li key={group.id}>
-                <a
-                  href={`#cat-${group.id}`}
-                  onClick={e => {
-                    e.preventDefault();
-                    document
-                      .getElementById(`cat-${group.id}`)
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                  // Indexed, not hashed: neighbours must never come out
-                  // the same colour.
-                  style={{ background: accentFor(palette, group.name, i) }}
-                  className="inline-flex min-h-[36px] items-center whitespace-nowrap rounded-full px-3.5 text-[13px] font-medium text-slate transition-transform active:scale-95"
-                >
-                  {group.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+    <div>
+      {/* Where you are, and the way to anywhere else.
+       *
+       * Replaces a horizontal chip strip that worked at four categories
+       * and hid the last six at eleven — a guest looking for the wine
+       * list scrolled the whole cocktail section instead. */}
+      {sections.length > 1 ? (
+        <div className="sticky top-0 z-20 -mx-5 mb-4 bg-ivory/95 px-5 py-2 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setBrowsing(true)}
+            className="flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-sandstone bg-surface px-3.5 text-left"
+          >
+            <span aria-hidden className="shrink-0 text-graphite">
+              <ListIcon />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-plum">
+              {current?.name ?? "Menu"}
+            </span>
+            <span aria-hidden className="shrink-0 text-graphite">
+              <ChevronIcon />
+            </span>
+          </button>
+        </div>
       ) : null}
 
-      {grouped.map((group, i) => (
-        <section key={group.id} id={`cat-${group.id}`} className="scroll-mt-28">
-          <h2 className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight text-plum">
-            <span
-              aria-hidden
-              className="h-5 w-1.5 rounded-full"
-              style={{ background: accentFor(palette, group.name, i) }}
-            />
-            {group.name}
-          </h2>
-          {/* Rows arrive as you reach them, rather than the whole menu
-              being already settled by the time you scroll down. */}
-          <Stagger className="mt-3 space-y-2">
-            {group.items.map(item => (
-              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} palette={palette} />
-            ))}
-          </Stagger>
-        </section>
-      ))}
-      {uncategorised.length > 0 ? (
-        <section>
-          {grouped.length > 0 ? (
-            <h2 className="text-[17px] font-semibold tracking-tight text-plum">More</h2>
-          ) : null}
-          <div className="mt-3 space-y-2">
-            {uncategorised.map(item => (
-              <ItemRow key={item.id} item={item} saved={pickedIds.has(item.id)} onSave={() => onSave(item)} onOpen={() => onOpen(item)} canSave={canSave} palette={palette} />
-            ))}
-          </div>
-        </section>
+      <div className="space-y-8">
+        {sections.map(section => (
+          <section key={section.id} id={`cat-${section.id}`} className="scroll-mt-20">
+            {/* "FOOD · APPETIZERS" — the group and the category in one
+                quiet line, so a guest always knows which half of the menu
+                they are in. */}
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-graphite">
+              {section.groupName ? `${section.groupName} · ` : ""}
+              {section.name}
+            </h2>
+            <Stagger className="mt-2 divide-y divide-sandstone border-t border-sandstone">
+              {section.items.map(item => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  saved={pickedIds.has(item.id)}
+                  onSave={() => onSave(item)}
+                  onOpen={() => onOpen(item)}
+                  canSave={canSave}
+                  palette={palette}
+                />
+              ))}
+            </Stagger>
+          </section>
+        ))}
+
+        {uncategorised.length > 0 ? (
+          <section>
+            {sections.length > 0 ? (
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-graphite">
+                More
+              </h2>
+            ) : null}
+            <div className="mt-2 divide-y divide-sandstone border-t border-sandstone">
+              {uncategorised.map(item => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  saved={pickedIds.has(item.id)}
+                  onSave={() => onSave(item)}
+                  onOpen={() => onOpen(item)}
+                  canSave={canSave}
+                  palette={palette}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      {browsing ? (
+        <MenuBrowser
+          groups={browseGroups}
+          currentId={current?.id ?? null}
+          onPick={jumpTo}
+          onClose={() => setBrowsing(false)}
+        />
       ) : null}
     </div>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 
@@ -1020,20 +1150,42 @@ function ItemRow({
   const [pulse, setPulse] = useState(0);
 
   return (
-    <article className="flex items-stretch gap-1 rounded-2xl border border-sandstone bg-surface">
+    <article className="flex items-stretch gap-2">
       {/* The whole row opens the dish. It used to be inert — the only
           interactive thing was the star — so a two-line description was
           all a guest could ever read. */}
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-[96px] flex-1 items-center gap-3 rounded-l-2xl p-3 text-left active:bg-surface-hover"
+        className="flex min-h-[88px] flex-1 items-start gap-4 py-3.5 text-left"
       >
-        {/* Bigger than it was, and the space is reserved either way.
-            A drinks-led room is selling the look of the thing, and a
-            56px thumbnail beside a wall of text is a list, not a menu.
-            Reserving the box also stops a half-photographed menu from
-            rendering ragged, with some rows indented and some not. */}
+        {/* Text first, photo on the right.
+         *
+         * Mirrors how a menu is actually read: you scan names and prices
+         * down a column, and the photo confirms rather than leads. It
+         * also solves the ragged-edge problem for free — an item with no
+         * photo simply lets its text run the full width, so a
+         * half-photographed menu still looks deliberate. A left-hand
+         * image would need a placeholder to avoid that, and a
+         * placeholder is a box that says nothing. */}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold leading-snug text-plum">
+            {item.name}
+          </span>
+          {item.description ? (
+            // Not clamped. A cocktail's description IS the sell —
+            // "Absolut Citron, lemon juice, triple sec" cut after four
+            // words tells a guest nothing, and this is two lines of text
+            // on a phone, not a layout emergency.
+            <span className="mt-1 block text-[13px] leading-snug text-graphite">
+              {item.description}
+            </span>
+          ) : null}
+          <span className="mt-1.5 block font-mono text-[13px] tabular-nums text-graphite">
+            ${(item.priceCents / 100).toFixed(2)}
+          </span>
+        </span>
+
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -1041,31 +1193,9 @@ function ItemRow({
             alt=""
             loading="lazy"
             decoding="async"
-            className="h-20 w-20 shrink-0 rounded-xl object-cover"
+            className="h-[88px] w-[88px] shrink-0 self-center rounded-lg object-cover"
           />
-        ) : (
-          <span
-            aria-hidden
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl text-[22px] font-semibold text-plum/70"
-            style={{ background: palette.wash[0] }}
-          >
-            {item.name.charAt(0).toUpperCase()}
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-medium leading-snug text-plum">{item.name}</span>
-          {item.description ? (
-            // Two lines, not one. A cocktail's description IS the sell —
-            // "Absolut Citron, lemon juice, triple sec" clipped after
-            // four words tells a guest nothing.
-            <span className="mt-0.5 line-clamp-2 block text-[13px] leading-snug text-graphite/80">
-              {item.description}
-            </span>
-          ) : null}
-          <span className="mt-1 block font-mono text-[13px] tabular-nums text-graphite">
-            ${(item.priceCents / 100).toFixed(2)}
-          </span>
-        </span>
+        ) : null}
       </button>
 
       {canSave ? (
@@ -1074,8 +1204,7 @@ function ItemRow({
           onClick={() => { setPulse(n => n + 1); onSave(); }}
           aria-pressed={saved}
           aria-label={saved ? `Remove ${item.name} from My Picks` : `Save ${item.name} to My Picks`}
-          style={saved ? { background: `${palette.wash[0]}` } : undefined}
-          className="flex w-[68px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-r-2xl border-l border-sandstone transition-colors active:bg-surface-hover"
+          className="flex w-[52px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors active:bg-surface-hover"
         >
           <Pop trigger={pulse}>
             <span
@@ -1099,9 +1228,6 @@ function ItemRow({
     </article>
   );
 }
-
-/* ------------------------------ Specials ------------------------------ */
-
 function Specials({
   promotions,
   specials,
