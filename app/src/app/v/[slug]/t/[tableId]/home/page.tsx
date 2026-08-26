@@ -116,6 +116,21 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
       : Promise.resolve([]),
   ]);
 
+  // Venue-authored pairings. Loaded whole — a menu is a few hundred rows
+  // at most and this saves a round trip from a phone on venue wifi every
+  // time the guest saves something.
+  //
+  // Nothing is inferred here or anywhere else: TabCall has no basket and
+  // no bill, so the only thing it can say about what goes with what is
+  // what the venue wrote down. A venue that authored none gets an empty
+  // array and no suggestion module at all.
+  const pairings = await db.menuItemPairing.findMany({
+    where: { venueId: resolved.venueId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { menuItemId: true, suggestedId: true, relationship: true, sortOrder: true },
+    take: 500,
+  });
+
   // An open request of this guest's, resolved here rather than left to
   // the client. Loading the page already tells us the session; asking the
   // database in the same pass means the status card is correct on first
@@ -217,6 +232,7 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
           ? `/v/${params.slug}/t/${params.tableId}/feedback?s=${encodeURIComponent(searchParams.s ?? "")}`
           : undefined
       }
+      pairings={pairings}
       initialTab={searchParams.tab ?? "for-you"}
       activeRequest={
         activeRequest

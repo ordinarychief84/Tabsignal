@@ -15,6 +15,8 @@ import {
   type ActiveRequest,
 } from "@/components/guest/service-status-card";
 import { WaitingRecommendation } from "@/components/guest/waiting-recommendation";
+import { PairingSuggestion } from "@/components/guest/pairing-suggestion";
+import { pairingLabel, suggestionFor, type PairingRelationship } from "@/lib/pairings";
 import { MOOD_PROMPTS, itemsForPrompt, type MoodPrompt } from "@/lib/menu-discovery";
 import { ChefsPick } from "./chefs-pick";
 import { ItemSheet } from "@/components/guest/item-sheet";
@@ -120,6 +122,17 @@ export function GuestHome(props: {
    * including on a fresh page load after a refresh, which is the point.
    */
   activeRequest: ActiveRequest | null;
+  /**
+   * Venue-authored "goes well with" links. Empty for a venue that hasn't
+   * written any, and the suggestion module then renders nothing at all
+   * rather than guessing.
+   */
+  pairings: {
+    menuItemId: string;
+    suggestedId: string;
+    relationship: PairingRelationship;
+    sortOrder: number;
+  }[];
 }) {
   // A whole family from the venue's colour, not one wash. Everything the
   // guest sees is tinted with THEIR colour, which is the difference
@@ -235,6 +248,27 @@ export function GuestHome(props: {
   );
 
   /**
+   * One suggestion, hanging off the last thing the guest saved.
+   *
+   * Venue-authored only. TabCall has no basket and no bill, so the only
+   * thing it can honestly say about what goes with what is what someone
+   * at the venue wrote down — and a venue that wrote none gets nothing.
+   *
+   * Saved ids are walked newest first so the suggestion attaches to the
+   * decision they just made rather than one from twenty minutes ago.
+   */
+  const pairing = useMemo(() => {
+    const newestFirst = [...picks].reverse().map(p => p.menuItemId);
+    const found = suggestionFor({
+      savedIds: newestFirst,
+      pairings: props.pairings,
+      itemsById: byId,
+    });
+    if (!found) return null;
+    return { ...found, sourceName: byId.get(found.sourceId)?.name ?? null };
+  }, [picks, props.pairings, byId]);
+
+  /**
    * The one thing shown under an open request.
    *
    * Deterministic and drawn only from what the venue actually published:
@@ -247,6 +281,11 @@ export function GuestHome(props: {
    * shortlisted reads as the product not paying attention.
    */
   const waiting = useMemo(() => {
+    // A pairing off something they've already saved beats a generic
+    // feature: it's still venue-authored, and it's about their table.
+    if (pairing) {
+      return { item: pairing.item, reason: pairingLabel(pairing.relationship) };
+    }
     const promoted = props.promotions[0]?.itemIds ?? [];
     for (const id of promoted) {
       const item = byId.get(id);
@@ -255,7 +294,7 @@ export function GuestHome(props: {
     const featured = props.items.find(i => i.isFeatured && !pickedIds.has(i.id));
     if (featured) return { item: featured, reason: "Featured tonight" };
     return null;
-  }, [props.promotions, props.items, byId, pickedIds]);
+  }, [pairing, props.promotions, props.items, byId, pickedIds]);
 
   const navSlot = navSlotFor(tab);
 
@@ -389,6 +428,20 @@ export function GuestHome(props: {
             palette={palette}
             onReadyToOrder={props.requestsEnabled ? () => sendRequest("ORDER") : undefined}
             hasOpenRequest={requestOpen}
+            suggestion={
+              pairing ? (
+                <PairingSuggestion
+                  item={pairing.item}
+                  relationship={pairing.relationship}
+                  sourceName={pairing.sourceName}
+                  saved={false}
+                  canSave={props.config.myPicks}
+                  onSave={() => void savePick(pairing.item)}
+                  onOpen={() => setOpenItem(pairing.item)}
+                  tint={palette.wash[0]}
+                />
+              ) : null
+            }
           />
         ) : null}
 
@@ -1040,6 +1093,7 @@ function MyPicks({
   palette,
   onReadyToOrder,
   hasOpenRequest,
+  suggestion,
 }: {
   picks: Pick[];
   byId: Map<string, Item>;
@@ -1054,6 +1108,12 @@ function MyPicks({
   onReadyToOrder?: () => Promise<boolean>;
   /** Hides the prompt when this table already has something in flight. */
   hasOpenRequest: boolean;
+  /**
+   * A venue-authored "goes well with", if there is one. Rendered under
+   * the list, after the guest has finished reading what they chose —
+   * never above it, and never more than one.
+   */
+  suggestion?: React.ReactNode;
 }) {
   const [shared, setShared] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1179,6 +1239,8 @@ function MyPicks({
           )
         ) : null}
       </section>
+
+      {suggestion}
 
       {tablePicks.length > 0 ? (
         <section>

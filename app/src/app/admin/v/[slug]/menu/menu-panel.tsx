@@ -325,6 +325,7 @@ export function MenuPanel({ slug, initialCategories, initialItems }: Props) {
           slug={slug}
           item={editing}
           categories={categories.map(c => ({ id: c.id, name: c.name }))}
+          menuItems={items.map(i => ({ id: i.id, name: i.name, isActive: i.isActive }))}
           onSave={saveItem}
           onClose={() => setEditing(null)}
         />
