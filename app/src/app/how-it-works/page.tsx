@@ -15,7 +15,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "How It Works — Scan, Signal, Serve: QR Table Service in 3 Steps",
   description:
-    "How TabCall works: guests scan the table QR to order, pay or call a waiter; staff phones and smartwatches buzz; unanswered requests escalate to the manager. On top of your POS — no new hardware.",
+    "How TabCall works: guests scan the table QR to explore the menu, save what they like and call their server by name; staff phones and smartwatches buzz; unanswered requests escalate to the manager. Alongside your POS \u2014 no new hardware.",
   path: "/how-it-works",
   keywords: [
     "how QR table ordering works",
@@ -132,7 +132,7 @@ const FLOW_STEPS = [
     n: "02",
     title: "Act",
     body:
-      "Call a waiter, view the menu, order, split, pay, or leave a review. The closest server's phone buzzes within a second of the tap.",
+      "Call their server by name, browse the menu, save what they like, say they're ready to order or ready for the check, or rate the night. The closest server's phone buzzes within a second of the tap.",
   },
   {
     n: "03",

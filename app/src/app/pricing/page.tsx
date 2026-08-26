@@ -12,9 +12,9 @@ import { faqPageLd, pageMetadata, softwareApplicationLd, type FaqEntry } from "@
  */
 
 export const metadata: Metadata = pageMetadata({
-  title: "Pricing — Free QR Ordering Plan, Growth $99/mo, Pro $299/mo",
+  title: "Pricing — Free Starter Plan, Growth $99/mo, Pro $299/mo",
   description:
-    "TabCall pricing: Starter is free for up to 5 tables. Growth ($99/mo) adds menus, pre-orders and analytics; Pro ($299/mo) adds multi-location and branding. 14-day free trial, no card required.",
+    "TabCall pricing: Starter is free for up to 5 tables. Growth ($99/mo) adds the menu, guest discovery, guestbook and analytics; Pro ($299/mo) adds multi-venue, branding and benchmarks. 14-day free trial, no card required.",
   path: "/pricing",
   keywords: [
     "TabCall pricing",
@@ -35,7 +35,7 @@ const PRICING_FAQS: FaqEntry[] = [
   {
     question: "Do I need to replace my POS?",
     answer:
-      "No. TabCall sits on top of your existing POS. On Growth and Pro, orders and payments sync to Toast, Square or Clover automatically — no rip-and-replace, no double entry.",
+      "No. TabCall sits alongside your existing POS rather than replacing it — your POS keeps taking the order, holding the bill and settling the payment. TabCall handles everything around that: how guests call for service, what they discover on the menu, and how they tell you it went. Direct Toast, Square and Clover connectors are in development and not available yet.",
   },
   {
     question: "How long does setup take?",
@@ -101,11 +101,11 @@ const PRICING_TIERS: PricingTier[] = [
     highlight: true,
     inheritsFrom: "Starter",
     features: [
-      "Full digital menu with photos and modifiers",
-      "QR ordering from the table",
-      "Wishlist guests can share with the server",
-      "Reservations and waitlist",
-      "Tip pool (enter the shift total, split it by weight)",
+      "Full digital menu with photos, tags and bulk import",
+      "Menu discovery — \u201cwhat are you in the mood for?\u201d",
+      "My Picks: a shortlist guests show their server",
+      "Specials and promotions guests can tap through",
+      "Guestbook: opt-in guest contacts and visit history",
       "Manager analytics: response time, completion, peak hours",
       "Auto-escalation and request hand-off",
     ],
@@ -122,10 +122,10 @@ const PRICING_TIERS: PricingTier[] = [
     highlight: false,
     inheritsFrom: "Growth",
     features: [
-      "Loyalty: returning-guest identify, points, visit history",
-      "Promotions and banners (happy hour, lunch, new dish)",
+      "Regulars: recognise a returning guest and their history",
+      "Reservations and waitlist",
+      "Campaigns: compose and schedule guest messaging",
       "Branding: logo, banner, brand colors, welcome message",
-      "POS integration: Toast, Square, Clover (preview)",
       "Multi-location operator console",
       "Cross-venue benchmarks (k≥5)",
       "Security dashboard and audit log",
@@ -252,8 +252,9 @@ export default function PricingPage() {
 
           <p className="mt-10 text-center text-xs text-slate/55">
             Growth and Pro start with a 14-day free trial. No card needed to
-            start. All plans run month to month. Stripe processing (2.9% +
-            30¢) is passed through at cost.
+            start. All plans run month to month. TabCall never touches guest
+            payments, so there are no processing fees on top — your guests
+            settle with your staff on your own terminal, at your own rates.
           </p>
         </div>
       </section>

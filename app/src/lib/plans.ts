@@ -19,17 +19,30 @@ export type PlanDefinition = {
   requiresAtLeast?: PlanId;
 };
 
+/**
+ * What each tier actually gets.
+ *
+ * Rewritten after an audit against the code. The previous lists sold
+ * things the product no longer does — Stripe guest payments and bill
+ * splitting (removed), tip pooling (tables dropped), pre-order via QR
+ * (retired), and a loyalty programme whose points nothing awards since the
+ * payment flow that called it went away.
+ *
+ * Rule for this file: a feature appears here only if a venue can reach it
+ * in the product today. Anything half-built is named honestly on the
+ * pricing page as coming, or not mentioned at all.
+ */
 export const PLANS: PlanDefinition[] = [
   {
     id: "free",
     name: "Starter",
     monthlyCents: 0,
     stripePriceId: null,
-    tagline: "QR + requests + reviews. Free for up to 5 tables.",
+    tagline: "QR service calls and guest feedback. Free for up to 5 tables.",
     features: [
-      "Realtime request queue",
-      "Stripe payments + Connect",
-      "Bad-rating intercept (basic)",
+      "QR at every table",
+      "Live request queue for staff",
+      "Guest feedback with a manager alert",
       "Up to 1 staff member",
     ],
   },
@@ -38,13 +51,14 @@ export const PLANS: PlanDefinition[] = [
     name: "Growth",
     monthlyCents: 9900,
     stripePriceId: process.env.STRIPE_PRICE_GROWTH ?? null,
-    tagline: "Menu, pre-order, analytics, unlimited staff.",
+    tagline: "The full guest experience, plus the numbers behind it.",
     features: [
       "Everything in Starter",
-      "Menu management",
-      "Pre-order via QR",
-      "Analytics dashboard (today / 7d / 30d)",
-      "Tip pooling",
+      "Menu with photos, tags and bulk import",
+      "Menu discovery and My Picks",
+      "Specials and promotions",
+      "Guestbook with opt-in contacts",
+      "Analytics (today / 7 days / 30 days)",
       "Unlimited staff",
     ],
   },
@@ -53,13 +67,14 @@ export const PLANS: PlanDefinition[] = [
     name: "Pro",
     monthlyCents: 29900,
     stripePriceId: process.env.STRIPE_PRICE_PRO ?? null,
-    tagline: "Multi-location, custom branding, advanced ops.",
+    tagline: "Several venues, your branding, and how you compare.",
     features: [
       "Everything in Growth",
-      "Multi-location operator console",
-      "Custom branding (logo + color)",
+      "Multi-venue operator console",
+      "Custom branding (logo and colour)",
+      "Regulars — recognise returning guests",
+      "Reservations and waitlist",
       "Industry benchmarking",
-      "Loyalty program",
       "Priority support",
     ],
   },
