@@ -116,6 +116,25 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
       : Promise.resolve([]),
   ]);
 
+  // An open request of this guest's, resolved here rather than left to
+  // the client. Loading the page already tells us the session; asking the
+  // database in the same pass means the status card is correct on first
+  // paint instead of appearing a poll later — and means a refresh mid-wait
+  // doesn't erase the fact that they asked for something.
+  const activeRequest = venue.requestsEnabled
+    ? await db.request.findFirst({
+        where: {
+          sessionId: resolved.sessionId,
+          status: { in: ["PENDING", "ACKNOWLEDGED", "ESCALATED"] },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true, type: true, status: true, note: true,
+          createdAt: true, acknowledgedAt: true,
+        },
+      })
+    : null;
+
   // Seeded on the session so the round is stable if the guest taps back
   // into it, and differs between tables.
   const chefsPick = config.specials
@@ -199,6 +218,18 @@ export default async function GuestHomePage({ params, searchParams }: PageProps)
           : undefined
       }
       initialTab={searchParams.tab ?? "for-you"}
+      activeRequest={
+        activeRequest
+          ? {
+              id: activeRequest.id,
+              type: activeRequest.type,
+              status: activeRequest.status,
+              note: activeRequest.note,
+              createdAt: activeRequest.createdAt.toISOString(),
+              acknowledgedAt: activeRequest.acknowledgedAt?.toISOString() ?? null,
+            }
+          : null
+      }
     />
   );
 }
