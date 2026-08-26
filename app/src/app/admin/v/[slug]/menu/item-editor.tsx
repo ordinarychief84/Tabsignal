@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PairingsField } from "./pairings-field";
 import { SUGGESTED_TAGS } from "@/lib/menu-discovery";
 
 /**
@@ -36,12 +37,18 @@ export function ItemEditor({
   slug,
   item,
   categories,
+  menuItems,
   onSave,
   onClose,
 }: {
   slug: string;
   item: EditableItem;
   categories: { id: string; name: string }[];
+  /**
+   * The rest of the menu, so pairings can be chosen from it. Passed down
+   * rather than fetched here — the panel already has the whole list.
+   */
+  menuItems: { id: string; name: string; isActive: boolean }[];
   onSave: (saved: EditableItem) => Promise<void> | void;
   onClose: () => void;
 }) {
@@ -269,6 +276,17 @@ export function ItemEditor({
               })}
             </ul>
           </div>
+
+          {/* Where "pairs well with" gets written down. TabCall can't
+              infer it — there's no basket and no bill to infer from — so
+              without this field the guest-side suggestion would be real
+              and permanently empty. */}
+          <PairingsField
+            slug={slug}
+            itemId={draft.id ?? null}
+            itemName={draft.name}
+            candidates={menuItems}
+          />
 
           <div className="space-y-2.5 rounded-2xl border border-umber-soft/30 bg-white p-4">
             <Toggle

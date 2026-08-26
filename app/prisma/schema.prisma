@@ -197,6 +197,7 @@ model Venue {
   orders                   Order[]
   promotions               Promotion[]
   wishlists                Wishlist[]
+  menuItemPairings         MenuItemPairing[]
   posSyncLogs              PosSyncLog[]
   venueBranding            VenueBranding?
   posIntegration           PosIntegration?
@@ -278,6 +279,8 @@ model MenuItem {
   orderItems     OrderItem[]
   promotionLinks PromotionItem[]
   wishlistItems  WishlistItem[]
+  pairingsFrom   MenuItemPairing[] @relation("PairingSource")
+  pairingsTo     MenuItemPairing[] @relation("PairingTarget")
 
   @@index([venueId, isActive])
   @@index([venueId, isFeatured])
@@ -992,6 +995,20 @@ enum PromotionStatus {
   EXPIRED
 }
 
+// Why one menu item is being suggested alongside another.
+//
+// The relationship IS the copy. A guest is shown "Pairs well with" or
+// "Goes down well after" depending on which of these the venue chose, so
+// these values are not interchangeable labels — each one produces a
+// different sentence in front of a guest.
+enum PairingRelationship {
+  PAIRS_WITH
+  POPULAR_WITH
+  COMPLETE_MEAL
+  RECOMMENDED_DRINK
+  RECOMMENDED_DESSERT
+}
+
 enum WishlistStatus {
   ACTIVE
   CONVERTED
@@ -1103,6 +1120,38 @@ model WishlistItem {
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
 
   @@unique([wishlistId, menuItemId])
+}
+
+// "Pairs well with" — one venue-authored suggestion from one dish to
+// another.
+//
+// AUTHORED, NEVER INFERRED. TabCall has no basket, no bill and no
+// transaction history, so it cannot know what actually gets ordered
+// together; anything it claimed about that would be invented. A chef
+// knows which wine goes with the pork, and this is where they say so.
+//
+// The pair is unique, so a venue can't stack three copies of the same
+// recommendation on one dish. Cascades from every side: deleting a venue
+// or either dish removes the suggestion rather than leaving a row
+// pointing at nothing.
+model MenuItemPairing {
+  id           String              @id @default(cuid())
+  venueId      String
+  // The dish a guest is looking at or has just saved.
+  menuItemId   String
+  // What the venue suggests alongside it.
+  suggestedId  String
+  relationship PairingRelationship @default(PAIRS_WITH)
+  sortOrder    Int                 @default(0)
+  createdAt    DateTime            @default(now())
+
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  menuItem  MenuItem @relation("PairingSource", fields: [menuItemId], references: [id], onDelete: Cascade)
+  suggested MenuItem @relation("PairingTarget", fields: [suggestedId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, suggestedId])
+  @@index([venueId])
+  @@index([menuItemId])
 }
 
 model VenueBranding {
