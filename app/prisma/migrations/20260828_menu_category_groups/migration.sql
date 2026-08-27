@@ -1,0 +1,12 @@
+-- A level above category, so a long menu reads the way a printed one
+-- does: "Bar → Craft Cocktails", "Food → Appetizers".
+--
+-- Free text on the category rather than a MenuGroup table. A venue with
+-- eleven drink categories needs one heading above them, not a third
+-- model with its own ordering, editor, sort keys and cascade rules —
+-- and the guest surface only ever renders the string. Same call the
+-- schema already made for Table.zone.
+--
+-- Nullable, so every existing category keeps working untouched and
+-- simply renders without a heading.
+ALTER TABLE "MenuCategory" ADD COLUMN "groupName" TEXT;

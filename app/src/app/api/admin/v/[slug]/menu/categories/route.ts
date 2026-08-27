@@ -25,6 +25,7 @@ export async function GET(_req: Request, ctx: { params: { slug: string } }) {
 }
 
 const CreateBody = z.object({
+  groupName: z.string().max(60).nullable().optional(),
   name: z.string().min(1).max(120),
   sortOrder: z.number().int().min(0).max(10000).default(0),
   isActive: z.boolean().default(true),
@@ -39,7 +40,11 @@ export async function POST(req: Request, ctx: { params: { slug: string } }) {
   catch { return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 }); }
 
   const created = await db.menuCategory.create({
-    data: { venueId: gate.venueId, ...parsed },
+    data: {
+      venueId: gate.venueId,
+      ...parsed,
+      groupName: parsed.groupName?.trim() || null,
+    },
   });
   return NextResponse.json({ id: created.id });
 }

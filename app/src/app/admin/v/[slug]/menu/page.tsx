@@ -61,6 +61,7 @@ export default async function MenuPage({ params }: { params: { slug: string } })
         initialCategories={categories.map(c => ({
           id: c.id,
           name: c.name,
+          groupName: c.groupName,
           sortOrder: c.sortOrder,
           isActive: c.isActive,
         }))}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PairingsField } from "./pairings-field";
 import { SUGGESTED_TAGS } from "@/lib/menu-discovery";
+import { uploadErrorMessage } from "@/lib/upload-errors";
 
 /**
  * One menu item, edited properly.
@@ -84,7 +85,11 @@ export function ItemEditor({
         body: form,
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.detail ?? body?.error ?? `HTTP ${res.status}`);
+      // Never show the raw detail: STORAGE_NOT_CONFIGURED arrives with
+      // "Set SUPABASE_SERVICE_ROLE_KEY in env", which is a developer
+      // instruction in front of a restaurant owner — and the reason
+      // somebody concludes the product can't do photos at all.
+      if (!res.ok) throw new Error(uploadErrorMessage(body, res.status));
       setDraft(d => ({ ...d, imageUrl: body.url ?? body.imageUrl ?? null }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't upload that image");
