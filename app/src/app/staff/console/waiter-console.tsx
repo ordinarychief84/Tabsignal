@@ -8,6 +8,7 @@ import { ShiftControl } from "../shift-control";
 import { OperationalSummary } from "./summary";
 import { TableMap } from "./table-map";
 import { TableSheet } from "./table-sheet";
+import { SoundToggle } from "./sound-toggle";
 import type { ShiftSummary, WaiterTable, WaiterFeedback } from "@/lib/waiter-console";
 import type { ShiftStatus } from "@/lib/shift";
 import { getSocket, joinRoom } from "@/lib/socket";
@@ -223,7 +224,13 @@ export function WaiterConsole({
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-graphite">
               Quick actions
             </h2>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            {/* The one control here that isn't navigation. It sits with
+                the quick actions because that is where a server looks for
+                "things I set once", not because it is one. */}
+            <div className="mt-3">
+              <SoundToggle />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
               <QuickAction href={`/v/${venueSlug}/menu`} label="View menu" />
               {canManage ? <QuickAction href={adminHref} label="Dashboard" /> : null}
               <QuickAction href="/staff/watch" label="Pair a watch" />
