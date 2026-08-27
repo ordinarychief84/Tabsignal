@@ -9,6 +9,7 @@ import { OperationalSummary } from "./summary";
 import { TableMap } from "./table-map";
 import { TableSheet } from "./table-sheet";
 import { SoundToggle } from "./sound-toggle";
+import { HelpPanel } from "./help-panel";
 import type { ShiftSummary, WaiterTable, WaiterFeedback } from "@/lib/waiter-console";
 import type { ShiftStatus } from "@/lib/shift";
 import { getSocket, joinRoom } from "@/lib/socket";
@@ -186,6 +187,11 @@ export function WaiterConsole({
 
         <aside className="min-w-0 space-y-5">
           <TableMap tables={tables} section={section} onOpen={setOpenTable} />
+
+          {/* §32. Above feedback and quick actions because somebody
+              asking for a hand is time-sensitive and a guest comment from
+              an hour ago is not. */}
+          <HelpPanel venueId={venueId} tables={tables} />
 
           {feedback.length > 0 ? (
             <section className="rounded-2xl border border-sandstone bg-surface p-4">

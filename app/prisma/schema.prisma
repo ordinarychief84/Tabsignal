@@ -229,6 +229,7 @@ model Venue {
   wishlists                Wishlist[]
   menuItemPairings         MenuItemPairing[]
   guestEvents              GuestEvent[]
+  staffPings               StaffPing[]
   posSyncLogs              PosSyncLog[]
   venueBranding            VenueBranding?
   posIntegration           PosIntegration?
@@ -333,6 +334,7 @@ model Table {
   // Guest Commerce Module back-refs.
   orders       Order[]
   wishlists    Wishlist[]
+  staffPings   StaffPing[]
 
   @@unique([venueId, label])
   @@index([venueId])
@@ -406,6 +408,9 @@ model StaffMember {
   passwordResets PasswordResetToken[]
   wearDevices    WearDevice[]
   identities     AuthIdentity[]
+  pingsSent      StaffPing[]          @relation("PingFrom")
+  pingsReceived  StaffPing[]          @relation("PingTo")
+  pingsAnswered  StaffPing[]          @relation("PingAnsweredBy")
 
   @@index([venueId])
   @@index([venueId, status])
@@ -1231,6 +1236,55 @@ model GuestEvent {
   @@index([venueId, type, createdAt])
   @@index([venueId, createdAt])
   @@index([sessionId])
+}
+
+// Why one member of staff is calling another.
+//
+// Three kinds, because the brief named three and they are genuinely
+// different asks: a pair of hands, a decision, and a swap. Anything
+// beyond that is a chat product, and the brief is explicit that this
+// must not become one.
+enum StaffPingKind {
+  // "Need help at 14" — carrying, clearing, a second pair of hands.
+  NEED_HAND
+  // "Need a manager at 7" — a decision somebody else has to make.
+  NEED_MANAGER
+  // "Can someone cover 11?" — asking for the table itself.
+  NEED_COVER
+}
+
+// One member of staff asking another for something, about a table.
+//
+// DELIBERATELY NOT A MESSAGE. There is no body, no thread, no reply and
+// no read receipt — a kind, a table, and who sent it. A server mid-service
+// should be able to raise this in two taps and get back to the floor, and
+// the moment it grows a text field it becomes a thing people compose,
+// which is the Slack-inside-TabCall the brief rules out.
+//
+// Resolved rather than deleted, so a manager can see what the floor asked
+// for over a shift and how long it took anyone to answer.
+model StaffPing {
+  id             String        @id @default(cuid())
+  venueId        String
+  fromStaffId    String
+  // Null means the whole floor. Set when someone is asked by name.
+  toStaffId      String?
+  // Null for an ask that isn't about one table.
+  tableId        String?
+  kind           StaffPingKind
+  createdAt      DateTime      @default(now())
+  // Who picked it up, and when. Null while nobody has.
+  answeredById   String?
+  answeredAt     DateTime?
+
+  venue      Venue        @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  fromStaff  StaffMember  @relation("PingFrom", fields: [fromStaffId], references: [id], onDelete: Cascade)
+  toStaff    StaffMember? @relation("PingTo", fields: [toStaffId], references: [id], onDelete: SetNull)
+  answeredBy StaffMember? @relation("PingAnsweredBy", fields: [answeredById], references: [id], onDelete: SetNull)
+  table      Table?       @relation(fields: [tableId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, createdAt])
+  @@index([venueId, answeredAt])
 }
 
 model VenueBranding {
