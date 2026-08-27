@@ -20,6 +20,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { imageUrl } from "@/lib/image-url";
 import { db } from "@/lib/db";
 import { getStaffSession } from "@/lib/auth/session";
 import { can } from "@/lib/auth/permissions";
@@ -80,7 +81,7 @@ const PatchBody = z.object({
   // These shipped with the schema in #91 and nothing could set them, so
   // the per-server welcome could never actually be personalised.
   displayName: z.string().trim().max(40).nullable().optional(),
-  photoUrl: z.string().url().nullable().optional(),
+  photoUrl: imageUrl.nullable().optional(),
   welcomeMessage: z.string().trim().max(400).nullable().optional(),
 });
 

@@ -1,4 +1,9 @@
 import "server-only";
+// Re-exported so existing server-side callers keep one import. The
+// implementations live outside this module because the staff profile
+// form needs them on the client, and this one is server-only.
+export { defaultWelcome, firstNameOf } from "@/lib/welcome-text";
+import { defaultWelcome, firstNameOf } from "@/lib/welcome-text";
 
 /**
  * Who the guest is told is looking after them.
@@ -32,21 +37,12 @@ export type GuestFacingServer = {
  * venue has written one, so a venue that never touches the setting still
  * gets something warm rather than an empty panel.
  */
-export function defaultWelcome(serverName: string, venueName: string): string {
-  return (
-    `Hi, I'm ${serverName}. Welcome to ${venueName}. I'll be with you shortly. ` +
-    `Feel free to explore tonight's menu and specials while I make my way over.`
-  );
-}
 
 /**
  * Take the first name only. A venue that types "Sarah Okonkwo" into
  * displayName almost certainly doesn't mean to show a guest a surname, and
  * a server shouldn't have to know that to be safe.
  */
-export function firstNameOf(value: string): string {
-  return value.trim().split(/\s+/)[0] ?? value.trim();
-}
 
 /**
  * Resolve the server for a table.
